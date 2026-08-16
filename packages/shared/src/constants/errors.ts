@@ -1,0 +1,68 @@
+/**
+ * Domain error codes. Just stable strings — the HTTP layer (adapters/backend)
+ * maps each code to a status. Keeps the domain agnostic of HTTP.
+ */
+export const Errors = {
+  UNKNOWN_ERROR: 'UNKNOWN_ERROR',
+  REQUIRED_FIELD: 'REQUIRED_FIELD',
+
+  // shared / money / period
+  INVALID_AMOUNT: 'INVALID_AMOUNT',
+  INVALID_PERIOD: 'INVALID_PERIOD',
+
+  // auth
+  INVALID_EMAIL: 'INVALID_EMAIL',
+  WEAK_PASSWORD: 'WEAK_PASSWORD',
+  INVALID_PASSWORD_HASH: 'INVALID_PASSWORD_HASH',
+  NAME_REQUIRED: 'NAME_REQUIRED',
+  USER_ALREADY_EXISTS: 'USER_ALREADY_EXISTS',
+  USER_NOT_FOUND: 'USER_NOT_FOUND',
+  INVALID_EMAIL_OR_PASSWORD: 'INVALID_EMAIL_OR_PASSWORD',
+  NOT_AUTHENTICATED: 'NOT_AUTHENTICATED',
+  INVALID_PASSWORD: 'INVALID_PASSWORD',
+  PASSWORD_SAME_AS_PREVIOUS: 'PASSWORD_SAME_AS_PREVIOUS',
+  INVALID_SESSION: 'INVALID_SESSION',
+  NOT_ADMIN: 'NOT_ADMIN',
+  // Signed up but an admin has not released the account yet. A REJECTED account
+  // never gets this code — it answers INVALID_EMAIL_OR_PASSWORD, so being barred
+  // is indistinguishable from a wrong password.
+  ACCOUNT_PENDING_APPROVAL: 'ACCOUNT_PENDING_APPROVAL',
+  OAUTH_TOKEN_INVALID: 'OAUTH_TOKEN_INVALID',
+  OAUTH_EMAIL_NOT_VERIFIED: 'OAUTH_EMAIL_NOT_VERIFIED',
+
+  // category
+  // Also answered when the category belongs to SOMEONE ELSE (anti-IDOR): each
+  // user owns their own tree, so a foreign node is indistinguishable from a
+  // missing one.
+  CATEGORY_NOT_FOUND: 'CATEGORY_NOT_FOUND',
+  CATEGORY_NOT_LEAF: 'CATEGORY_NOT_LEAF',
+  CATEGORY_HAS_CHILDREN: 'CATEGORY_HAS_CHILDREN',
+  CATEGORY_ALREADY_EXISTS: 'CATEGORY_ALREADY_EXISTS',
+  CATEGORY_IN_USE: 'CATEGORY_IN_USE',
+
+  // transaction
+  TRANSACTION_NOT_FOUND: 'TRANSACTION_NOT_FOUND',
+  INVALID_TRANSACTION_TYPE: 'INVALID_TRANSACTION_TYPE',
+  // An expense always lands on a (leaf) category — that is the whole point of
+  // the tree. A one-off income does not have to.
+  CATEGORY_REQUIRED_FOR_EXPENSE: 'CATEGORY_REQUIRED_FOR_EXPENSE',
+  RECURRENCE_NOT_FOUND: 'RECURRENCE_NOT_FOUND',
+  RECURRENCE_NOT_ACTIVE: 'RECURRENCE_NOT_ACTIVE',
+  INVALID_DAY_OF_MONTH: 'INVALID_DAY_OF_MONTH',
+
+  // budget
+  BUDGET_NOT_FOUND: 'BUDGET_NOT_FOUND',
+  // One ceiling per (owner, category) — raising it is an edit, not a new budget.
+  BUDGET_ALREADY_EXISTS: 'BUDGET_ALREADY_EXISTS',
+
+  // income
+  INCOME_SOURCE_NOT_FOUND: 'INCOME_SOURCE_NOT_FOUND',
+  INCOME_SOURCE_ALREADY_EXISTS: 'INCOME_SOURCE_ALREADY_EXISTS',
+  INVALID_PAYDAY: 'INVALID_PAYDAY',
+
+  // notification
+  // Also answered when the notification belongs to SOMEONE ELSE (anti-IDOR).
+  NOTIFICATION_NOT_FOUND: 'NOTIFICATION_NOT_FOUND',
+} as const
+
+export type ErrorCode = (typeof Errors)[keyof typeof Errors]
