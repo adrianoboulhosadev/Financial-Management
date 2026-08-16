@@ -1,0 +1,227 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- auth ----------------------------------------------------------------------
+
+// Identity/credential. `role` drives authorization (the owner is `admin`); the
+// rich domain `User` maps email/password/role to value objects. Money lives in
+// the finance contexts, never here. `password` is nullable: a user created via
+// an OAuth provider (see OAuthAccount) has none — LoginUser (email+password)
+// already rejects a null password as invalid credentials.
+//
+// `approvalStatus` gates the closed platform (pending | approved | rejected) and
+// the COLUMN defaults to "pending", same as the entity: this project has had
+// versioned migrations since its first commit, so there is no legacy row to
+// carry — a brand-new account waits for an admin whichever path created it.
+model User {
+  id             String    @id @default(uuid())
+  email          String    @unique
+  password       String?
+  role           String    @default("user")
+  active         Boolean   @default(true)
+  nickname       String?
+  avatarUrl      String?   @map("avatar_url")
+  approvalStatus String    @default("pending") @map("approval_status")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  lastLoginAt    DateTime? @map("last_login_at")
+
+  @@map("users")
+}
+
+// Stateful refresh session: one row per login/device. Stores only the HASH of
+// the opaque refresh; rotation + reuse detection sustain logout. userId is a
+// LOGICAL FK to User (no relation, to avoid coupling contexts).
+model AuthSession {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  verifierHash String   @map("verifier_hash")
+  expiresAt    DateTime @map("expires_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("auth_sessions")
+}
+
+// Links a User to an external OAuth identity (provider + providerAccountId —
+// 'google' today, see GoogleTokenVerifier). Found by (provider,
+// providerAccountId) on a repeat login; on the first login the User is resolved
+// by email (auto-linked when the provider confirms the email is verified) or
+// created fresh (no password) — see LoginWithGoogle. userId is a LOGICAL FK to
+// User, same as AuthSession.
+model OAuthAccount {
+  id                String   @id @default(uuid())
+  userId            String   @map("user_id")
+  provider          String
+  providerAccountId String   @map("provider_account_id")
+  email             String
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("oauth_accounts")
+}
+
+// --- notification --------------------------------------------------------------
+
+// One line in a user's inbox. `userId` is a LOGICAL FK (the recipient may be the
+// owner of the money or an admin); title/body are stored ALREADY RENDERED by the
+// domain (Notification.for) — a notification records what was said at the time,
+// so a later wording change never rewrites history.
+//
+// The @@unique triple is what makes delivery IDEMPOTENT: a retried recurrence
+// job or a re-enqueued budget check re-sends the same (userId, type,
+// referenceId) and the write is skipped instead of duplicating the line. Events
+// with nothing to reference leave `referenceId` null — in Postgres two NULLs
+// never collide, so those are free to repeat.
+model Notification {
+  id          String    @id
+  userId      String    @map("user_id")
+  type        String
+  title       String
+  body        String
+  link        String?
+  referenceId String?   @map("reference_id")
+  readAt      DateTime? @map("read_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@unique([userId, type, referenceId])
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+// --- category ------------------------------------------------------------------
+
+// Self-referential tree of spending categories (casa -> contas -> luz). Every
+// node BELONGS TO ONE USER (`ownerId`, a logical FK): there is no shared
+// catalogue, so two users may each have their own "Lazer". The self relation is
+// intra-context, so it is a real Prisma relation — `onDelete: Restrict` mirrors
+// the CATEGORY_HAS_CHILDREN rule at the database level.
+//
+// Uniqueness of (owner, parent, name) is enforced by the use case rather than a
+// @@unique: `parentId` is null for a root node and Postgres lets two NULLs
+// coexist, so the constraint would silently not cover exactly the roots.
+model Category {
+  id        String     @id @default(uuid())
+  ownerId   String     @map("owner_id")
+  name      String
+  parentId  String?    @map("parent_id")
+  createdAt DateTime   @default(now()) @map("created_at")
+  parent    Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children  Category[] @relation("CategoryTree")
+
+  @@index([ownerId])
+  @@index([parentId])
+  @@map("categories")
+}
+
+// --- transaction ---------------------------------------------------------------
+
+// A recorded movement of money: an expense (the common case) or a one-off
+// income. `amount` is INTEGER CENTS and always positive — the direction lives in
+// `type`, never in the sign. `categoryId` is a LOGICAL FK to a LEAF category
+// (cross-context), required for an expense and optional for an income.
+//
+// `occurredOn` is a DATE, not a timestamp: what matters is the day the money
+// moved, and a date column cannot drift a record into the neighbouring month
+// depending on the reader's timezone.
+//
+// `recurrenceId` marks the rows a Recurrence materialized. The @@unique pair
+// with `occurredOn` is what makes the worker's job IDEMPOTENT: a retried run for
+// the same month hits the constraint instead of double-charging the month.
+model Transaction {
+  id            String      @id @default(uuid())
+  ownerId       String      @map("owner_id")
+  type          String
+  categoryId    String?     @map("category_id")
+  description   String
+  amount        Int
+  occurredOn    DateTime    @map("occurred_on") @db.Date
+  attachmentUrl String?     @map("attachment_url")
+  recurrenceId  String?     @map("recurrence_id")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+  recurrence    Recurrence? @relation(fields: [recurrenceId], references: [id], onDelete: SetNull)
+
+  @@unique([recurrenceId, occurredOn])
+  @@index([ownerId, occurredOn])
+  @@index([ownerId, categoryId, occurredOn])
+  @@map("transactions")
+}
+
+// A fixed monthly expense/income (rent, streaming, salary) the worker turns into
+// a real Transaction every month. `dayOfMonth` is the intended day (1-31) and is
+// CLAMPED to the month's last day when it does not exist — see MonthPeriod.dayAt.
+//
+// `nextRunAt` is the scheduling state: the backend enqueues a DELAYED job for it
+// and the worker, after posting, advances it and re-enqueues. Keeping it as a
+// column (not only in Redis) is what lets a lost job be recovered — the row
+// still says when this recurrence was due.
+model Recurrence {
+  id           String        @id @default(uuid())
+  ownerId      String        @map("owner_id")
+  type         String
+  categoryId   String?       @map("category_id")
+  description  String
+  amount       Int
+  dayOfMonth   Int           @map("day_of_month")
+  active       Boolean       @default(true)
+  nextRunAt    DateTime      @map("next_run_at")
+  lastRunAt    DateTime?     @map("last_run_at")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  transactions Transaction[]
+
+  @@index([ownerId])
+  @@index([active, nextRunAt])
+  @@map("recurrences")
+}
+
+// --- budget --------------------------------------------------------------------
+
+// A monthly spending ceiling for one category ("lazer = R$500"), in INTEGER
+// CENTS. It RECURS: the same ceiling applies to every month, and how much of it
+// is left is computed live from that month's transactions — nothing is stored
+// per month, so there is no ceiling to recreate in January.
+//
+// One ceiling per (owner, category) — raising it is an edit, not a second row.
+model Budget {
+  id         String   @id @default(uuid())
+  ownerId    String   @map("owner_id")
+  categoryId String   @map("category_id")
+  amount     Int
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@unique([ownerId, categoryId])
+  @@index([ownerId])
+  @@map("budgets")
+}
+
+// --- income --------------------------------------------------------------------
+
+// A recurring source of income (a salary, a retainer): monthly `amount` in
+// INTEGER CENTS plus the `payday` it lands on. This is the PLANNED income — it
+// does not post transactions by itself, so it can never double count against a
+// one-off income the user also recorded. "How much is left this month" reads
+// from here.
+model IncomeSource {
+  id        String   @id @default(uuid())
+  ownerId   String   @map("owner_id")
+  name      String
+  amount    Int
+  payday    Int
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([ownerId, name])
+  @@index([ownerId])
+  @@map("income_sources")
+}
