@@ -1,0 +1,109 @@
+name: financial-management
+
+services:
+  db:
+    build:
+      context: ./apps/database
+    container_name: financial-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      # Bound to localhost only: reachable from the host itself (e.g. `psql`),
+      # never from outside. Backend/worker reach this over the internal compose
+      # network via the `db` hostname, not this port. The host port is 5434 (not
+      # the usual 5433) so this stack can run side by side with another one.
+      - '127.0.0.1:5434:5432'
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7
+    container_name: financial-redis
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:6381:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    container_name: financial-backend
+    restart: unless-stopped
+    env_file:
+      - ./apps/backend/.env
+    environment:
+      # Overrides the host-dev values from the env file above: inside the
+      # compose network, Postgres/Redis are reached by service name.
+      # ATENÇÃO às portas: aqui é comunicação ENTRE CONTAINERS, então valem as
+      # portas INTERNAS (5432 e 6379) — as do lado esquerdo de `ports:` são só
+      # o mapeamento pro host. Trocar 6379 por 6381 aqui derruba a conexão do
+      # backend com o Redis (fila de recorrência/orçamento + push do sininho).
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
+      REDIS_URL: redis://redis:6379
+    ports:
+      - '127.0.0.1:5002:5000'
+    volumes:
+      # Uploaded files live on disk, not in the database (see the Uploads
+      # section in CLAUDE.md) — WITHOUT this volume, recreating the container
+      # erases every receipt and avatar already sent. A receipt is the proof
+      # behind a recorded expense, so losing it loses audit material.
+      - uploads_data:/repo/apps/backend/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    container_name: financial-worker
+    restart: unless-stopped
+    env_file:
+      - ./apps/worker/.env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000}
+        NEXT_PUBLIC_GOOGLE_LOGIN_ENABLED: ${NEXT_PUBLIC_GOOGLE_LOGIN_ENABLED:-}
+    container_name: financial-web
+    restart: unless-stopped
+    # NEXTAUTH_URL/NEXTAUTH_SECRET/GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET are
+    # read at RUNTIME by the /api/auth/[...nextauth] route (unlike
+    # NEXT_PUBLIC_API_URL above, which Next.js inlines at build time) — so
+    # this service needs the env file too, not just the build arg.
+    env_file:
+      - ./apps/web/.env
+    ports:
+      - '127.0.0.1:3004:3000'
+    depends_on:
+      - backend
+
+volumes:
+  db_data:
+  uploads_data:
