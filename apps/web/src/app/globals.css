@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-ink-bg text-ink-text antialiased;
+}
+
+a {
+  @apply text-accent;
+}
+
+/* Scrollbars in the app's own palette, everywhere. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #0b1016;
+}
+::-webkit-scrollbar-thumb {
+  background: #243141;
+  border: 2px solid #0b1016;
+  border-radius: 999px;
+}
+
+/* No native spinner arrows on a number input, anywhere — they clash with the
+   inputs and, in some browsers, hijack the page's scroll wheel to change the
+   value. Money fields use Field's `money` mode (plain text) instead of
+   type="number" entirely; this is the safety net for the few numeric inputs
+   that are genuinely counts (a day of the month), not amounts. */
+input[type='number'] {
+  -moz-appearance: textfield;
+}
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}

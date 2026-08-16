@@ -1,0 +1,17 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "outputs": [".next/**", "!.next/cache/**"]
+    },
+    "check-types": {
+      // Depends on THIS package's own build, not just its dependencies'
+      // (`^build`, from the root config). `next build` regenerates
+      // .next/types/**, which tsconfig includes — running the two in parallel
+      // makes tsc read those files while Next is rewriting them and fail with
+      // TS6053 ("file not found") on every route.
+      "dependsOn": ["build"]
+    }
+  }
+}
