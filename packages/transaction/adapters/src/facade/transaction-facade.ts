@@ -15,6 +15,7 @@ import {
   DeleteTransactionController,
   ListMyTransactionsController,
   GetMyMonthlyTotalsController,
+  GetSpentByCategoryController,
   CreateRecurrenceController,
   UpdateRecurrenceController,
   SetRecurrenceActiveController,
@@ -84,6 +85,15 @@ export default class TransactionFacade {
   async getMyMonthlyTotals(ownerId: string, period: string): Promise<MonthlyTotalsDTO> {
     return new GetMyMonthlyTotalsController(this.transactionQueryRepository!).execute(
       ownerId,
+      period,
+    )
+  }
+
+  /** System path (worker): how much a category consumed in a month, in cents. */
+  async getSpentByCategory(ownerId: string, categoryId: string, period: string): Promise<number> {
+    return new GetSpentByCategoryController(this.transactionQueryRepository!).execute(
+      ownerId,
+      categoryId,
       period,
     )
   }

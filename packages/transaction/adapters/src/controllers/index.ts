@@ -3,6 +3,7 @@ import UpdateTransactionController from './update-transaction-controller'
 import DeleteTransactionController from './delete-transaction-controller'
 import ListMyTransactionsController from './list-my-transactions-controller'
 import GetMyMonthlyTotalsController from './get-my-monthly-totals-controller'
+import GetSpentByCategoryController from './get-spent-by-category-controller'
 import CreateRecurrenceController from './create-recurrence-controller'
 import UpdateRecurrenceController from './update-recurrence-controller'
 import SetRecurrenceActiveController from './set-recurrence-active-controller'
@@ -16,6 +17,7 @@ export {
   DeleteTransactionController,
   ListMyTransactionsController,
   GetMyMonthlyTotalsController,
+  GetSpentByCategoryController,
   CreateRecurrenceController,
   UpdateRecurrenceController,
   SetRecurrenceActiveController,
