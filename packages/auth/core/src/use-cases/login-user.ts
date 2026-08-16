@@ -1,0 +1,71 @@
+import { UseCase, UnauthorizedError, AccessDeniedError, Errors, Id } from 'shared'
+import { AuthSession, calculateRefreshExpiration } from '../model'
+import {
+  UserRepository,
+  HashProvider,
+  JwtProvider,
+  JwtTokens,
+  JwtPayload,
+  AuthSessionRepository,
+} from '../providers'
+
+interface Input {
+  email: string
+  password: string
+}
+
+export default class LoginUser implements UseCase<Input, JwtTokens> {
+  constructor(
+    private readonly repository: UserRepository,
+    private readonly hash: HashProvider,
+    private readonly jwt: JwtProvider,
+    private readonly sessionRepository: AuthSessionRepository,
+  ) {}
+
+  async execute(input: Input): Promise<JwtTokens> {
+    const email = input.email?.trim().toLowerCase() ?? ''
+    const password = input.password ?? ''
+
+    const user = await this.repository.findByEmail(email)
+
+    // Generic error for nonexistent email OR wrong password (does not leak which one).
+    if (!user) UnauthorizedError.throwError(Errors.INVALID_EMAIL_OR_PASSWORD)
+    if (!user.password || !this.hash.compare(password, user.password.value)) {
+      UnauthorizedError.throwError(Errors.INVALID_EMAIL_OR_PASSWORD)
+    }
+    // Inactive user is treated as invalid credentials (does not reveal account state).
+    if (!user.active) UnauthorizedError.throwError(Errors.INVALID_EMAIL_OR_PASSWORD)
+
+    // A REJECTED account answers exactly like a wrong password: someone the admin
+    // barred must not be able to tell that the account exists at all. A PENDING
+    // one is the opposite — it is a legitimate sign-up waiting in the queue, and
+    // the person needs to know why they cannot get in yet.
+    if (user.approvalStatus === 'rejected') {
+      UnauthorizedError.throwError(Errors.INVALID_EMAIL_OR_PASSWORD)
+    }
+    if (!user.isApproved) AccessDeniedError.throwError(Errors.ACCOUNT_PENDING_APPROVAL)
+
+    await this.repository.updateLastLogin(user.id.value)
+
+    // sessionId goes as a signed claim in the refresh -> identifies the family on rotation.
+    const sessionId = Id.create()
+    const payload: JwtPayload = {
+      userId: user.id.value,
+      email: user.email.value,
+      role: user.role,
+      sessionId,
+    }
+    const tokens = this.jwt.generateTokens(payload)
+
+    // Multi-device session: stores the hash of the current refresh (bcrypt(sha256)).
+    const session = new AuthSession({
+      id: sessionId,
+      userId: user.id.value,
+      verifierHash: this.hash.hashToken(tokens.refreshToken),
+      expiresAt: calculateRefreshExpiration(),
+    })
+    await this.sessionRepository.save(session)
+
+    return tokens
+  }
+}
