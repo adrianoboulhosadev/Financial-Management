@@ -9,6 +9,7 @@ import { BcryptHashProvider } from './bcrypt-hash-provider'
 import { JsonWebTokenProvider } from './jsonwebtoken-jwt-provider'
 import { GoogleOAuthVerifier } from './google-oauth-verifier'
 import { REFRESH_COOKIE_OPTIONS } from './refresh-cookie-options'
+import { clientTypeOf } from './client-type'
 import { GoogleLoginGuard } from './google-login.guard'
 import { DomainEventListener } from '../notification/domain-event-listener'
 
@@ -38,6 +39,31 @@ export class AuthController {
     )
   }
 
+  /**
+   * Hands the freshly issued pair to the caller, and this is the ONE place that
+   * decides where the refresh token goes:
+   *
+   * - **web**: into an `httpOnly` cookie. JavaScript never sees it, which is
+   *   exactly the protection an XSS would otherwise defeat.
+   * - **mobile**: into the response BODY. React Native has no cookie jar worth
+   *   trusting, so the app stores it in the Keychain/Keystore instead (see the
+   *   TokenStorage port). Handing it over in the body is only acceptable
+   *   BECAUSE the destination is device-encrypted storage, not `localStorage`.
+   *
+   * The domain does not know about any of this: LoginUser issues the same pair
+   * either way.
+   */
+  private issue(
+    request: Request,
+    response: Response,
+    tokens: { accessToken: string; refreshToken: string },
+  ): { accessToken: string; refreshToken?: string } {
+    if (clientTypeOf(request) === 'mobile') return tokens
+
+    response.cookie('refreshToken', tokens.refreshToken, REFRESH_COOKIE_OPTIONS)
+    return { accessToken: tokens.accessToken }
+  }
+
   // The account is born pending (see the front door in CLAUDE.md); telling the
   // admins someone is at the gate is the DomainEventListener's job, off the
   // UserRegistered event the use case publishes.
@@ -48,25 +74,30 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(200)
-  async login(@Body() input: LoginUserInput, @Res({ passthrough: true }) response: Response) {
-    const { accessToken, refreshToken } = await this.facade().loginUser(input)
-    response.cookie('refreshToken', refreshToken, REFRESH_COOKIE_OPTIONS)
-    return { accessToken }
+  async login(
+    @Body() input: LoginUserInput,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const tokens = await this.facade().loginUser(input)
+    return this.issue(request, response, tokens)
   }
 
+  // Reads the current refresh from wherever this client keeps it: the cookie
+  // (web) or the body (mobile). The rotation itself is identical — the use case
+  // never learns which one it came from.
   @Post('refresh')
   @HttpCode(200)
-  async refresh(@Req() request: Request, @Res({ passthrough: true }) response: Response) {
-    const currentToken = request.cookies?.['refreshToken']
+  async refresh(
+    @Body() input: { refreshToken?: string } | undefined,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const currentToken = input?.refreshToken ?? request.cookies?.['refreshToken']
     if (!currentToken) UnauthorizedError.throwError(Errors.NOT_AUTHENTICATED)
 
-    // Rotation: issue a new pair and update the cookie with the rotated refresh.
-    const { accessToken, refreshToken } = await this.facade().refreshToken(
-      currentToken,
-      process.env.JWT_SECRET!,
-    )
-    response.cookie('refreshToken', refreshToken, REFRESH_COOKIE_OPTIONS)
-    return { accessToken }
+    const tokens = await this.facade().refreshToken(currentToken, process.env.JWT_SECRET!)
+    return this.issue(request, response, tokens)
   }
 
   // "Sign in with Google": the front runs the OAuth handshake through NextAuth
@@ -80,10 +111,10 @@ export class AuthController {
   @HttpCode(200)
   async loginWithGoogle(
     @Body() input: LoginWithGoogleInput,
+    @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const { accessToken, refreshToken } = await this.facade().loginWithGoogle(input)
-    response.cookie('refreshToken', refreshToken, REFRESH_COOKIE_OPTIONS)
-    return { accessToken }
+    const tokens = await this.facade().loginWithGoogle(input)
+    return this.issue(request, response, tokens)
   }
 }

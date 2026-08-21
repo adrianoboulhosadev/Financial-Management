@@ -53,14 +53,19 @@ export class UserController {
     await this.facade().changePassword(input, user.id)
   }
 
+  // The refresh identifies WHICH device is logging out, so it comes from
+  // wherever this client keeps it: the cookie (web) or the body (mobile). With
+  // neither, the use case is a harmless no-op and the other devices stay signed
+  // in — which is the correct outcome, not a failure.
   @Post('logout')
   @HttpCode(204)
   async logout(
     @authenticatedUser() user: UserDTO,
+    @Body() input: { refreshToken?: string } | undefined,
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const refreshToken = request.cookies?.['refreshToken']
+    const refreshToken = input?.refreshToken ?? request.cookies?.['refreshToken']
     await this.facade().logoutUser(user.id, refreshToken)
     response.clearCookie('refreshToken', { path: '/' })
   }
