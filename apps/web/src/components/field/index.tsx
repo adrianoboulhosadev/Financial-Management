@@ -1,5 +1,5 @@
 import { forwardRef, type ChangeEvent, type InputHTMLAttributes } from 'react'
-import { sanitizeMoneyInput } from '@/lib/money'
+import { sanitizeMoneyInput } from 'ui'
 
 interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string

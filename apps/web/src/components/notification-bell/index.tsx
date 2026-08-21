@@ -1,8 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { formatRelativeTime } from '@/lib/date'
-import { accentFor } from '@/lib/notifications'
+import { formatRelativeTime } from 'ui'
+import { accentFor } from 'ui'
 import { NotificationsIcon } from '../sidebar/data/icons'
 import { useNotificationBell } from './hooks/use-notification-bell'
 

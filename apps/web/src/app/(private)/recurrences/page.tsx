@@ -7,7 +7,7 @@ import { ConfirmDialog } from '@/components/confirm-dialog'
 import { EmptyState } from '@/components/empty-state'
 import { Field } from '@/components/field'
 import { Loading } from '@/components/loading'
-import { formatDate } from '@/lib/date'
+import { formatDate } from 'ui'
 import { TRANSACTION_TYPES } from '@/data/transaction-types'
 import { useRecurrences } from './hooks/use-recurrences'
 

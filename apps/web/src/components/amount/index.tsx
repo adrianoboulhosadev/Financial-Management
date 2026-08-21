@@ -1,4 +1,4 @@
-import { formatBRL } from '@/lib/money'
+import { formatBRL } from 'ui'
 import { TONE_CLASSES, type AmountTone } from './data/tones'
 
 interface AmountProps {

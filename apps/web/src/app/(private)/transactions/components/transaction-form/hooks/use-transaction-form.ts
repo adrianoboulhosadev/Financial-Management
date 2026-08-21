@@ -3,8 +3,8 @@
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import type { RecordTransactionInput, TransactionType } from '@transaction/adapters'
-import { toCents } from '@/lib/money'
-import { toDateInputValue } from '@/lib/date'
+import { toCents } from 'ui'
+import { toDateInputValue } from 'ui'
 
 interface TransactionFormFields {
   type: TransactionType

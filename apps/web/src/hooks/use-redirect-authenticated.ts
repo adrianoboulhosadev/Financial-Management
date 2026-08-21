@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
-import { useAuth } from '@/contexts/auth-context'
+import { useAuth } from 'client'
 
 /** Public-area guard: with an active session, sends to the dashboard. */
 export function useRedirectAuthenticated() {

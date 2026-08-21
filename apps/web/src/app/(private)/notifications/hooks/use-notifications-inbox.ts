@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { NotificationDTO } from '@notification/adapters'
-import { useNotifications } from '@/hooks/use-notifications'
+import { useNotifications } from 'client'
 import { INBOX_SIZE, type InboxFilter } from '../data/inbox-filters'
 
 export function useNotificationsInbox() {

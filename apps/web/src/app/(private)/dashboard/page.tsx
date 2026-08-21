@@ -7,7 +7,7 @@ import { EmptyState } from '@/components/empty-state'
 import { Loading } from '@/components/loading'
 import { MonthPicker } from '@/components/month-picker'
 import { StatCard } from '@/components/stat-card'
-import { formatBRL } from '@/lib/money'
+import { formatBRL } from 'ui'
 import { useDashboard } from './hooks/use-dashboard'
 
 export default function DashboardPage() {

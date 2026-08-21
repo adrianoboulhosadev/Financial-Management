@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
-import { useAuth } from '@/contexts/auth-context'
+import { useAuth } from 'client'
 
 /** Private-area guard: without a session, redirects to login. */
 export function useProtectRoute() {

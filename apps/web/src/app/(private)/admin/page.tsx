@@ -4,7 +4,7 @@ import type { UserDTO } from '@auth/adapters'
 import { Button } from '@/components/button'
 import { EmptyState } from '@/components/empty-state'
 import { Loading } from '@/components/loading'
-import { formatDate } from '@/lib/date'
+import { formatDate } from 'ui'
 import { APPROVAL_STATUS_CLASSES, APPROVAL_STATUS_LABELS } from './data/approval-status'
 import { useAdmin } from './hooks/use-admin'
 

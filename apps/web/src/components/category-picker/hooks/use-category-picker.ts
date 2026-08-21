@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { useCategories } from '@/hooks/use-categories'
+import { useCategories } from 'client'
 
 /**
  * The choosable options: only LEAVES, each labelled by its full path

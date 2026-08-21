@@ -9,7 +9,7 @@ import { EmptyState } from '@/components/empty-state'
 import { Field } from '@/components/field'
 import { Loading } from '@/components/loading'
 import { MonthPicker } from '@/components/month-picker'
-import { formatBRL } from '@/lib/money'
+import { formatBRL } from 'ui'
 import { useBudgets } from './hooks/use-budgets'
 
 export default function BudgetsPage() {

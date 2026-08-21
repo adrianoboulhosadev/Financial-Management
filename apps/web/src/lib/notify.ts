@@ -1,22 +1,29 @@
 import { toast } from 'sonner'
-import { errorMessage } from '@/lib/api/errors'
+import { errorMessage, type Notifier } from 'client'
 
 /**
- * The app's only feedback channel (shadcn's toast — see components/toaster).
- * Replaces the inline error banners: a toast is tied to the action that raised
- * it and expires on its own, so a stale message can never linger on screen
- * after a later action succeeds.
+ * The web's adapter of the `Notifier` port: sonner. The shared hooks announce
+ * through the port, so the same mutation renders a sonner toast here and a
+ * native toast on the phone without either knowing about the other.
  */
-export const notify = {
-  success(message: string): void {
+export const notifier: Notifier = {
+  success(message) {
     toast.success(message)
   },
-
-  error(message: string): void {
+  error(message) {
     toast.error(message)
   },
+}
 
-  /** Turns a request rejection into its friendly domain message (see data/error-messages). */
+/**
+ * What the screens call directly (a toast tied to the action that raised it,
+ * expiring on its own, so a stale message can never linger after a later action
+ * succeeded).
+ */
+export const notify = {
+  success: notifier.success,
+  error: notifier.error,
+  /** Turns a request rejection into its friendly domain message. */
   failure(error: unknown, fallback?: string): void {
     toast.error(errorMessage(error, fallback))
   },

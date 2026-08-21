@@ -1,75 +1,38 @@
 'use client'
 
 import { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { CategoryDTO } from '@category/adapters'
-import { api } from '@/lib/api'
-import { notify } from '@/lib/notify'
-import { CATEGORIES_KEY, useCategories } from '@/hooks/use-categories'
+import { useCategories } from 'client'
 
 export function useCategoriesPage() {
-  const queryClient = useQueryClient()
-  const { categories, loading, childrenOf, pathOf } = useCategories()
+  const tree = useCategories()
   const [name, setName] = useState('')
   const [parentId, setParentId] = useState('')
   const [pendingDeletion, setPendingDeletion] = useState<CategoryDTO | null>(null)
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: CATEGORIES_KEY })
-
-  const create = useMutation({
-    mutationFn: async () => {
-      await api.post('/category', { name, parentId: parentId || null })
-    },
-    onSuccess: () => {
-      notify.success('Categoria criada.')
-      setName('')
-      invalidate()
-    },
-    onError: (error) => notify.failure(error, 'Não foi possível criar a categoria.'),
-  })
-
-  const remove = useMutation({
-    mutationFn: async (categoryId: string) => {
-      await api.delete(`/category/${categoryId}`)
-    },
-    onSuccess: () => {
-      notify.success('Categoria excluída.')
-      invalidate()
-    },
-    onError: (error) => notify.failure(error, 'Não foi possível excluir a categoria.'),
-  })
-
-  const rename = useMutation({
-    mutationFn: async ({ id, newName }: { id: string; newName: string }) => {
-      await api.patch(`/category/${id}`, { name: newName })
-    },
-    onSuccess: () => {
-      notify.success('Categoria renomeada.')
-      invalidate()
-    },
-    onError: (error) => notify.failure(error, 'Não foi possível renomear a categoria.'),
-  })
-
   return {
-    categories,
-    loading,
+    categories: tree.categories,
+    loading: tree.loading,
     // The tree is rendered from the roots down; each level asks for its own children.
-    roots: childrenOf(null),
-    childrenOf,
-    pathOf,
+    roots: tree.childrenOf(null),
+    childrenOf: tree.childrenOf,
+    pathOf: tree.pathOf,
     name,
     setName,
     parentId,
     setParentId,
-    create: () => create.mutate(),
-    creating: create.isPending,
-    rename: (id: string, newName: string) => rename.mutate({ id, newName }),
+    create: () => {
+      tree.create({ name, parentId: parentId || null })
+      setName('')
+    },
+    creating: tree.creating,
+    rename: tree.rename,
     pendingDeletion,
     askToDelete: setPendingDeletion,
     cancelDeletion: () => setPendingDeletion(null),
     confirmDeletion: () => {
       if (!pendingDeletion) return
-      remove.mutate(pendingDeletion.id)
+      tree.remove(pendingDeletion.id)
       setPendingDeletion(null)
     },
   }

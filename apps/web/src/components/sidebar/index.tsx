@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { mediaUrl } from '@/lib/media'
+import { mediaUrl } from 'client'
 import { LogoutIcon } from './data/icons'
 import { useSidebar } from './hooks/use-sidebar'
 

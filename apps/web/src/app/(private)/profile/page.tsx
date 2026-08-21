@@ -3,7 +3,7 @@
 import { Button } from '@/components/button'
 import { Field } from '@/components/field'
 import { Loading } from '@/components/loading'
-import { mediaUrl } from '@/lib/media'
+import { mediaUrl } from 'client'
 import { useProfile } from './hooks/use-profile'
 
 export default function ProfilePage() {

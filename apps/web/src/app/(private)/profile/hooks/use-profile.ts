@@ -2,9 +2,8 @@
 
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { api } from '@/lib/api'
+import { api, useAuth } from 'client'
 import { notify } from '@/lib/notify'
-import { useAuth } from '@/contexts/auth-context'
 
 interface PasswordForm {
   oldPassword: string
@@ -21,7 +20,7 @@ export function useProfile() {
   const saveProfile = async (avatarUrl?: string) => {
     setSavingProfile(true)
     try {
-      await api.patch('/user/me', { nickname: nickname.trim() || null, avatarUrl })
+      await api().patch('/user/me', { nickname: nickname.trim() || null, avatarUrl })
       await refresh()
       notify.success('Perfil atualizado.')
     } catch (error) {
@@ -38,7 +37,7 @@ export function useProfile() {
     try {
       const body = new FormData()
       body.append('file', file)
-      const { data } = await api.post<{ url: string }>('/upload/avatars', body)
+      const { data } = await api().post<{ url: string }>('/upload/avatars', body)
       await saveProfile(data.url)
     } catch (error) {
       notify.failure(error, 'Não foi possível enviar a imagem.')
@@ -49,7 +48,7 @@ export function useProfile() {
 
   const changePassword = passwordForm.handleSubmit(async (input) => {
     try {
-      await api.patch('/user/change-password', input)
+      await api().patch('/user/change-password', input)
       passwordForm.reset()
       notify.success('Senha alterada.')
     } catch (error) {

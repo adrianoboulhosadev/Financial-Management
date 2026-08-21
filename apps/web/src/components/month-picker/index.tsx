@@ -1,6 +1,6 @@
 'use client'
 
-import { formatPeriod, shiftPeriod, toPeriod } from '@/lib/date'
+import { formatPeriod, shiftPeriod, toPeriod } from 'ui'
 
 interface MonthPickerProps {
   // "YYYY-MM" — the same shape the API's MonthPeriod speaks.
