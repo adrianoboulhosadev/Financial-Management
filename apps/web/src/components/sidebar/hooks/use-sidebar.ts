@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { useAuth } from 'client'
-import { NAV_ITEMS } from '../data/nav-items'
+import { NAV_ITEMS } from '@/data/nav-items'
 
 export function useSidebar() {
   const pathname = usePathname()

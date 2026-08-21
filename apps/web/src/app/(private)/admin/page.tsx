@@ -5,7 +5,7 @@ import { Button } from '@/components/button'
 import { EmptyState } from '@/components/empty-state'
 import { Loading } from '@/components/loading'
 import { formatDate } from 'ui'
-import { APPROVAL_STATUS_CLASSES, APPROVAL_STATUS_LABELS } from './data/approval-status'
+import { APPROVAL_STATUS_CLASSES, APPROVAL_STATUS_LABELS } from 'ui'
 import { useAdmin } from './hooks/use-admin'
 
 export default function AdminPage() {

@@ -93,3 +93,11 @@ export const LogoutIcon = ({ className }: IconProps) => (
     <path d="M6 12h10" />
   </svg>
 )
+
+export const MoreIcon = ({ className }: IconProps) => (
+  <svg {...base(className)}>
+    <circle cx="5" cy="12" r="1.4" />
+    <circle cx="12" cy="12" r="1.4" />
+    <circle cx="19" cy="12" r="1.4" />
+  </svg>
+)

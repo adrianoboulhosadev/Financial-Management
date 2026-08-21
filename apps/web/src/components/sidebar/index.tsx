@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { mediaUrl } from 'client'
-import { LogoutIcon } from './data/icons'
+import { LogoutIcon } from '@/data/icons'
 import { useSidebar } from './hooks/use-sidebar'
 
 /** Navigation rail of the private area. Collapsed it shows only the icons;

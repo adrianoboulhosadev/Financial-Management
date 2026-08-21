@@ -10,4 +10,5 @@ export const SCREEN_TITLES: Record<string, string> = {
   '/notifications': 'Notificações',
   '/profile': 'Perfil',
   '/admin': 'Contas',
+  '/more': 'Mais',
 }

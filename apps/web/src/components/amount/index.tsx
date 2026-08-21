@@ -1,5 +1,4 @@
-import { formatBRL } from 'ui'
-import { TONE_CLASSES, type AmountTone } from './data/tones'
+import { formatBRL, TONE_CLASSES, type AmountTone } from 'ui'
 
 interface AmountProps {
   // INTEGER CENTS, as everything else in the product.

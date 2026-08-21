@@ -1,5 +1,5 @@
 import type { BudgetStatus } from '@budget/adapters'
-import { STATUS_CLASSES } from './data/status-classes'
+import { BUDGET_STATUS_CLASSES } from 'ui'
 
 interface BudgetBarProps {
   percentage: number
@@ -18,7 +18,7 @@ export function BudgetBar({ percentage, status }: BudgetBarProps) {
       {/* Capped at 100% so a blown ceiling does not paint outside the track —
           how far past it went is the number next to the bar's job. */}
       <div
-        className={`h-full rounded-full transition-all ${STATUS_CLASSES[status]}`}
+        className={`h-full rounded-full transition-all ${BUDGET_STATUS_CLASSES[status]}`}
         style={{ width: `${Math.min(percentage, 100)}%` }}
       />
     </div>

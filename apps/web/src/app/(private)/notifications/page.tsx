@@ -6,7 +6,7 @@ import { EmptyState } from '@/components/empty-state'
 import { Loading } from '@/components/loading'
 import { formatRelativeTime } from 'ui'
 import { accentFor } from 'ui'
-import { INBOX_FILTERS } from './data/inbox-filters'
+import { INBOX_FILTERS } from 'ui'
 import { useNotificationsInbox } from './hooks/use-notifications-inbox'
 
 export default function NotificationsPage() {

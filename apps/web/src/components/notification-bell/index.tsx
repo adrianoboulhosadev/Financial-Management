@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { formatRelativeTime } from 'ui'
 import { accentFor } from 'ui'
-import { NotificationsIcon } from '../sidebar/data/icons'
+import { NotificationsIcon } from '@/data/icons'
 import { useNotificationBell } from './hooks/use-notification-bell'
 
 // Past this the badge stops being a number and starts being "a lot".
