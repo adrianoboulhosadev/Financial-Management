@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { notify } from '@/lib/notify'
-import { useAuth } from 'client'
+import { useAuth } from 'ui'
 
 /**
  * Bridges a completed NextAuth Google sign-in into OUR OWN session. NextAuth

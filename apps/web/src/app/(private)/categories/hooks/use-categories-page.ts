@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import type { CategoryDTO } from '@category/adapters'
-import { useCategories } from 'client'
+import { useCategories } from 'ui'
 
 export function useCategoriesPage() {
   const tree = useCategories()

@@ -48,7 +48,9 @@ export function NotificationBell() {
           </div>
 
           {items.length === 0 ? (
-            <p className="px-4 py-6 text-center text-sm text-ink-text-muted">Nada por aqui ainda.</p>
+            <p className="px-4 py-6 text-center text-sm text-ink-text-muted">
+              Nada por aqui ainda.
+            </p>
           ) : (
             <ul className="max-h-[320px] overflow-y-auto">
               {items.map((notification) => (

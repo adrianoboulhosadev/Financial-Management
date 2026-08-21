@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import type { BudgetUsageDTO } from '@budget/adapters'
-import { toCents, toPeriod } from 'ui'
-import { useBudgets as useBudgetsData, useCategories } from 'client'
+
+import { toCents, toPeriod, useBudgets as useBudgetsData, useCategories } from 'ui'
 
 export function useBudgets() {
   const [period, setPeriod] = useState(() => toPeriod())

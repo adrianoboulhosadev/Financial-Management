@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { NotificationDTO } from '@notification/adapters'
-import { useNotifications } from 'client'
+import { useNotifications } from 'ui'
 
 // How many lines the dropdown shows. The page shows the rest.
 const PREVIEW_SIZE = 5

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { api, useAuth } from 'client'
+import { api, useAuth } from 'ui'
 import { notify } from '@/lib/notify'
 
 interface PasswordForm {
@@ -15,7 +15,9 @@ export function useProfile() {
   const [nickname, setNickname] = useState(user?.nickname ?? '')
   const [savingProfile, setSavingProfile] = useState(false)
   const [uploading, setUploading] = useState(false)
-  const passwordForm = useForm<PasswordForm>({ defaultValues: { oldPassword: '', newPassword: '' } })
+  const passwordForm = useForm<PasswordForm>({
+    defaultValues: { oldPassword: '', newPassword: '' },
+  })
 
   const saveProfile = async (avatarUrl?: string) => {
     setSavingProfile(true)

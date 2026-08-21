@@ -1,6 +1,6 @@
 'use client'
 
-import { useAuth } from 'client'
+import { useAuth } from 'ui'
 import { NAV_ITEMS } from '@/data/nav-items'
 
 /** Everything the bottom tab bar could not fit — which is exactly what the

@@ -1,5 +1,5 @@
 import type { Config } from 'tailwindcss'
-import { tailwindPreset } from 'ui'
+import tailwindPreset from 'ui/tailwind-preset'
 
 /**
  * Colours, radius and fonts come from the SHARED preset (`packages/ui`), which

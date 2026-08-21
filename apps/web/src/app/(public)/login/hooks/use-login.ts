@@ -5,9 +5,9 @@ import { useForm } from 'react-hook-form'
 import { useRouter } from 'next/navigation'
 import type { LoginUserInput } from '@auth/adapters'
 import { Errors } from 'shared'
-import { useAuth } from 'client'
+
 import { useGoogleOAuthBridge } from '@/hooks/use-google-oauth-bridge'
-import { errorMessage } from 'client'
+import { useAuth, errorMessage } from 'ui'
 import { notify } from '@/lib/notify'
 
 export function useLogin() {

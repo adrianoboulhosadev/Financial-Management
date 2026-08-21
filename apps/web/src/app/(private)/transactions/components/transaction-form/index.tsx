@@ -56,7 +56,8 @@ export function TransactionForm({ onSubmit, submitting }: TransactionFormProps) 
           placeholder="0,00"
           {...form.register('amount', {
             required: 'Informe o valor.',
-            validate: (value) => Number(value.replace(',', '.')) > 0 || 'O valor precisa ser maior que zero.',
+            validate: (value) =>
+              Number(value.replace(',', '.')) > 0 || 'O valor precisa ser maior que zero.',
           })}
           error={form.formState.errors.amount?.message}
         />

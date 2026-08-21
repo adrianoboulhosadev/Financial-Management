@@ -17,7 +17,6 @@
     "@tanstack/react-query": "^5.62.0",
     "@transaction/adapters": "*",
     "axios": "^1.7.9",
-    "client": "*",
     "next": "^15.1.6",
     "next-auth": "^4.24.15",
     "react": "^19.2.3",

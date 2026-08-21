@@ -1,5 +1,5 @@
 import { toast } from 'sonner'
-import { errorMessage, type Notifier } from 'client'
+import { errorMessage, type Notifier } from 'ui'
 
 /**
  * The web's adapter of the `Notifier` port: sonner. The shared hooks announce

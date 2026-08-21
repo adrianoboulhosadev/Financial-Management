@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react'
 import { useProtectRoute } from '@/hooks/use-protect-route'
-import { useNotificationStream } from 'client'
+import { useNotificationStream } from 'ui'
 import { Loading } from '@/components/loading'
 import { Sidebar } from '@/components/sidebar'
 import { Header } from '@/components/header'

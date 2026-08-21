@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'
-import { useAuth } from 'client'
+import { useAuth } from 'ui'
 import { NAV_ITEMS } from '@/data/nav-items'
 
 export function useSidebar() {

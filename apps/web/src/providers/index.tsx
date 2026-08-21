@@ -2,7 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState, type ReactNode } from 'react'
-import { AuthProvider, configureClient, WEB_CLIENT_DEFAULTS } from 'client'
+import { AuthProvider, configureClient, WEB_CLIENT_DEFAULTS } from 'ui'
 import { notifier } from '@/lib/notify'
 
 /**

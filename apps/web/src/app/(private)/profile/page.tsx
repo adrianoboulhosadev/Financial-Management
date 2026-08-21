@@ -3,7 +3,7 @@
 import { Button } from '@/components/button'
 import { Field } from '@/components/field'
 import { Loading } from '@/components/loading'
-import { mediaUrl } from 'client'
+import { mediaUrl } from 'ui'
 import { useProfile } from './hooks/use-profile'
 
 export default function ProfilePage() {
@@ -20,7 +20,11 @@ export default function ProfilePage() {
           <span className="grid h-16 w-16 flex-none place-items-center overflow-hidden rounded-full bg-ink-surface-soft text-lg font-medium text-ink-text-soft">
             {page.user.avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={mediaUrl(page.user.avatarUrl)} alt="" className="h-full w-full object-cover" />
+              <img
+                src={mediaUrl(page.user.avatarUrl)}
+                alt=""
+                className="h-full w-full object-cover"
+              />
             ) : (
               (page.user.nickname || page.user.email).slice(0, 2).toUpperCase()
             )}

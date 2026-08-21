@@ -2,8 +2,13 @@
 
 import { useState } from 'react'
 import type { TransactionDTO } from '@transaction/adapters'
-import { toPeriod, type TransactionFilterValue } from 'ui'
-import { useCategories, useTransactions as useTransactionsData } from 'client'
+
+import {
+  toPeriod,
+  type TransactionFilterValue,
+  useCategories,
+  useTransactions as useTransactionsData,
+} from 'ui'
 
 /**
  * The screen's own state (which month, which filter, what is about to be

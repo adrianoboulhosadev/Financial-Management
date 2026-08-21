@@ -23,7 +23,9 @@ export default function AdminPage() {
         </p>
       </div>
 
-      <span className={`rounded-full px-2.5 py-1 text-xs ${APPROVAL_STATUS_CLASSES[user.approvalStatus]}`}>
+      <span
+        className={`rounded-full px-2.5 py-1 text-xs ${APPROVAL_STATUS_CLASSES[user.approvalStatus]}`}
+      >
         {APPROVAL_STATUS_LABELS[user.approvalStatus]}
       </span>
 

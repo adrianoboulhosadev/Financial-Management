@@ -4,8 +4,8 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useRouter } from 'next/navigation'
 import type { RegisterUserInput } from '@auth/adapters'
-import { useAuth } from 'client'
-import { errorMessage } from 'client'
+
+import { useAuth, errorMessage } from 'ui'
 import { notify } from '@/lib/notify'
 
 interface RegisterForm extends RegisterUserInput {
