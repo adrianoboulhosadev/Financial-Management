@@ -1,4 +1,10 @@
-import { CONSOLE_NOTIFIER, COOKIE_TOKEN_STORAGE, type EventStreamFactory, type Notifier, type TokenStorage } from './ports'
+import {
+  CONSOLE_NOTIFIER,
+  COOKIE_TOKEN_STORAGE,
+  type EventStreamFactory,
+  type Notifier,
+  type TokenStorage,
+} from './ports'
 
 /** Which app is calling. The backend reads it to decide whether the refresh
  * token goes in an httpOnly cookie (web) or in the response body (mobile). */

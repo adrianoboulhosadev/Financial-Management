@@ -20,8 +20,7 @@ export function useCategories() {
 
   const query = useQuery({
     queryKey: CATEGORIES_KEY,
-    queryFn: async (): Promise<CategoryDTO[]> =>
-      (await api().get<CategoryDTO[]>('/category')).data,
+    queryFn: async (): Promise<CategoryDTO[]> => (await api().get<CategoryDTO[]>('/category')).data,
   })
 
   const categories = useMemo(() => query.data ?? [], [query.data])
@@ -63,7 +62,8 @@ export function useCategories() {
       notifier.success('Categoria excluída.')
       invalidate()
     },
-    onError: (error) => notifier.error(errorMessage(error, 'Não foi possível excluir a categoria.')),
+    onError: (error) =>
+      notifier.error(errorMessage(error, 'Não foi possível excluir a categoria.')),
   })
 
   return {

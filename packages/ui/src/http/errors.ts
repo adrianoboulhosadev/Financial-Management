@@ -11,7 +11,10 @@ interface ErrorEnvelope {
  * two shapes: a domain error -> `{ errors: [{ code }] }`; a Nest HttpException
  * -> a string. The friendly text comes from the static map.
  */
-export function errorMessage(error: unknown, fallback = 'Algo deu errado. Tente novamente.'): string {
+export function errorMessage(
+  error: unknown,
+  fallback = 'Algo deu errado. Tente novamente.',
+): string {
   if (error instanceof AxiosError) {
     const body = error.response?.data
     if (typeof body === 'string' && body.trim()) return body

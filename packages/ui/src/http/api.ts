@@ -60,8 +60,7 @@ export function api(): AxiosInstance {
     (response) => response,
     async (error: AxiosError) => {
       const original = error.config as
-        | (InternalAxiosRequestConfig & { _retried?: boolean })
-        | undefined
+        (InternalAxiosRequestConfig & { _retried?: boolean }) | undefined
       if (error.response?.status === 401 && original && !original._retried) {
         original._retried = true
         try {
