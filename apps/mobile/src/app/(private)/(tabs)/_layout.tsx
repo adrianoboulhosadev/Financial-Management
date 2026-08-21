@@ -1,12 +1,6 @@
 import { Tabs } from 'expo-router'
 import { COLORS } from 'ui'
-import {
-  BudgetsIcon,
-  DashboardIcon,
-  IncomeIcon,
-  MoreIcon,
-  TransactionsIcon,
-} from '@/data/icons'
+import { BudgetsIcon, DashboardIcon, IncomeIcon, MoreIcon, TransactionsIcon } from '@/data/icons'
 import { NotificationBell } from '@/components/notification-bell'
 
 /**

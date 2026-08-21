@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { api, errorMessage, useAuth } from 'client'
+import { api, errorMessage, useAuth } from 'ui'
 import { notify } from '@/lib/notify'
 
 interface PasswordForm {
@@ -12,7 +12,9 @@ export function useProfileScreen() {
   const { user, refresh } = useAuth()
   const [nickname, setNickname] = useState(user?.nickname ?? '')
   const [saving, setSaving] = useState(false)
-  const passwordForm = useForm<PasswordForm>({ defaultValues: { oldPassword: '', newPassword: '' } })
+  const passwordForm = useForm<PasswordForm>({
+    defaultValues: { oldPassword: '', newPassword: '' },
+  })
 
   const saveProfile = async () => {
     setSaving(true)

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useRouter } from 'expo-router'
-import { errorMessage, useAuth } from 'client'
+import { errorMessage, useAuth } from 'ui'
 import { notify } from '@/lib/notify'
 
 interface RegisterForm {

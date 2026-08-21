@@ -25,7 +25,9 @@ export function AdminScreen() {
           </Text>
         </View>
 
-        <View className={`rounded-full px-2.5 py-1 ${APPROVAL_STATUS_CLASSES[user.approvalStatus]}`}>
+        <View
+          className={`rounded-full px-2.5 py-1 ${APPROVAL_STATUS_CLASSES[user.approvalStatus]}`}
+        >
           <Text className="text-xs">{APPROVAL_STATUS_LABELS[user.approvalStatus]}</Text>
         </View>
       </View>

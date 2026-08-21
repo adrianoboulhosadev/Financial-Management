@@ -76,7 +76,10 @@ export function BudgetsScreen() {
             className="rounded-t-card border-t border-ink-border bg-ink-surface"
             onPress={(event) => event.stopPropagation()}
           >
-            <ScrollView contentContainerClassName="gap-4 p-4 pb-8" keyboardShouldPersistTaps="handled">
+            <ScrollView
+              contentContainerClassName="gap-4 p-4 pb-8"
+              keyboardShouldPersistTaps="handled"
+            >
               <Text className="text-base font-semibold text-ink-text">Definir orçamento</Text>
               <Text className="text-xs leading-relaxed text-ink-text-soft">
                 O teto vale para todo mês. Definir de novo a mesma categoria ajusta o valor.

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { RecurrenceDTO, TransactionType } from '@transaction/adapters'
-import { toCents } from 'ui'
-import { useCategories, useRecurrences } from 'client'
+
+import { toCents, useCategories, useRecurrences } from 'ui'
 
 export function useRecurrencesScreen() {
   const data = useRecurrences()

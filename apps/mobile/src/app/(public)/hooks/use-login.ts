@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { useRouter } from 'expo-router'
 import type { LoginUserInput } from '@auth/adapters'
 import { Errors } from 'shared'
-import { errorCode, errorMessage, useAuth } from 'client'
+import { errorCode, errorMessage, useAuth } from 'ui'
 import { notify } from '@/lib/notify'
 
 export function useLogin() {

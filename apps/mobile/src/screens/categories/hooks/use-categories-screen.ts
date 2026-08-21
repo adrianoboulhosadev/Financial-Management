@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { CategoryDTO } from '@category/adapters'
-import { useCategories } from 'client'
+import { useCategories } from 'ui'
 
 export function useCategoriesScreen() {
   const tree = useCategories()
@@ -13,10 +13,9 @@ export function useCategoriesScreen() {
    * its depth and is indented by it — the same tree, one level of indirection
    * fewer. */
   const flatten = (parent: string | null, depth = 0): { category: CategoryDTO; depth: number }[] =>
-    tree.childrenOf(parent).flatMap((category) => [
-      { category, depth },
-      ...flatten(category.id, depth + 1),
-    ])
+    tree
+      .childrenOf(parent)
+      .flatMap((category) => [{ category, depth }, ...flatten(category.id, depth + 1)])
 
   return {
     rows: flatten(null),

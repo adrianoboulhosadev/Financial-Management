@@ -9,9 +9,14 @@ import { Slot } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold } from '@expo-google-fonts/inter'
+import {
+  useFonts,
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+} from '@expo-google-fonts/inter'
 import { JetBrainsMono_400Regular } from '@expo-google-fonts/jetbrains-mono'
-import { AuthProvider, configureClient } from 'client'
+import { AuthProvider, configureClient } from 'ui'
 import { Loading } from '@/components/loading'
 import { Toaster } from '@/components/toaster'
 import { notifier } from '@/lib/notify'

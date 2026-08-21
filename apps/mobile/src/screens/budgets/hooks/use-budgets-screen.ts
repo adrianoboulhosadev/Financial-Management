@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { BudgetUsageDTO } from '@budget/adapters'
-import { toCents, toPeriod } from 'ui'
-import { useBudgets, useCategories } from 'client'
+
+import { toCents, toPeriod, useBudgets, useCategories } from 'ui'
 
 export function useBudgetsScreen() {
   const [period, setPeriod] = useState(() => toPeriod())

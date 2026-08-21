@@ -12,7 +12,14 @@ interface FieldProps extends TextInputProps {
   money?: boolean
 }
 
-export function Field({ label, error, money = false, className = '', onChangeText, ...props }: FieldProps) {
+export function Field({
+  label,
+  error,
+  money = false,
+  className = '',
+  onChangeText,
+  ...props
+}: FieldProps) {
   return (
     <View className="gap-1.5">
       <Text className="text-xs font-medium uppercase tracking-wide text-ink-text-muted">

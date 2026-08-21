@@ -1,4 +1,4 @@
-import { useAdminUsers } from 'client'
+import { useAdminUsers } from 'ui'
 
 /** The screen has no state of its own — a listing plus two actions — so it
  * reads the shared hook straight through. Kept as a screen hook anyway, so the

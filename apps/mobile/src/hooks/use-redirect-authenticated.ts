@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useRouter } from 'expo-router'
-import { useAuth } from 'client'
+import { useAuth } from 'ui'
 
 /** Public-area guard: with an active session, straight to the dashboard. */
 export function useRedirectAuthenticated() {

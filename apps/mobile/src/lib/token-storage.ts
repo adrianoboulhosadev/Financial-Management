@@ -1,5 +1,5 @@
 import * as SecureStore from 'expo-secure-store'
-import type { TokenStorage } from 'client'
+import type { TokenStorage } from 'ui'
 
 const KEY = 'financial.refreshToken'
 

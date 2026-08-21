@@ -91,7 +91,10 @@ export function TransactionsScreen() {
             className="max-h-[88%] rounded-t-card border-t border-ink-border bg-ink-surface"
             onPress={(event) => event.stopPropagation()}
           >
-            <ScrollView contentContainerClassName="gap-4 p-4 pb-8" keyboardShouldPersistTaps="handled">
+            <ScrollView
+              contentContainerClassName="gap-4 p-4 pb-8"
+              keyboardShouldPersistTaps="handled"
+            >
               <Text className="text-base font-semibold text-ink-text">Novo lançamento</Text>
 
               <SegmentedControl

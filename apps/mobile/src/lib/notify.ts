@@ -1,4 +1,4 @@
-import type { Notifier } from 'client'
+import type { Notifier } from 'ui'
 import { showToast } from '@/components/toaster/toast-bus'
 
 /**

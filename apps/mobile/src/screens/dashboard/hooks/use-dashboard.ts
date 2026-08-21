@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { toPeriod } from 'ui'
-import { useCategories, useMonthlyReport } from 'client'
+
+import { toPeriod, useCategories, useMonthlyReport } from 'ui'
 
 export function useDashboard() {
   // The period is owned here, not by the picker: the report query keys off it.

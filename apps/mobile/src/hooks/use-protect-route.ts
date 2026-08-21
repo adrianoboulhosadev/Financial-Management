@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useRouter } from 'expo-router'
-import { useAuth } from 'client'
+import { useAuth } from 'ui'
 
 /** Private-area guard: without a session, back to the login. Same rule as the
  * web's — only the router differs, which is why it is not shared. */

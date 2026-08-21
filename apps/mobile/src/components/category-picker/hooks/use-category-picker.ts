@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useCategories } from 'client'
+import { useCategories } from 'ui'
 
 /**
  * The choosable options: only LEAVES, each labelled by its full path

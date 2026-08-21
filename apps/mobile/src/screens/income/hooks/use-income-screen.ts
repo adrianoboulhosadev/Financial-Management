@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { IncomeSourceDTO } from '@income/adapters'
-import { toCents } from 'ui'
-import { useIncome } from 'client'
+
+import { toCents, useIncome } from 'ui'
 
 export function useIncomeScreen() {
   const data = useIncome()

@@ -1,4 +1,4 @@
-import { useAuth } from 'client'
+import { useAuth } from 'ui'
 import { SECONDARY_NAV } from '@/data/nav-items'
 
 /** Everything the tab bar could not fit — the same overflow list the web shows

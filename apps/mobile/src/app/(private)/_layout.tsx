@@ -1,5 +1,5 @@
 import { Stack } from 'expo-router'
-import { useNotificationStream } from 'client'
+import { useNotificationStream } from 'ui'
 import { useProtectRoute } from '@/hooks/use-protect-route'
 import { Loading } from '@/components/loading'
 import { NotificationBell } from '@/components/notification-bell'
