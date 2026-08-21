@@ -40,8 +40,8 @@ orçamento). O `web` é o front. Postgres/Redis sobem via docker no dev.
 packages/
   shared/                              # kernel: Id, Entity, AggregateRoot, Money, MonthPeriod, UseCase, Validator, DomainError, Errors
   database/  (database)                # Prisma: schema + migrations + client gerado
-  ui/        (ui)                      # tokens de design + preset Tailwind + formatação; web e mobile estendem o MESMO preset
-  client/    (client)                  # http, portas (TokenStorage/Notifier/EventStream), AuthProvider e hooks de dados
+  ui/        (ui)                      # TUDO que web e mobile dividem: tokens + preset Tailwind + formatação,
+                                       # http, portas (TokenStorage/Notifier/EventStream), AuthProvider e hooks de dados
   <contexto>/
     core/      (@<contexto>/core)      # src/{model,providers,use-cases,domain-services} + index.ts; test/ irmão de src/
     adapters/  (@<contexto>/adapters)  # src/{controllers,facade,dto,@types,model,providers} + index.ts (sem testes)
@@ -55,10 +55,10 @@ apps/
 
 Contextos e scopes: `@auth/*`, `@category/*`, `@transaction/*`, `@budget/*`, `@income/*`,
 `@notification/*`. `core` e `adapters` são **pacotes separados**. Workspaces:
-`["apps/*","packages/shared","packages/database","packages/ui","packages/client","packages/*/core","packages/*/adapters"]`.
+`["apps/*","packages/shared","packages/database","packages/ui","packages/*/core","packages/*/adapters"]`.
 
 **São TRÊS frontes de um produto só**: o `web` (navegador) e o `mobile` (app) precisam ser
-**visualmente idênticos**, e é por isso que existem o `ui` e o `client` — ver a seção própria.
+**visualmente idênticos**, e é por isso que existe o `ui` — ver a seção própria.
 
 ## Modelagem rica (TRAVADA)
 
@@ -165,35 +165,50 @@ O **admin** existe só pra portaria (liberar/barrar conta). Ele **não enxerga a
   `MonthlyIncomeCalculator` define que **só fonte ativa conta**. Domain services puros, um lugar só
   — é isso que impede o dashboard e o relatório de discordarem de um total.
 
-## packages/ui e packages/client — o que o web e o mobile dividem (TRAVADO)
+## packages/ui — o que o web e o mobile dividem (TRAVADO)
+
+**É UM pacote só, e isso é decisão do dono.** Tudo que os dois fronts dividem mora em
+`packages/ui`: tokens, preset Tailwind, formatação, tabelas de rótulo, cliente http, portas,
+contexto de sessão e hooks de dados. O nome é `ui` mesmo sabendo que ele **não guarda componente
+React** — e não guarda porque JSX não atravessa a fronteira DOM/React Native (`<div>` x `<View>`).
+Não existe um segundo pacote separando "aparência" de "dados": a divisão foi tentada e desfeita,
+porque partir em dois só multiplicava `package.json`, tsconfig e import sem impedir nada.
 
 O `mobile` **carrega os packages do monorepo** como qualquer app do repo. Isso costuma confundir, e
 vale registrar por quê: o Metro empacota em **build time** — ele compila `packages/*` a partir do
 FONTE e inlina tudo no bundle JS que viaja dentro do `.ipa`/`.apk`. Não existe carregamento de
-módulo em runtime, nem servidor servindo chunk; o app referencia `packages/client` tanto quanto
+módulo em runtime, nem servidor servindo chunk; o app referencia `packages/ui` tanto quanto
 referencia o `react`, ou seja, já está lá dentro. (Conferível: `apps/mobile/dist/**.hbc` contém
 `configureClient`, `MonthPeriod` e as rotas dos hooks.)
 
-- **`packages/ui`** — a fonte única de como o produto SE PARECE: `COLORS`/`RADIUS`/`FONT_FAMILY`,
-  o **preset Tailwind** que os dois apps estendem, a formatação (dinheiro, mês) e as tabelas de
-  rótulo/classe que as duas telas usam. O nome é `ui` por decisão do dono; ele **não guarda
-  componente React**, e não guarda porque JSX não atravessa a fronteira DOM/React Native (`<div>`
-  x `<View>`). O que ele garante é que uma cor fique **fisicamente impossível** de divergir.
+O `src/index.ts` é dividido em duas metades comentadas, que é como o pacote se mantém legível
+sendo um só: **como o produto SE PARECE** (tokens, formatação, `data/`) e **como o produto
+FUNCIONA** (config, portas, http, `AuthProvider`, hooks).
+
+- **Como o produto SE PARECE** — `COLORS`/`RADIUS`/`FONT_FAMILY`, o **preset Tailwind** que os dois
+  apps estendem, a formatação (dinheiro, mês) e as tabelas de rótulo/classe que as duas telas usam.
+  O que isso garante é que uma cor fique **fisicamente impossível** de divergir.
   - o preset carrega **só o que o NativeWind honra**: cor, raio, fonte. Sombra e keyframe ficam no
     config do web — token que não faz nada numa das plataformas é pior que token nenhum.
-- **`packages/client`** — http, sessão e hooks de dados. As **portas** são a única coisa que muda
-  entre as plataformas: `TokenStorage` (cookie httpOnly x Keychain), `Notifier` (sonner x toast
+  - o preset tem **entrada própria** (`ui/tailwind-preset`), e os dois `tailwind.config.ts` importam
+    de lá, **nunca** do barril: config de Tailwind é lido por uma ferramenta de BUILD, e passar pelo
+    barril arrastaria os contextos React e o axios junto só pra ler uma paleta — além de quebrar de
+    fato, porque o loader que lê esse arquivo resolve `.ts` e não o `.tsx` do `auth-context`. É
+    também por isso que o config do mobile é `.ts` e não `.js`: sendo o pacote source-only, não há
+    `.js` construído pra dar `require`.
+- **Como o produto FUNCIONA** — http, sessão e hooks de dados. As **portas** são a única coisa que
+  muda entre as plataformas: `TokenStorage` (cookie httpOnly x Keychain), `Notifier` (sonner x toast
   nativo) e `EventStreamFactory` (`EventSource` x `react-native-sse`). Cada app injeta as suas em
   `configureClient()` no boot, e daí pra frente os hooks não sabem onde estão rodando.
-  - **hook compartilhado NÃO tem estado de tela.** `client` expõe query+mutation; filtro, mês
+  - **hook compartilhado NÃO tem estado de tela.** O `ui` expõe query+mutation; filtro, mês
     selecionado, formulário e "o que está prestes a ser excluído" são do app. É o que permite as
     duas interfaces divergirem no formato sem duplicar a busca de dados.
-  - **é um pacote SOURCE-ONLY** (`main` aponta pro `src/index.ts`, sem build). Publicar bundle fazia
-    o Next resolver uma segunda cópia do `@tanstack/react-query` e os hooks liam um contexto
-    diferente do provider — todo prerender morria com "No QueryClient set". Compilado dentro do
-    grafo de quem consome (Next via `transpilePackages`, Metro nativamente), existe uma cópia só.
+- **É um pacote SOURCE-ONLY** (`main` aponta pro `src/index.ts`, sem build). Publicar bundle fazia
+  o Next resolver uma segunda cópia do `@tanstack/react-query` e os hooks liam um contexto
+  diferente do provider — todo prerender morria com "No QueryClient set". Compilado dentro do
+  grafo de quem consome (Next via `transpilePackages`, Metro nativamente), existe uma cópia só.
 - **O que NÃO entra**: `database`, `backend` e `worker` **nunca** podem alcançar o grafo do mobile —
-  Prisma no bundle quebra o app. A dependência é sempre `mobile/web → client/ui → adapters (tipos) →
+  Prisma no bundle quebra o app. A dependência é sempre `mobile/web → ui → adapters (tipos) →
   shared`.
 
 ## Uma versão de React no repo inteiro (TRAVADO)
@@ -570,7 +585,7 @@ tabulares** pros valores, que são lidos em coluna e comparados de relance.
 ## apps/mobile (Expo + Expo Router + NativeWind)
 
 **Stack travada**: Expo (SDK 57) + **Expo Router** + **NativeWind v4** + TanStack Query +
-react-hook-form. O app consome `ui`, `client`, `shared` e os tipos dos `@ctx/adapters` — os MESMOS
+react-hook-form. O app consome `ui`, `shared` e os tipos dos `@ctx/adapters` — os MESMOS
 do web.
 
 - **NativeWind e não StyleSheet**: as telas escrevem `className` com a mesma sintaxe do web e

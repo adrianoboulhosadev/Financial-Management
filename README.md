@@ -34,8 +34,8 @@ ninguém.
 
 O produto tem **dois fronts** e eles são o mesmo produto: o **web** (Next.js) e o **app**
 (React Native com Expo). Num celular as duas telas são propositalmente idênticas — mesma paleta,
-mesma tipografia, mesma navegação por abas — porque as decisões de design moram num pacote só
-(`packages/ui`) que os dois estendem, e os dados vêm dos mesmos hooks (`packages/client`).
+mesma tipografia, mesma navegação por abas — porque tudo que os dois dividem mora num pacote só
+(`packages/ui`): as decisões de design, o cliente http e os hooks que buscam os dados.
 
 O que muda entre eles é só o que **não tem como** ser igual: onde o refresh token dorme (cookie
 httpOnly no navegador, Keychain/Keystore no aparelho), como um aviso aparece e o que carrega o push
