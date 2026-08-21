@@ -4,8 +4,14 @@
     "baseUrl": ".",
     "isolatedModules": true,
     "paths": {
+      "@auth/adapters": [
+        "../auth/adapters/src"
+      ],
       "@notification/adapters": [
         "../notification/adapters/src"
+      ],
+      "@transaction/adapters": [
+        "../transaction/adapters/src"
       ]
     }
   },
