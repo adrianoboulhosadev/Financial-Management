@@ -1,19 +1,11 @@
 import type { ReactNode } from 'react'
+import { ACCENT_CLASSES, type StatCardAccent } from './data/accents'
 
 interface StatCardProps {
   label: string
   value: ReactNode
   hint?: string
-  /** A thin coloured rule on the left, so the three headline numbers are
-   * distinguishable at a glance without colouring the whole card. */
-  accent?: 'positive' | 'negative' | 'accent' | 'none'
-}
-
-const ACCENT_CLASSES: Record<string, string> = {
-  positive: 'border-l-positive',
-  negative: 'border-l-negative',
-  accent: 'border-l-accent',
-  none: 'border-l-ink-border',
+  accent?: StatCardAccent
 }
 
 export function StatCard({ label, value, hint, accent = 'none' }: StatCardProps) {

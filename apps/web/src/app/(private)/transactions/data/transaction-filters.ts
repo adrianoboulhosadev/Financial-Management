@@ -1,11 +1,6 @@
 import type { TransactionType } from '@transaction/adapters'
 
-/** The two directions money moves, as the form and the filter offer them. */
-export const TRANSACTION_TYPES: { value: TransactionType; label: string }[] = [
-  { value: 'expense', label: 'Despesa' },
-  { value: 'income', label: 'Receita' },
-]
-
+/** Recorte da listagem. Só a tela de lançamentos filtra, então isto é da rota. */
 export type TransactionFilterValue = TransactionType | 'all'
 
 export const TRANSACTION_FILTERS: { value: TransactionFilterValue; label: string }[] = [

@@ -5,13 +5,8 @@ import { Button } from '@/components/button'
 import { EmptyState } from '@/components/empty-state'
 import { Loading } from '@/components/loading'
 import { formatDate } from '@/lib/date'
+import { APPROVAL_STATUS_CLASSES, APPROVAL_STATUS_LABELS } from './data/approval-status'
 import { useAdmin } from './hooks/use-admin'
-
-const STATUS_LABELS: Record<string, string> = {
-  approved: 'Liberada',
-  rejected: 'Bloqueada',
-  pending: 'Aguardando',
-}
 
 export default function AdminPage() {
   const page = useAdmin()
@@ -28,16 +23,8 @@ export default function AdminPage() {
         </p>
       </div>
 
-      <span
-        className={`rounded-full px-2.5 py-1 text-xs ${
-          user.approvalStatus === 'approved'
-            ? 'bg-positive/10 text-positive'
-            : user.approvalStatus === 'rejected'
-              ? 'bg-negative/10 text-negative'
-              : 'bg-warning/10 text-warning'
-        }`}
-      >
-        {STATUS_LABELS[user.approvalStatus]}
+      <span className={`rounded-full px-2.5 py-1 text-xs ${APPROVAL_STATUS_CLASSES[user.approvalStatus]}`}>
+        {APPROVAL_STATUS_LABELS[user.approvalStatus]}
       </span>
 
       {user.approvalStatus !== 'approved' && (

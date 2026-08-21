@@ -1,16 +1,9 @@
 import type { BudgetStatus } from '@budget/adapters'
+import { STATUS_CLASSES } from './data/status-classes'
 
 interface BudgetBarProps {
   percentage: number
   status: BudgetStatus
-}
-
-/** The three states come from the domain (BudgetUsageCalculator), so the bar
- * never decides for itself what "almost over" means. */
-const STATUS_CLASSES: Record<BudgetStatus, string> = {
-  ok: 'bg-positive',
-  warning: 'bg-warning',
-  exceeded: 'bg-negative',
 }
 
 export function BudgetBar({ percentage, status }: BudgetBarProps) {

@@ -1,24 +1,13 @@
 import { formatBRL } from '@/lib/money'
+import { TONE_CLASSES, type AmountTone } from './data/tones'
 
 interface AmountProps {
   // INTEGER CENTS, as everything else in the product.
   cents: number
-  /**
-   * How to colour it. `movement` reads the sign of the number itself (a
-   * leftover, a remaining budget); `expense`/`income` state the direction
-   * explicitly, because a recorded amount is always a positive magnitude and
-   * only its type says which way it went.
-   */
-  tone?: 'movement' | 'expense' | 'income' | 'neutral'
+  tone?: AmountTone
   /** Prefixes an explicit +/− so a listing reads without hunting for the colour. */
   signed?: boolean
   className?: string
-}
-
-const TONE_CLASSES: Record<string, string> = {
-  income: 'text-positive',
-  expense: 'text-negative',
-  neutral: 'text-ink-text',
 }
 
 /**

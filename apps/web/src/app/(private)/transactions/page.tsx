@@ -6,7 +6,7 @@ import { EmptyState } from '@/components/empty-state'
 import { Loading } from '@/components/loading'
 import { MonthPicker } from '@/components/month-picker'
 import { formatDate } from '@/lib/date'
-import { TRANSACTION_FILTERS } from './data/transaction-types'
+import { TRANSACTION_FILTERS } from './data/transaction-filters'
 import { TransactionForm } from './components/transaction-form'
 import { useTransactions } from './hooks/use-transactions'
 

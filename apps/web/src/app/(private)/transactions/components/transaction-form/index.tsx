@@ -4,7 +4,7 @@ import type { RecordTransactionInput } from '@transaction/adapters'
 import { Button } from '@/components/button'
 import { Field } from '@/components/field'
 import { CategoryPicker } from '@/components/category-picker'
-import { TRANSACTION_TYPES } from '../../data/transaction-types'
+import { TRANSACTION_TYPES } from '@/data/transaction-types'
 import { useTransactionForm } from './hooks/use-transaction-form'
 
 interface TransactionFormProps {

@@ -8,7 +8,7 @@ import { EmptyState } from '@/components/empty-state'
 import { Field } from '@/components/field'
 import { Loading } from '@/components/loading'
 import { formatDate } from '@/lib/date'
-import { TRANSACTION_TYPES } from '../transactions/data/transaction-types'
+import { TRANSACTION_TYPES } from '@/data/transaction-types'
 import { useRecurrences } from './hooks/use-recurrences'
 
 export default function RecurrencesPage() {

@@ -7,7 +7,7 @@ import { api } from '@/lib/api'
 import { toPeriod } from '@/lib/date'
 import { notify } from '@/lib/notify'
 import { useCategories } from '@/hooks/use-categories'
-import type { TransactionFilterValue } from '../data/transaction-types'
+import type { TransactionFilterValue } from '../data/transaction-filters'
 
 export function useTransactions() {
   const queryClient = useQueryClient()
