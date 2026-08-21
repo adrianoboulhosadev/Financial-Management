@@ -30,6 +30,17 @@ pula nem vira março.
 administrador existe só para liberar (ou barrar) o cadastro de alguém, e não enxerga a finança de
 ninguém.
 
+## Web e app
+
+O produto tem **dois fronts** e eles são o mesmo produto: o **web** (Next.js) e o **app**
+(React Native com Expo). Num celular as duas telas são propositalmente idênticas — mesma paleta,
+mesma tipografia, mesma navegação por abas — porque as decisões de design moram num pacote só
+(`packages/ui`) que os dois estendem, e os dados vêm dos mesmos hooks (`packages/client`).
+
+O que muda entre eles é só o que **não tem como** ser igual: onde o refresh token dorme (cookie
+httpOnly no navegador, Keychain/Keystore no aparelho), como um aviso aparece e o que carrega o push
+da caixa de entrada. Cada um injeta o seu no boot; o resto do código é o mesmo.
+
 ## Arquitetura
 
 Monorepo Turborepo + npm workspaces, TypeScript, **hexagonal (ports & adapters) por bounded
@@ -37,7 +48,8 @@ context**, com **modelagem rica** (entidades com comportamento + value objects; 
 modelo). Contextos: `auth`, `category`, `transaction`, `budget`, `income`, `notification`.
 
 Deployables de produção: **backend** (API NestJS) e **worker** (recorrências e alerta de orçamento
-via BullMQ). O **web** é o front (Next.js). Postgres + Redis sobem via docker no dev.
+via BullMQ). Os fronts são o **web** (Next.js) e o **mobile** (Expo). Postgres + Redis sobem via
+docker no dev.
 
 O padrão de arquitetura, autenticação e convenções vem do projeto **Devs-Bet** — a autenticação é
 praticamente cópia direta (JWT stateful com rotação e detecção de reuso, portaria de aprovação,
@@ -71,6 +83,15 @@ docker compose exec db psql -U postgres -d financial \
 ```
 
 Feito isso, esse usuário libera os demais pela tela **Contas** (`/admin`).
+
+### Rodando o app
+
+```bash
+npm run -w mobile dev        # abre o Expo; leia o QR code com o app Expo Go
+```
+
+⚠️ Num aparelho físico o `EXPO_PUBLIC_API_URL` **não pode ser `localhost`** — ali `localhost` é o
+próprio telefone. Use o IP da sua máquina na mesma rede (ex.: `http://192.168.0.10:5000`).
 
 ### Outros comandos
 

@@ -40,6 +40,8 @@ orçamento). O `web` é o front. Postgres/Redis sobem via docker no dev.
 packages/
   shared/                              # kernel: Id, Entity, AggregateRoot, Money, MonthPeriod, UseCase, Validator, DomainError, Errors
   database/  (database)                # Prisma: schema + migrations + client gerado
+  ui/        (ui)                      # tokens de design + preset Tailwind + formatação; web e mobile estendem o MESMO preset
+  client/    (client)                  # http, portas (TokenStorage/Notifier/EventStream), AuthProvider e hooks de dados
   <contexto>/
     core/      (@<contexto>/core)      # src/{model,providers,use-cases,domain-services} + index.ts; test/ irmão de src/
     adapters/  (@<contexto>/adapters)  # src/{controllers,facade,dto,@types,model,providers} + index.ts (sem testes)
@@ -47,12 +49,16 @@ apps/
   backend/   # NestJS: API. Driven adapters (repos Prisma, bcrypt, jwt), middleware, controllers, produtores BullMQ.
   worker/    # consumidor BullMQ: roda as recorrências e avalia os orçamentos. Tem testes.
   web/       # Next.js (App Router) + Tailwind + TanStack Query + Axios + react-hook-form.
+  mobile/    # Expo + Expo Router + NativeWind. Consome os MESMOS packages do web.
   database/  (container-db)            # docker-compose: Postgres + Redis (dev)
 ```
 
 Contextos e scopes: `@auth/*`, `@category/*`, `@transaction/*`, `@budget/*`, `@income/*`,
 `@notification/*`. `core` e `adapters` são **pacotes separados**. Workspaces:
-`["apps/*","packages/shared","packages/database","packages/*/core","packages/*/adapters"]`.
+`["apps/*","packages/shared","packages/database","packages/ui","packages/client","packages/*/core","packages/*/adapters"]`.
+
+**São TRÊS frontes de um produto só**: o `web` (navegador) e o `mobile` (app) precisam ser
+**visualmente idênticos**, e é por isso que existem o `ui` e o `client` — ver a seção própria.
 
 ## Modelagem rica (TRAVADA)
 
@@ -159,6 +165,56 @@ O **admin** existe só pra portaria (liberar/barrar conta). Ele **não enxerga a
   `MonthlyIncomeCalculator` define que **só fonte ativa conta**. Domain services puros, um lugar só
   — é isso que impede o dashboard e o relatório de discordarem de um total.
 
+## packages/ui e packages/client — o que o web e o mobile dividem (TRAVADO)
+
+O `mobile` **carrega os packages do monorepo** como qualquer app do repo. Isso costuma confundir, e
+vale registrar por quê: o Metro empacota em **build time** — ele compila `packages/*` a partir do
+FONTE e inlina tudo no bundle JS que viaja dentro do `.ipa`/`.apk`. Não existe carregamento de
+módulo em runtime, nem servidor servindo chunk; o app referencia `packages/client` tanto quanto
+referencia o `react`, ou seja, já está lá dentro. (Conferível: `apps/mobile/dist/**.hbc` contém
+`configureClient`, `MonthPeriod` e as rotas dos hooks.)
+
+- **`packages/ui`** — a fonte única de como o produto SE PARECE: `COLORS`/`RADIUS`/`FONT_FAMILY`,
+  o **preset Tailwind** que os dois apps estendem, a formatação (dinheiro, mês) e as tabelas de
+  rótulo/classe que as duas telas usam. O nome é `ui` por decisão do dono; ele **não guarda
+  componente React**, e não guarda porque JSX não atravessa a fronteira DOM/React Native (`<div>`
+  x `<View>`). O que ele garante é que uma cor fique **fisicamente impossível** de divergir.
+  - o preset carrega **só o que o NativeWind honra**: cor, raio, fonte. Sombra e keyframe ficam no
+    config do web — token que não faz nada numa das plataformas é pior que token nenhum.
+- **`packages/client`** — http, sessão e hooks de dados. As **portas** são a única coisa que muda
+  entre as plataformas: `TokenStorage` (cookie httpOnly x Keychain), `Notifier` (sonner x toast
+  nativo) e `EventStreamFactory` (`EventSource` x `react-native-sse`). Cada app injeta as suas em
+  `configureClient()` no boot, e daí pra frente os hooks não sabem onde estão rodando.
+  - **hook compartilhado NÃO tem estado de tela.** `client` expõe query+mutation; filtro, mês
+    selecionado, formulário e "o que está prestes a ser excluído" são do app. É o que permite as
+    duas interfaces divergirem no formato sem duplicar a busca de dados.
+  - **é um pacote SOURCE-ONLY** (`main` aponta pro `src/index.ts`, sem build). Publicar bundle fazia
+    o Next resolver uma segunda cópia do `@tanstack/react-query` e os hooks liam um contexto
+    diferente do provider — todo prerender morria com "No QueryClient set". Compilado dentro do
+    grafo de quem consome (Next via `transpilePackages`, Metro nativamente), existe uma cópia só.
+- **O que NÃO entra**: `database`, `backend` e `worker` **nunca** podem alcançar o grafo do mobile —
+  Prisma no bundle quebra o app. A dependência é sempre `mobile/web → client/ui → adapters (tipos) →
+  shared`.
+
+## Uma versão de React no repo inteiro (TRAVADO)
+
+React Native 0.86 exige React 19, então o **monorepo inteiro** está em React 19 e o `web` roda
+**Next 15**. Isso não é gosto: com dois majors na mesma árvore o npm iça um deles pra raiz e aninha
+o outro, e **qual** ele escolhe muda entre instalações. O mesmo problema apareceu de três formas
+antes de a versão ser unificada — duas cópias do react-query ("No QueryClient set"), dois
+`@types/react` (ReactNode incompatível consigo mesmo) e dois React em runtime ("Cannot read
+properties of null (reading 'useContext')").
+
+⚠️ **Não conserte isso com `alias` no webpack.** O Next resolve um build de React DIFERENTE por
+runtime (a condição `react-server` é quem fornece o `React.cache`), e apontar `react` pra uma pasta
+entrega o build de cliente pro runtime de servidor — as rotas de API morrem com "cache is not a
+function". Se um dia voltar a haver duas versões, a saída é alinhar as versões, não mascarar a
+resolução.
+
+O `metro.config.js` do mobile ainda força **singletons** (`react`, `react-dom`, `react-native`,
+`@tanstack/react-query`) resolvendo como se todo import viesse da raiz do app: é barato e mantém o
+resultado igual independentemente do que o npm resolva içar.
+
 ## Erros de domínio
 
 Use-cases, VOs e entidades lançam erros **tipados** do `shared` (base `DomainError`, com
@@ -192,6 +248,14 @@ Use-case/domínio **nunca** lança erro interno/500. Códigos ficam em `Errors` 
   de 15m expirar. `SetUserApproval` (`AdminUseCase`) recusa alterar o **próprio** status
   (auto-revogação trancaria a plataforma) e, ao rejeitar, chama `deleteAllByUser` pra derrubar as
   sessões — **rejeitar é também o "revogar acesso"**.
+  **Onde o refresh token dorme muda por cliente, e é a ÚNICA divergência da sessão**: o front manda
+  `X-Client-Type` e o `AuthController.issue` decide — cookie `httpOnly` no web (o JavaScript nunca o
+  vê, que é a proteção contra XSS) e **corpo da resposta** no mobile, porque React Native não tem
+  jar de cookie confiável e o destino lá é o Keychain/Keystore via `expo-secure-store`. Entregar no
+  corpo só é aceitável POR CAUSA desse destino; se um dia for pra `localStorage`, é pior que o
+  cookie, não equivalente. `/auth/refresh` e `/user/logout` leem o token do corpo OU do cookie, e a
+  rotação/detecção de reuso é a mesma nos dois. Qualquer `X-Client-Type` desconhecido cai no web,
+  que é o default mais seguro.
   ⚠️ Num banco **zerado** o primeiro usuário nasce pendente sem ninguém pra aprovar — desbloquear
   por SQL, mesmo processo que já se usa pra promover alguém a admin (ver README).
 - **category** — árvore auto-referente **por usuário** (`Category` com `ownerId` + `parentId`
@@ -288,7 +352,9 @@ diferente** e ainda avisa — que é o ponto, já que é notícia pior.
 **Nomes de rota em INGLÊS** (kebab-case). Todas as rotas abaixo, exceto `auth/*`, passam pelo
 `AuthMiddleware` e usam **sempre** o id do token.
 
-- `auth/{register,login,refresh,oauth/google}`
+- `auth/{register,login,refresh,oauth/google}` — `login`/`oauth/google` devolvem `{ accessToken }`
+  e, **só pra `X-Client-Type: mobile`**, também o `refreshToken`; `refresh` aceita o token no corpo
+  ou no cookie
 - `user/{me [GET, PATCH],change-password,logout,deactivate}`
 - `category` (`/` [GET lista a minha árvore; POST cria], `/:id` [PATCH renomeia, DELETE])
 - `transaction` (`/` [GET com `?period=` ou `?from=&to=`, `?type=`, `?categoryId=`; POST],
@@ -484,6 +550,12 @@ tabulares** pros valores, que são lidos em coluna e comparados de relance.
   esconde o layout de quem procura por ele.
 - **Route groups por acesso**: `app/(public)/` e `app/(private)/`. Guard no `layout.tsx` do grupo,
   nunca por página.
+- **Navegação em duas formas, um conjunto só de destinos**: `components/sidebar/` no desktop e
+  `components/bottom-tab-bar/` (`sm:hidden`) no celular, com os quatro destinos primários mais
+  "Mais" (`/more`) — exatamente as cinco abas do app. Os itens vivem em `src/data/nav-items.ts`
+  (global, porque DOIS componentes irmãos leem a lista) e o `<main>` reserva `pb-24` abaixo de `sm`
+  pra última linha não ficar embaixo da barra. ⚠️ Antes da tab bar a sidebar era `hidden sm:flex`
+  **sem substituto**: no celular o app não tinha navegação nenhuma.
 - **Reusar os tipos dos `@ctx/adapters`** via `import type` (request e resposta). Não redeclarar
   contratos — a única exceção é o `MonthlyReport`, que não é de contexto nenhum.
 - **Auth do SPA**: `accessToken` em memória (nunca localStorage); refresh no cookie httpOnly; axios
@@ -494,6 +566,43 @@ tabulares** pros valores, que são lidos em coluna e comparados de relance.
 - **Categoria só é escolhida entre FOLHAS** (`CategoryPicker`), rotuladas pelo caminho completo
   ("casa / contas / luz"). Um galho nunca é oferecido — a mesma regra que o backend aplica, feita
   inclicável aqui pra ninguém descobri-la como mensagem de erro.
+
+## apps/mobile (Expo + Expo Router + NativeWind)
+
+**Stack travada**: Expo (SDK 57) + **Expo Router** + **NativeWind v4** + TanStack Query +
+react-hook-form. O app consome `ui`, `client`, `shared` e os tipos dos `@ctx/adapters` — os MESMOS
+do web.
+
+- **NativeWind e não StyleSheet**: as telas escrevem `className` com a mesma sintaxe do web e
+  estendem o mesmo preset, então portar uma tela é quase mecânico e a paridade fica garantida pelo
+  código, não por disciplina. Exige `jsxImportSource: 'nativewind'` no `babel.config.js` — sem isso
+  todo estilo silenciosamente não faz nada.
+- **`app/` contém SÓ rotas.** O Expo Router transforma todo arquivo ali numa rota, então hook e
+  sub-componente de uma tela virariam rotas quebradas. Por isso a tela mora em
+  `src/screens/<nome>/` com o próprio `hooks/`, e o arquivo em `app/` é **uma linha** reexportando.
+  É a única divergência consciente da regra "o arquivo de rota É a tela" — e existe por imposição do
+  roteador, não por gosto.
+- **Cinco abas** (`(private)/(tabs)/`): mês, lançamentos, orçamentos, renda e "Mais"; o resto
+  (fixos, categorias, notificações, perfil, contas) é empilhado por cima e ganha o botão de voltar
+  de graça. A mesma divisão do web abaixo de `sm`.
+- **Ícones**: `react-native-svg` com **o mesmo path data** do web (`src/data/icons.tsx`). A cor vem
+  por prop (`ColorValue`), porque React Native não tem herança de CSS pra `currentColor`.
+- **Formulário longo vira sheet** (`Modal` de baixo pra cima) em vez do painel lateral do web —
+  mesmos campos e mesmas regras, no formato que a viewport permite.
+- **Polyfill obrigatório**: `import 'react-native-get-random-values'` é a PRIMEIRA linha do
+  `_layout.tsx` raiz. O `Id` do `shared` usa uuid, que precisa de uma fonte de aleatoriedade que o
+  RN não traz; importar depois de qualquer coisa que toque nisso já é tarde.
+- **`metro.config.js`** faz três coisas e nenhuma é opcional: `watchFolders` na raiz (senão o Metro
+  não enxerga mudança em `packages/*`), `nodeModulesPaths` com o app primeiro, e os **singletons**
+  (ver a seção do React). Hierarchical lookup fica **ligado**: o npm aninha dependências do próprio
+  Expo em `node_modules/expo/node_modules`, e desligá-lo as torna irresolvíveis.
+- **`babel-preset-expo` é declarado no app** mesmo sendo transitivo: o Babel resolve preset a partir
+  da pasta do config, e o npm pode aninhá-lo sob o `expo`, fora desse caminho.
+- **A API não pode ser `localhost` num aparelho físico** — ali `localhost` é o telefone. Use o IP da
+  máquina na mesma rede (`EXPO_PUBLIC_API_URL`).
+- **Verificação**: `npm run build` do mobile é `expo export --platform android`, ou seja **bundla de
+  verdade com o Metro**. É o que prova que os packages do monorepo entram no app; um erro de
+  resolução aparece aí, não no `check-types`.
 
 ## Testes
 
@@ -529,7 +638,8 @@ tabulares** pros valores, que são lidos em coluna e comparados de relance.
   ```bash
   npx turbo run check-types test build
   ```
-  Tudo verde = ok.
+  Tudo verde = ok. Isso inclui o `expo export` do mobile, que é o único passo capaz de pegar erro de
+  resolução do Metro.
   ⚠️ O `check-types` do `web` **depende do `build` do próprio web** (ver `apps/web/turbo.json`):
   `next build` regenera `.next/types/**`, que o tsconfig inclui, e rodar os dois em paralelo faz o
   `tsc` ler esses arquivos enquanto o Next os reescreve — falhando com TS6053 em toda rota.
