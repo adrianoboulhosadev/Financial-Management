@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "isolatedModules": true,
+    "paths": {
+      "@notification/adapters": [
+        "../notification/adapters/src"
+      ]
+    }
+  },
+  "include": [
+    "src"
+  ]
+}
