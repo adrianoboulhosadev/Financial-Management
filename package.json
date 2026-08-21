@@ -7,7 +7,6 @@
     "packages/shared",
     "packages/database",
     "packages/ui",
-    "packages/client",
     "packages/*/core",
     "packages/*/adapters"
   ],
