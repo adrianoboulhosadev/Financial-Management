@@ -395,6 +395,20 @@ diferente** e ainda avisa — que é o ponto, já que é notícia pior.
 **react-hook-form**. **SEM zod** no front (validação de negócio já está no domínio; no front só
 validação de UI simples).
 
+**`components/loading/`**: um anel girando e o rótulo. **Três tamanhos, um por contexto de uso** —
+nenhum aceita filho, então quem chama sempre escolhe um dos três: `fullScreen` (`min-h-screen`, só as
+duas guardas de auth que rodam **antes** do shell (`Sidebar`/`Header`) montar — `(private)/layout.tsx`
+e `(public)/layout.tsx` —, onde não existe header ainda pra medir contra); default sem prop
+(`h-full`, toda tela que faz `if (loading) return <Loading />` **antes de qualquer outro JSX**,
+porque ali ele é o único filho do `<main>` do `(private)/layout.tsx`, uma caixa `flex-1` cuja altura
+o flexbox já calculou como "tela menos o header" — inclusive quando o header quebra em duas linhas
+numa tela estreita, conta que uma altura fixa em `vh` nunca acerta); `compact` (sem altura própria,
+pra quando o loading é só uma seção dentro de uma página que já tem outra coisa renderizada em volta
+— a lista de lançamentos com o formulário do lado). **`flex flex-col items-center justify-center`,
+nunca `grid place-items-center`**: grid com linhas implícitas estica cada linha pra dividir a caixa
+igualmente e centraliza cada uma dentro da própria metade, abrindo um vão errado entre o ícone e o
+texto — o `justify-content` do flex centraliza o par como um grupo só.
+
 **Tema**: sóbrio/financeiro, não o retrô-arcade do Devs-Bet. Tokens em `tailwind.config.ts`: fundo
 slate escuro (`ink-*`) e **apenas duas cores saturadas com significado** — `positive` (dinheiro
 entrando) e `negative` (saindo) —, mais `accent` pra ação e `warning` pro teto perto do limite.
@@ -402,37 +416,76 @@ Cor nunca é decorativa aqui. Tipografia: Inter pra interface, JetBrains Mono **
 tabulares** pros valores, que são lidos em coluna e comparados de relance.
 
 - **TODO componente é uma PASTA com `index.tsx`** — `components/button/index.tsx`, nunca
-  `components/button.tsx`. É o que deixa cada componente carregar o que é dele:
-  `<componente>/hooks/` (o hook exclusivo dele) e `<componente>/data/` (constantes/config).
+  `components/button.tsx`. É o que deixa cada componente carregar o que é dele sem virar um monte de
+  arquivo solto na pasta de cima: `<componente>/hooks/` (o hook exclusivo dele) e `<componente>/data/`
+  (constantes/config, ex.: `sidebar/data/nav-items.ts` e `sidebar/data/icons.tsx`). O import não muda
+  (`@/components/button` resolve o `index.tsx`), então mover um componente pra pasta nunca mexe em
+  quem o usa.
 - **Visual ≠ lógica**: o `index.tsx`/`page.tsx` é só JSX; states, effects, handlers e chamadas moram
   num hook. **Onde o hook fica é o que diz de quem ele é**: hook de UMA tela → `<rota>/hooks/`; hook
-  de UM componente → `<componente>/hooks/`; só o que várias telas compartilham fica em `src/hooks/`
-  (`use-categories`, `use-notifications`, `use-notification-stream`, as guardas de rota). **Duas
-  exceções**: chamada isolada de hook de terceiro sem state/handler seu ao lado, e função pura de
-  formatação de apresentação.
-- **`hooks/`, `data/` e `types/` sempre com nome descritivo** — **nunca** um `index.ts` dentro delas:
-  a pasta pode ter mais de um arquivo. Só o **componente** tem `index.tsx`.
+  de UM componente → `<componente>/hooks/` (ex.: `use-transaction-form` dentro do formulário,
+  `use-notification-bell` dentro do sininho); só o que várias telas compartilham fica em `src/hooks/`
+  (`use-categories`, `use-notifications`, `use-notification-stream`, as guardas de rota). Hook usado
+  por vários pontos da MESMA rota (o `page.tsx` **e** um sub-componente) fica em `<rota>/hooks/`,
+  irmão do `page.tsx` — não tem "componente raiz" pra ser dono dele. **Duas exceções**, e só essas:
+  chamada ISOLADA de hook de terceiro sem nenhum state/handler seu ao lado, e **função pura** de
+  formatação de apresentação (não é lógica no sentido da regra) — as duas podem ficar inline no
+  arquivo visual.
+- **`hooks/`, `data/` e `types/` sempre com nome descritivo** (`use-transaction-form.ts`,
+  `nav-items.ts`) — **nunca** um `index.ts` dentro delas: a pasta pode ter mais de um arquivo, então
+  um "index" único não faria sentido. Só o **componente** tem `index.tsx`.
+- **Pasta de sub-componente nunca aninha dentro da pasta de outro sub-componente** — todas irmãs,
+  direto em `<rota>/components/` (ou em `src/components/`), mesmo quando um só é usado pelo outro.
+- **As quatro pastas de um componente/rota, e quando cada uma existe**: `hooks/` (se tem lógica
+  própria), `data/` (se tem dado fixo próprio), `types/` (se tem interface **exportada** e lida por
+  mais de um arquivo dali) e, na ROTA, `lib/` (se tem função pura usada só por aquela rota). Nenhuma
+  é obrigatória: cria quando o caso aparece. Hoje só o `dashboard` tem `types/`
+  (`monthly-report.ts`, o shape composto da rota de relatório, lido pelo hook e pela tela).
+  ⚠️ **`<rota>/lib/` ainda NÃO existe aqui** — não porque a regra não valha, mas porque o caso não
+  apareceu: toda função pura até agora é usada por mais de uma tela e mora em `src/lib/`. Quando
+  aparecer uma exclusiva de uma rota, é lá que vai — não empurre pro hook nem invente um
+  `src/lib/` pra ela.
 - **Dado fixo (array de opções, mapa de estilo, tabela de rótulos) SEMPRE em `data/`** — nunca solto
-  no topo de um `.tsx`. Um arquivo por grupo coeso (`transaction-types.ts`, `inbox-filters.ts`),
-  nunca um `constants.ts` genérico. O nível segue **quem usa**: `data/` do componente, `data/` da
-  rota ou `src/data/` global. Escalar de ajuste local (`BADGE_CAP = 99`) pode ficar inline.
-- **Tipo união que enumera um dado mora JUNTO do dado, no `data/`** (`TransactionFilterValue` com
-  `TRANSACTION_FILTERS`, `InboxFilter` com `INBOX_FILTERS`). O `types/` é pra **modelo de dado** que
-  não é o tipo de nenhuma constante — hoje só `dashboard/types/monthly-report.ts`, que espelha o
-  shape composto da rota de relatório.
+  no topo de um `.tsx`/`.ts`. Um arquivo por grupo coeso (`transaction-filters.ts`,
+  `approval-status.ts`), nunca um `constants.ts` genérico. O nível segue **quem usa**: `data/` do
+  componente (uso local, ex. `BUTTON_VARIANT_CLASSES` em `button/data/` — nunca num
+  `components/data/` misturando componentes), `data/` da rota (vários componentes da mesma rota) ou
+  `src/data/` global (usado por **rotas diferentes**). **Escalar de ajuste local** (`BADGE_CAP = 99`,
+  chave de query) pode ficar inline junto de quem usa — a regra é sobre estrutura de dado, não sobre
+  todo `const` maiúsculo.
+  ⚠️ **Dado igual em duas rotas é sempre bug esperando acontecer**: `TRANSACTION_TYPES` nasceu em
+  `transactions/data/` e a tela de fixos passou a importar `../transactions/data/...` — foi pro
+  `src/data/` global. O filtro da listagem ficou na rota, porque só ela filtra.
+- **Tipo união que enumera um dado mora JUNTO do dado, no `data/`** — `ButtonVariant` com
+  `BUTTON_VARIANT_CLASSES`, `TransactionFilterValue` com `TRANSACTION_FILTERS`, `AmountTone` com
+  `TONE_CLASSES`, `StatCardAccent` com `ACCENT_CLASSES`, `InboxFilter` com `INBOX_FILTERS`. Quando a
+  união vem do DOMÍNIO (`BudgetStatus`, `ApprovalStatus`), o `data/` guarda só a tabela que a rotula
+  — a tela nunca redeclara o que o domínio já decidiu. O `types/` é pra **modelo de dado** que não é
+  o tipo de nenhuma constante. Props que só o próprio arquivo lê (sem `export`) ficam inline — não
+  move.
 - **JSX de wrapper repetido entre `page.tsx` do MESMO route group sobe pro `layout.tsx` do grupo** —
-  foi o caso do `(public)`: login, register e pending repetiam o mesmo `<main>` de fundo radial + o
-  card centralizado. A guarda de `Loading fullScreen` fica **fora** desse wrapper: ela reivindica a
-  viewport inteira e o `max-w-md` do card a espremeria.
-- **`page.tsx` É a tela** — ele mesmo tem o JSX e chama o hook da rota. `<rota>/components/` guarda
-  só os **pedaços** (ex.: `transactions/components/transaction-form/`).
-- **Não existe `AppShell`**: `components/sidebar/` e `components/header/` são compostos direto no
-  `(private)/layout.tsx` (que é também quem abre o SSE). Um componente que só embrulha outros dois
-  não ganha nada por existir e esconde o layout de quem procura por ele.
+  se a moldura é igual pra todo mundo do grupo, duplicá-la em cada `page.tsx` só porque cada rota tem
+  o seu arquivo é repetição à toa. Foi o caso do `(public)`: login, register e pending repetiam o
+  mesmo `<main>` de fundo radial + o card `max-w-md` centralizado. ⚠️ A guarda de
+  `Loading fullScreen` fica **fora** desse wrapper: ela reivindica a viewport inteira e o `max-w-md`
+  do card a espremeria. E a regra é sobre JSX **idêntico** — o `<h1>` de cada tela não sobe, porque
+  cada uma diz uma coisa diferente.
+- **Dado estático → `data/`; lógica (parse, cálculo, formatação) → `lib/`.** Paleta/constante que é a
+  implementação privada de uma função pura continua junto dela no `lib/` (ex. o `ACCENTS` de
+  `lib/notifications.ts`, que só existe pro `accentFor`) — separar o dado da única função que o
+  consome não ajuda ninguém.
+- **`page.tsx` É a tela** — ele mesmo tem o JSX e chama o hook da rota; não existe um
+  `components/<rota>.tsx` que é só o wrapper da página inteira (indireção sem ganho: um arquivo a
+  mais pra abrir e nenhuma reutilização). `<rota>/components/` guarda só os **pedaços** da tela
+  (`transactions/components/transaction-form/`).
+- **Não existe `AppShell`**: o cromo da área privada são dois componentes independentes,
+  `components/sidebar/` e `components/header/`, compostos direto no `(private)/layout.tsx` (que é
+  também quem abre o SSE). Um componente que só embrulha outros dois não ganha nada por existir e
+  esconde o layout de quem procura por ele.
 - **Route groups por acesso**: `app/(public)/` e `app/(private)/`. Guard no `layout.tsx` do grupo,
   nunca por página.
-- **Reusar os tipos dos `@ctx/adapters`** via `import type`. Não redeclarar contratos — a única
-  exceção é o `MonthlyReport`, que não é de contexto nenhum.
+- **Reusar os tipos dos `@ctx/adapters`** via `import type` (request e resposta). Não redeclarar
+  contratos — a única exceção é o `MonthlyReport`, que não é de contexto nenhum.
 - **Auth do SPA**: `accessToken` em memória (nunca localStorage); refresh no cookie httpOnly; axios
   com `withCredentials`; interceptor de 401 chama `/auth/refresh` (dedup) e repete; silent refresh
   no boot.
