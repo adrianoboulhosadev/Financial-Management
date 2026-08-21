@@ -1,0 +1,52 @@
+{
+  "name": "mobile",
+  "version": "0.0.1",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "dev": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "build": "expo export --platform android --output-dir dist",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@auth/adapters": "*",
+    "@budget/adapters": "*",
+    "@category/adapters": "*",
+    "@expo-google-fonts/inter": "^0.4.2",
+    "@expo-google-fonts/jetbrains-mono": "^0.4.1",
+    "@expo/metro-runtime": "^57.0.12",
+    "@income/adapters": "*",
+    "@notification/adapters": "*",
+    "@tanstack/react-query": "^5.62.0",
+    "@transaction/adapters": "*",
+    "client": "*",
+    "expo": "57.0.15",
+    "expo-constants": "~57.0.13",
+    "expo-font": "~57.0.1",
+    "expo-linking": "~57.0.7",
+    "expo-router": "~57.0.15",
+    "expo-secure-store": "~57.0.1",
+    "expo-status-bar": "~57.0.1",
+    "nativewind": "^4.2.6",
+    "react": "^19.2.3",
+    "react-hook-form": "^7.54.2",
+    "react-native": "0.86.2",
+    "react-native-gesture-handler": "~2.32.0",
+    "react-native-get-random-values": "~1.11.0",
+    "react-native-reanimated": "4.5.1",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "~4.26.0",
+    "react-native-sse": "^1.2.1",
+    "react-native-svg": "^15.15.4",
+    "shared": "*",
+    "tailwindcss": "^3.4.17",
+    "ui": "*"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.1",
+    "babel-preset-expo": "~57.0.7",
+    "typescript": "5.7.3"
+  }
+}

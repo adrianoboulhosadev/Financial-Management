@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "Financial",
+    "slug": "financial",
+    "scheme": "financial",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "plugins": ["expo-router", "expo-secure-store", "expo-font"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.adrianoboulhosa.financial"
+    },
+    "android": {
+      "package": "com.adrianoboulhosa.financial",
+      "edgeToEdgeEnabled": true
+    },
+    "extra": {
+      "router": {}
+    }
+  }
+}
