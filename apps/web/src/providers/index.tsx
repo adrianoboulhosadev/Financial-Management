@@ -1,6 +1,7 @@
 'use client'
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { SessionProvider } from 'next-auth/react'
 import { useState, type ReactNode } from 'react'
 import { AuthProvider, configureClient, WEB_CLIENT_DEFAULTS } from 'ui'
 import { notifier } from '@/lib/notify'
@@ -41,8 +42,15 @@ export function Providers({ children }: { children: ReactNode }) {
   )
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>{children}</AuthProvider>
-    </QueryClientProvider>
+    // SessionProvider is NOT the app's session — ours is the AuthProvider right
+    // below it. It is here because useGoogleOAuthBridge (mounted by the login
+    // and register screens) calls NextAuth's useSession, which reads a context
+    // that only this provider creates; without it those two screens crash on
+    // render and NOBODY can sign in, Google turned off or not.
+    <SessionProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>{children}</AuthProvider>
+      </QueryClientProvider>
+    </SessionProvider>
   )
 }
