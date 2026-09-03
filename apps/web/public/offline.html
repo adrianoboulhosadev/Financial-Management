@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Financial — offline</title>
+    <!--
+      Served by the service worker when a navigation fails, so it cannot import
+      anything: the palette below is the same one packages/ui exports
+      (ink.bg / ink.text / ink.text-muted / accent), spelled out by hand because
+      a static file in /public has no build step to read tokens from.
+    -->
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #0b1016;
+        color: #e7eef6;
+        font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+        text-align: center;
+        padding: 24px;
+      }
+      .card {
+        max-width: 360px;
+      }
+      .mark {
+        width: 56px;
+        height: 56px;
+        margin: 0 auto 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 14px;
+        background: #4f9cf9;
+        color: #0b1016;
+        font-size: 28px;
+        font-weight: 700;
+      }
+      h1 {
+        font-size: 18px;
+        font-weight: 600;
+        margin: 0 0 10px;
+      }
+      p {
+        color: #6d8096;
+        font-size: 14px;
+        line-height: 1.55;
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="mark">F</div>
+      <h1>Sem conexão</h1>
+      <p>
+        O Financial precisa de internet para buscar os seus lançamentos. Reconecte e abra de novo
+        para ver o mês.
+      </p>
+    </div>
+  </body>
+</html>
