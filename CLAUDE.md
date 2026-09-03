@@ -584,6 +584,33 @@ tabulares** pros valores, que são lidos em coluna e comparados de relance.
   ("casa / contas / luz"). Um galho nunca é oferecido — a mesma regra que o backend aplica, feita
   inclicável aqui pra ninguém descobri-la como mensagem de erro.
 
+## PWA — instalar o web na tela inicial
+
+O `web` é instalável (mesmo desenho do Devs-Bet). **Sem lib nova** — nada de Workbox nem next-pwa,
+a mesma decisão que o resto do front já toma:
+
+- **`app/manifest.ts`** (Next monta o `<link rel="manifest">` sozinho) + `viewport.themeColor` e
+  `metadata.appleWebApp` no `layout.tsx`, que é o que dá o comportamento de "adicionar à tela
+  inicial" no iOS. Cores vêm de `COLORS` do `ui` — o ícone da tela inicial não pode divergir do app
+  que ele abre.
+- **Ícones gerados**, não desenhados: `app/icons/icon-mark.tsx` renderiza o mesmo "F" da sidebar via
+  `ImageResponse` (`next/og`, que já vem com o Next) e as cinco rotas em `app/icons/*` só escolhem o
+  tamanho — um gerador em vez de cinco PNGs quase idênticos. São `force-static`, então saem prontas
+  no build. São **rotas próprias**, e não os nomes reservados `icon.tsx`/`apple-icon.tsx`, pra a URL
+  continuar nossa e bater com a lista de ícones do manifest.
+- **`public/sw.js` é escrito à mão e intercepta SÓ navegação.** Chamada de API, payload RSC e
+  `/uploads` passam direto: **nada auth-gated nem de dinheiro** (saldo do mês, lançamentos,
+  comprovantes) pode ficar num cache do cliente — num aparelho compartilhado isso serviria os
+  números de um pro outro. O único item do cache é o `public/offline.html`, e é ele que aparece
+  quando a rede falha. Esse handler de `fetch` é também o que o Chrome exige pra considerar o app
+  instalável.
+- **`components/pwa-register`** registra o service worker **só em produção** (em dev o Fast Refresh
+  e um SW vivo brigam por quem serve a requisição) e engole o erro — não conseguir instalar não é
+  problema que o usuário precise ver.
+- ⚠️ **Service worker exige HTTPS** (exceto em `localhost`). Enquanto o `deploy/nginx.conf` estiver
+  em `listen 80` sem TLS, o app **não instala** — mesma pendência de certbot que o cookie `secure`
+  do refresh já tem.
+
 ## apps/mobile (Expo + Expo Router + NativeWind)
 
 **Stack travada**: Expo (SDK 57) + **Expo Router** + **NativeWind v4** + TanStack Query +
