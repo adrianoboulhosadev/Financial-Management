@@ -335,8 +335,10 @@ Duas filas, pras duas coisas que **não podem acontecer no caminho da requisiç�
   `SetRecurrenceActive` agendam via porta `RecurrenceQueue` (produtor BullMQ no backend); quando
   dispara, o worker roda `RunRecurrence`, que posta o mês e **agenda o próximo pela mesma porta**.
   A corrente se mantém sozinha: **sem cron e sem varrer tabela**. O `jobId` é
-  `${recurrenceId}:${dia-devido}`, então o mesmo mês nunca é enfileirado duas vezes — e se
-  escapasse, `RunRecurrence` é idempotente.
+  `${recurrenceId}_${dia-devido}`, então o mesmo mês nunca é enfileirado duas vezes — e se
+  escapasse, `RunRecurrence` é idempotente. ⚠️ O separador é `_` e **nunca `:`**: o BullMQ
+  namespaceia as próprias chaves do Redis com `:` e recusa um job id customizado que contenha um
+  ("Custom Id cannot contain :") — com dois-pontos, TODA criação de recorrência respondia 500.
 - **`budget-check`** — enfileirada pelo `TransactionController` **depois** de gravar uma despesa
   (inclusive na **edição**: um valor aumentado é exatamente o que estoura um teto). O worker soma o
   mês, pergunta ao domínio se vale avisar e grava a notificação. Está fora do caminho de escrita
