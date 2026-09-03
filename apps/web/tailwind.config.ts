@@ -12,7 +12,14 @@ import tailwindPreset from 'ui/tailwind-preset'
  */
 const config: Config = {
   presets: [tailwindPreset],
-  content: ['./src/**/*.{ts,tsx}'],
+  /**
+   * `packages/ui` is scanned too, and it is NOT optional: the shared class
+   * tables (BUDGET_STATUS_CLASSES, TONE_CLASSES, the inbox/approval badges)
+   * spell out utilities that appear NOWHERE else, so leaving the package out
+   * purged them from the CSS — the budget bars rendered with a transparent
+   * fill and the status badges lost their colour.
+   */
+  content: ['./src/**/*.{ts,tsx}', '../../packages/ui/src/**/*.{ts,tsx}'],
   theme: {
     extend: {
       boxShadow: {
