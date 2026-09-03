@@ -12,6 +12,10 @@ import { RECURRENCE_QUEUE, RECURRENCE_JOB, createQueueConnection } from '../queu
  * occurrence — an edit that did not move the date, a retried request — replaces
  * nothing and enqueues nothing extra. A duplicate that slips through anyway is
  * still harmless: RunRecurrence is idempotent.
+ *
+ * The separator is `_` and never `:`: BullMQ namespaces its own Redis keys with
+ * `:` and rejects a custom job id containing one ("Custom Id cannot contain :"),
+ * which used to fail EVERY recurrence creation with a 500.
  */
 @Injectable()
 export class BullMqRecurrenceQueue implements RecurrenceQueue, OnModuleDestroy {
@@ -27,7 +31,7 @@ export class BullMqRecurrenceQueue implements RecurrenceQueue, OnModuleDestroy {
     await this.queue.add(
       RECURRENCE_JOB,
       { recurrenceId },
-      { delay, jobId: `${recurrenceId}:${dueDay}`, removeOnComplete: true, removeOnFail: 100 },
+      { delay, jobId: `${recurrenceId}_${dueDay}`, removeOnComplete: true, removeOnFail: 100 },
     )
     this.logger.log(`recurrence ${recurrenceId} scheduled for ${dueDay}`)
   }
