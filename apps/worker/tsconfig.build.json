@@ -1,0 +1,23 @@
+{
+  // Config do BUILD de produção — separada da `tsconfig.json` de propósito.
+  //
+  // A `tsconfig.json` existe pro dev e pro `check-types`: ela inclui `test` e
+  // mapeia `shared`/`@ctx/*` pro CÓDIGO-FONTE dos packages, o que é ótimo pra
+  // typecheck (não exige build prévio) e péssimo pra emitir. O tsc calcula o
+  // `rootDir` como o diretório comum de TUDO que entrou no programa, então com
+  // os fontes dos packages dentro o comum vira a raiz do monorepo e o emit sai
+  // em `dist/apps/worker/src/main.js` (mais uma cópia morta de `dist/packages/**`).
+  // O `start` é `node dist/main` — resultado: MODULE_NOT_FOUND no container, e o
+  // worker em restart loop.
+  //
+  // Aqui o `rootDir` é explícito e os `paths` são zerados: os packages resolvem
+  // por node_modules pro `dist` deles, que o turbo já garante ter sido buildado
+  // antes (`build` dependsOn `^build`). Assim o emit é só o do worker, na raiz
+  // do `dist`, e `dist/main.js` é exatamente o que o `start` procura.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "paths": {}
+  },
+  "include": ["src"]
+}
