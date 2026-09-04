@@ -4,7 +4,7 @@ services:
   db:
     build:
       context: ./apps/database
-    container_name: financial-db
+    container_name: financial-management-db
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -15,7 +15,7 @@ services:
       # never from outside. Backend/worker reach this over the internal compose
       # network via the `db` hostname, not this port. The host port is 5434 (not
       # the usual 5433) so this stack can run side by side with another one.
-      - '127.0.0.1:5434:5432'
+      - '127.0.0.1:5435:5432'
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
@@ -26,10 +26,10 @@ services:
 
   redis:
     image: redis:7
-    container_name: financial-redis
+    container_name: financial-management-redis
     restart: unless-stopped
     ports:
-      - '127.0.0.1:6381:6379'
+      - '127.0.0.1:6382:6379'
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
@@ -40,7 +40,7 @@ services:
     build:
       context: .
       dockerfile: apps/backend/Dockerfile
-    container_name: financial-backend
+    container_name: financial-management-backend
     restart: unless-stopped
     env_file:
       - ./apps/backend/.env
@@ -54,7 +54,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
       REDIS_URL: redis://redis:6379
     ports:
-      - '127.0.0.1:5002:5000'
+      - '127.0.0.1:5003:5000'
     volumes:
       # Uploaded files live on disk, not in the database (see the Uploads
       # section in CLAUDE.md) — WITHOUT this volume, recreating the container
@@ -71,7 +71,7 @@ services:
     build:
       context: .
       dockerfile: apps/worker/Dockerfile
-    container_name: financial-worker
+    container_name: financial-management-worker
     restart: unless-stopped
     env_file:
       - ./apps/worker/.env
@@ -91,7 +91,7 @@ services:
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000}
         NEXT_PUBLIC_GOOGLE_LOGIN_ENABLED: ${NEXT_PUBLIC_GOOGLE_LOGIN_ENABLED:-}
-    container_name: financial-web
+    container_name: financial-management-web
     restart: unless-stopped
     # NEXTAUTH_URL/NEXTAUTH_SECRET/GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET are
     # read at RUNTIME by the /api/auth/[...nextauth] route (unlike
@@ -100,7 +100,7 @@ services:
     env_file:
       - ./apps/web/.env
     ports:
-      - '127.0.0.1:3004:3000'
+      - '127.0.0.1:3005:3000'
     depends_on:
       - backend
 
