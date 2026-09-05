@@ -1,5 +1,5 @@
-import { UseCase, EventPublisher, ConflictError, Errors } from 'shared'
-import { Email, StrongPassword, PasswordHash, User, UserRegistered } from '../model'
+import { UseCase, ConflictError, Errors } from 'shared'
+import { Email, StrongPassword, PasswordHash, User } from '../model'
 import { UserRepository, HashProvider } from '../providers'
 
 interface Input {
@@ -10,18 +10,15 @@ interface Input {
 /**
  * Creates the User (identity). The rules live in the value objects: Email
  * validates/normalizes the address, StrongPassword enforces the policy. The
- * use case only orchestrates: build the VOs, dedup, hash and persist. Wallet
- * creation is a cross-context concern orchestrated in the backend.
+ * use case only orchestrates: build the VOs, dedup, hash and persist.
  *
- * `UserRegistered` is built here directly, not via `AggregateRoot.record` —
- * this is pure CREATION, and `User`'s constructor is also used to RECONSTITUTE
- * existing rows from the database, so it must never raise anything itself.
+ * The account is usable the moment it exists: this is an open product, so
+ * there is nothing to wait for between signing up and logging in.
  */
 export default class RegisterUser implements UseCase<Input, void> {
   constructor(
     private readonly repository: UserRepository,
     private readonly hash: HashProvider,
-    private readonly eventPublisher?: EventPublisher,
   ) {}
 
   async execute(input: Input): Promise<void> {
@@ -35,6 +32,5 @@ export default class RegisterUser implements UseCase<Input, void> {
     const user = new User({ email: email.value, password: passwordHash.value })
 
     await this.repository.register(user)
-    await this.eventPublisher?.publish([new UserRegistered(user.id.value, email.value)])
   }
 }

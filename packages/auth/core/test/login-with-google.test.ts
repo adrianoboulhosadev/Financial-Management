@@ -26,24 +26,16 @@ function setup() {
     sessionRepository,
   )
 
-  // The platform is closed: a Google sign-in creates the account, but an admin
-  // still has to release it before anyone gets in.
-  const approve = async (email: string) => {
-    const user = await userRepository.findByEmail(email)
-    await userRepository.updateApprovalStatus(user!.id.value, 'approved')
-  }
-
   return {
     userRepository,
     oauthAccountRepository,
     googleVerifier,
     sessionRepository,
     loginWithGoogle,
-    approve,
   }
 }
 
-test('first login creates the User and links Google, but is held for approval', async () => {
+test('first login creates the User, links Google and opens a session right away', async () => {
   const { userRepository, oauthAccountRepository, googleVerifier, sessionRepository, loginWithGoogle } =
     setup()
   googleVerifier.register('token-1', {
@@ -53,53 +45,31 @@ test('first login creates the User and links Google, but is held for approval', 
     name: 'New User',
   })
 
-  await expect(loginWithGoogle.execute({ idToken: 'token-1' })).rejects.toMatchObject({
-    code: Errors.ACCOUNT_PENDING_APPROVAL,
-  })
+  const tokens = await loginWithGoogle.execute({ idToken: 'token-1' })
+  expect(tokens.accessToken.length).toBeGreaterThan(0)
 
-  // The account and the link exist — they are just waiting on an admin.
+  // The account is created without a password (Google is the only way in for it).
   const user = await userRepository.findByEmail('new@b.com')
   expect(user).not.toBeNull()
   expect(user!.password).toBeUndefined()
-  expect(user!.approvalStatus).toBe('pending')
 
   const account = await oauthAccountRepository.findByProvider('google', 'google-sub-1')
   expect(account!.userId).toBe(user!.id.value)
 
-  // Barred means barred: no session was opened.
-  expect(await sessionRepository.findActiveByUser(user!.id.value)).toHaveLength(0)
-})
-
-test('once approved, the same Google account logs in and opens a session', async () => {
-  const { userRepository, googleVerifier, sessionRepository, loginWithGoogle, approve } = setup()
-  googleVerifier.register('token-1', {
-    providerAccountId: 'google-sub-1',
-    email: 'new@b.com',
-    emailVerified: true,
-    name: 'New User',
-  })
-  await expect(loginWithGoogle.execute({ idToken: 'token-1' })).rejects.toBeDefined()
-  await approve('new@b.com')
-
-  const tokens = await loginWithGoogle.execute({ idToken: 'token-1' })
-  expect(tokens.accessToken.length).toBeGreaterThan(0)
-
-  const user = await userRepository.findByEmail('new@b.com')
   expect(await sessionRepository.findActiveByUser(user!.id.value)).toHaveLength(1)
 })
 
-test('a revoked account is barred from Google login as invalid credentials', async () => {
-  const { userRepository, googleVerifier, loginWithGoogle, approve } = setup()
+test('a deactivated account is barred from Google login as invalid credentials', async () => {
+  const { userRepository, googleVerifier, loginWithGoogle } = setup()
   googleVerifier.register('token-1', {
     providerAccountId: 'google-sub-1',
     email: 'new@b.com',
     emailVerified: true,
     name: 'New User',
   })
-  await expect(loginWithGoogle.execute({ idToken: 'token-1' })).rejects.toBeDefined()
-  await approve('new@b.com')
+  await loginWithGoogle.execute({ idToken: 'token-1' })
   const user = await userRepository.findByEmail('new@b.com')
-  await userRepository.updateApprovalStatus(user!.id.value, 'rejected')
+  await userRepository.deactivate(user!.id.value)
 
   await expect(loginWithGoogle.execute({ idToken: 'token-1' })).rejects.toMatchObject({
     code: Errors.INVALID_EMAIL_OR_PASSWORD,
@@ -121,10 +91,9 @@ test('an unverified Google email is rejected (OAUTH_EMAIL_NOT_VERIFIED)', async 
 })
 
 test('auto-links an existing (password) account by verified email', async () => {
-  const { userRepository, oauthAccountRepository, googleVerifier, loginWithGoogle, approve } = setup()
+  const { userRepository, oauthAccountRepository, googleVerifier, loginWithGoogle } = setup()
   const hash = new HashProviderInMemory()
   await new RegisterUser(userRepository, hash).execute({ email: 'existing@b.com', password: 'Senha@123' })
-  await approve('existing@b.com')
   const existingUser = await userRepository.findByEmail('existing@b.com')
 
   googleVerifier.register('token-1', {
@@ -144,15 +113,13 @@ test('auto-links an existing (password) account by verified email', async () => 
 })
 
 test('a repeat login finds the linked account directly, without touching the email', async () => {
-  const { oauthAccountRepository, googleVerifier, loginWithGoogle, approve } = setup()
+  const { oauthAccountRepository, googleVerifier, loginWithGoogle } = setup()
   googleVerifier.register('token-1', {
     providerAccountId: 'google-sub-3',
     email: 'repeat@b.com',
     emailVerified: true,
     name: 'Repeat User',
   })
-  await expect(loginWithGoogle.execute({ idToken: 'token-1' })).rejects.toBeDefined()
-  await approve('repeat@b.com')
   await loginWithGoogle.execute({ idToken: 'token-1' })
 
   googleVerifier.register('token-2', {

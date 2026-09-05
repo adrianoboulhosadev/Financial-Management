@@ -7,9 +7,9 @@ import {
   AuthSessionRepositoryInMemory,
 } from './in-memory'
 
-/** A sign-up starts PENDING (closed platform), so every login test that expects
- * to get in has to release the account first — same as an admin approving. */
-async function setupWithUser(approve = true) {
+/** Signing up is enough to get in: the platform is open, so there is no gate
+ * between creating the account and logging into it. */
+async function setupWithUser() {
   const repository = new UserRepositoryInMemory()
   const hash = new HashProviderInMemory()
   const jwt = new JwtProviderInMemory('secret')
@@ -17,7 +17,6 @@ async function setupWithUser(approve = true) {
 
   await new RegisterUser(repository, hash).execute({ email: 'a@b.com', password: 'Senha@123' })
   const user = await repository.findByEmail('a@b.com')
-  if (approve) await repository.updateApprovalStatus(user!.id.value, 'approved')
 
   const login = new LoginUser(repository, hash, jwt, sessionRepository)
   return { repository, sessionRepository, login, userId: user!.id.value }
@@ -46,28 +45,20 @@ test('wrong password and nonexistent email return the SAME generic error', async
   ).rejects.toMatchObject({ code: Errors.INVALID_EMAIL_OR_PASSWORD })
 })
 
-test('a pending account is told it is waiting for approval', async () => {
-  const { login } = await setupWithUser(false)
-
-  await expect(login.execute({ email: 'a@b.com', password: 'Senha@123' })).rejects.toMatchObject({
-    code: Errors.ACCOUNT_PENDING_APPROVAL,
-  })
-})
-
-test('a REJECTED account is indistinguishable from a wrong password', async () => {
+test('a deactivated account is indistinguishable from a wrong password', async () => {
   const { repository, login, userId } = await setupWithUser()
-  await repository.updateApprovalStatus(userId, 'rejected')
+  await repository.deactivate(userId)
 
-  // Same code as a bad password on purpose: someone the admin barred must not be
-  // able to tell that the account even exists.
+  // Same code as a bad password on purpose: the answer never describes the
+  // state of an account to whoever is knocking.
   await expect(login.execute({ email: 'a@b.com', password: 'Senha@123' })).rejects.toMatchObject({
     code: Errors.INVALID_EMAIL_OR_PASSWORD,
   })
 })
 
-test('a rejected account opens no session', async () => {
+test('a deactivated account opens no session', async () => {
   const { repository, sessionRepository, login, userId } = await setupWithUser()
-  await repository.updateApprovalStatus(userId, 'rejected')
+  await repository.deactivate(userId)
 
   await expect(login.execute({ email: 'a@b.com', password: 'Senha@123' })).rejects.toBeDefined()
   expect(await sessionRepository.findActiveByUser(userId)).toHaveLength(0)
