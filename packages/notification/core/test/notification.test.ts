@@ -14,6 +14,15 @@ import { NotificationRepositoryInMemory } from './in-memory'
 const owner = 'user-1'
 const other = 'user-2'
 
+/** The simplest fully-formed event — for wherever a test just needs ONE line. */
+const crossing = (userId = owner): NotificationInput => ({
+  userId,
+  type: 'budget_exceeded',
+  categoryName: 'Lazer',
+  limitCents: 50_000,
+  spentCents: 60_000,
+})
+
 /** A distinct, fully-formed event — handy wherever a test just needs N lines. */
 const posted = (index: number, userId = owner): NotificationInput => ({
   userId,
@@ -25,13 +34,13 @@ const posted = (index: number, userId = owner): NotificationInput => ({
 })
 
 test('a notification requires a recipient, a title and a body', () => {
-  expect(() => new Notification({ type: 'account_approved', title: 'x', body: 'y' })).toThrow(
+  expect(() => new Notification({ type: 'budget_exceeded', title: 'x', body: 'y' })).toThrow(
     ValidationError,
   )
-  expect(() => new Notification({ userId: owner, type: 'account_approved', body: 'y' })).toThrow(
+  expect(() => new Notification({ userId: owner, type: 'budget_exceeded', body: 'y' })).toThrow(
     ValidationError,
   )
-  expect(() => new Notification({ userId: owner, type: 'account_approved', title: 'x' })).toThrow(
+  expect(() => new Notification({ userId: owner, type: 'budget_exceeded', title: 'x' })).toThrow(
     ValidationError,
   )
 })
@@ -45,13 +54,13 @@ test('an unknown type is rejected', () => {
 })
 
 test('a fresh notification is unread', () => {
-  const notification = Notification.for({ userId: owner, type: 'account_approved' })
+  const notification = Notification.for(crossing())
   expect(notification.isRead).toBe(false)
   expect(notification.readAt).toBeNull()
 })
 
 test('markAsRead is idempotent — the second call keeps the first timestamp', () => {
-  const notification = Notification.for({ userId: owner, type: 'account_approved' })
+  const notification = Notification.for(crossing())
   notification.markAsRead()
   const firstRead = notification.readAt
 
@@ -118,23 +127,12 @@ test('a posted recurrence reads differently for money in and money out', () => {
   expect(income.body).toContain('Salário')
 })
 
-test("the admin notice links to the control room and names who's waiting", () => {
-  const signup = Notification.for({
-    userId: 'admin-1',
-    type: 'admin_signup_pending',
-    signupEmail: 'amigo@exemplo.com',
-  })
-
-  expect(signup.body).toContain('amigo@exemplo.com')
-  expect(signup.link).toBe('/admin')
-})
-
 test('sending a batch delivers one notification per item', async () => {
   const repository = new NotificationRepositoryInMemory()
   await new SendNotifications(repository).execute({
     items: [
-      { userId: owner, type: 'account_approved' },
-      { userId: other, type: 'account_approved' },
+      crossing(),
+      crossing(other),
     ],
   })
 
@@ -216,7 +214,7 @@ test('an absurd limit is clamped instead of dumping the table', async () => {
 test('marking as read clears it from the unread count', async () => {
   const repository = new NotificationRepositoryInMemory()
   await new SendNotifications(repository).execute({
-    items: [{ userId: owner, type: 'account_approved' }],
+    items: [crossing()],
   })
   const id = repository.notifications[0].id
 
@@ -230,7 +228,7 @@ test('marking as read clears it from the unread count', async () => {
 test("someone else's notification answers like a missing one (anti-IDOR)", async () => {
   const repository = new NotificationRepositoryInMemory()
   await new SendNotifications(repository).execute({
-    items: [{ userId: owner, type: 'account_approved' }],
+    items: [crossing()],
   })
   const id = repository.notifications[0].id
 
@@ -280,7 +278,7 @@ test('deleting a notification removes it from the inbox', async () => {
 test("deleting someone else's notification answers like a missing one (anti-IDOR)", async () => {
   const repository = new NotificationRepositoryInMemory()
   await new SendNotifications(repository).execute({
-    items: [{ userId: owner, type: 'account_approved' }],
+    items: [crossing()],
   })
   const id = repository.notifications[0].id
 

@@ -24,11 +24,10 @@ function formatMoney(cents: number): string {
 /**
  * One line in a user's inbox (rich entity).
  *
- * The COPY lives here, not in the callers: two different apps raise
- * notifications (backend on an admin action, worker on a budget check or a
- * posted recurrence), and
- * `Notification.for` is what keeps "what we tell the user" a single decision
- * of the domain instead of strings scattered across controllers. The text is
+ * The COPY lives here, not in the callers: the worker raises every one of them
+ * (a budget check, a posted recurrence), and `Notification.for` is what keeps
+ * "what we tell the user" a single decision of the domain instead of strings
+ * scattered across controllers. The text is
  * stored already rendered — a notification is a record of what was said at the
  * time, so a later wording change never rewrites history.
  */
@@ -115,21 +114,6 @@ export class Notification extends Entity<Notification, NotificationProps> {
           title: input.movement === 'expense' ? 'Despesa fixa lançada' : 'Receita fixa lançada',
           body: `"${input.description}" de ${formatMoney(input.amount)} entrou no mês automaticamente.`,
           link: '/transactions',
-        }
-      case 'account_approved':
-        return {
-          title: 'Conta liberada',
-          body: 'Seu cadastro foi aprovado. Bem-vindo ao Financial!',
-          link: '/dashboard',
-        }
-      // The signup notice carries the e-mail on purpose: it goes only to admins,
-      // and it is the same reason the control room shows it — without it the
-      // owner cannot tell who is asking to get in.
-      case 'admin_signup_pending':
-        return {
-          title: 'Novo cadastro',
-          body: `${input.signupEmail} se cadastrou e está esperando aprovação.`,
-          link: '/admin',
         }
     }
   }

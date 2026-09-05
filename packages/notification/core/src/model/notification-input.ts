@@ -4,10 +4,6 @@ export const NOTIFICATION_TYPES = [
   'budget_exceeded',
   // owner — a fixed monthly movement was posted on their behalf
   'recurrence_posted',
-  // owner — the front door
-  'account_approved',
-  // admin — someone is waiting at the gate
-  'admin_signup_pending',
 ] as const
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number]
@@ -56,5 +52,3 @@ export type NotificationInput =
       amount: number
       movement: NotificationMovement
     })
-  | (Recipient & { type: 'account_approved' })
-  | (Recipient & { type: 'admin_signup_pending'; signupEmail: string })
