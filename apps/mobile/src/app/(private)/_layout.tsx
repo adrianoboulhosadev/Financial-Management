@@ -33,7 +33,6 @@ export default function PrivateLayout() {
       <Stack.Screen name="categories" options={{ title: 'Categorias' }} />
       <Stack.Screen name="notifications" options={{ title: 'Notificações' }} />
       <Stack.Screen name="profile" options={{ title: 'Perfil' }} />
-      <Stack.Screen name="admin" options={{ title: 'Contas' }} />
     </Stack>
   )
 }

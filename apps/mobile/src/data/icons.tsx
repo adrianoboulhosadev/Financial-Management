@@ -82,13 +82,6 @@ export const NotificationsIcon = ({ color, size }: IconProps) => (
   </Svg>
 )
 
-export const AdminIcon = ({ color, size }: IconProps) => (
-  <Svg {...stroke(color, size)}>
-    <Path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6l7-3Z" />
-    <Path d="m9 12 2 2 4-4" />
-  </Svg>
-)
-
 export const ProfileIcon = ({ color, size }: IconProps) => (
   <Svg {...stroke(color, size)}>
     <Circle cx="12" cy="8" r="3.5" />

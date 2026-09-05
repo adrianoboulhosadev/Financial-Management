@@ -18,7 +18,7 @@ export default function RegisterScreen() {
           <View>
             <Text className="text-2xl font-semibold text-ink-text">Criar conta</Text>
             <Text className="mt-1 text-sm text-ink-text-soft">
-              O acesso é liberado por um administrador depois do cadastro.
+              Leva um minuto e você já entra direto na sua visão do mês.
             </Text>
           </View>
 

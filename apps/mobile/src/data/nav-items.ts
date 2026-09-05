@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
 import {
-  AdminIcon,
   BudgetsIcon,
   CategoriesIcon,
   NotificationsIcon,
@@ -13,7 +12,6 @@ export interface NavItem {
   href: string
   label: string
   icon: (props: IconProps) => ReactNode
-  adminOnly?: boolean
 }
 
 /**
@@ -30,5 +28,4 @@ export const SECONDARY_NAV: NavItem[] = [
   { href: '/categories', label: 'Categorias', icon: CategoriesIcon },
   { href: '/notifications', label: 'Notificações', icon: NotificationsIcon },
   { href: '/profile', label: 'Perfil', icon: ProfileIcon },
-  { href: '/admin', label: 'Contas', icon: AdminIcon, adminOnly: true },
 ]
