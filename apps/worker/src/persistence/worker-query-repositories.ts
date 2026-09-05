@@ -84,11 +84,10 @@ export class WorkerNotificationRepository implements NotificationRepository {
 
 /**
  * How a category is NAMED in a notification. Read straight from the table
- * instead of going through the `category` context, for the same reason the
- * backend's NotificationAudience reads `users` directly: it decides nothing, it
- * only labels, and pulling a whole context in for one string would be the
- * expensive way to do it. A missing name falls back to a generic word — a
- * renamed or deleted category must never break the alert.
+ * instead of going through the `category` context: it decides nothing, it only
+ * labels, and pulling a whole context in for one string would be the expensive
+ * way to do it. A missing name falls back to a generic word — a renamed or
+ * deleted category must never break the alert.
  */
 export async function categoryNameOf(categoryId: string): Promise<string> {
   const row = await prisma.category.findUnique({

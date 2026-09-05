@@ -15,11 +15,10 @@ import { notificationFor } from '../recurrence/recurrence-notifications'
  * needs it, and this one does something the backend's does not.
  *
  * `postOccurrence` writes the movement, advances the schedule AND files the
- * notification in ONE transaction. That is the opposite of the backend's
- * DomainEventListener, which notifies only after its operation committed, and
- * the difference is deliberate: here the notification is DERIVED from the very
- * rows being written, so it must neither be lost if the commit succeeds nor
- * survive if it rolls back.
+ * notification in ONE transaction, and that is deliberate: here the
+ * notification is DERIVED from the very rows being written, so it must neither
+ * be lost if the commit succeeds nor survive if it rolls back. The budget alert
+ * is the opposite case — a standalone write, with nothing to be atomic with.
  */
 export class WorkerRecurrenceRepository implements RecurrenceRepository {
   async findById(id: string): Promise<Recurrence | null> {
