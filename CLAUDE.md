@@ -14,8 +14,9 @@ Este projeto nasce copiando o **Devs-Bet**: monorepo Turborepo, pacotes por boun
 (`packages/<ctx>/{core,adapters}`), `shared`/`database` separados, CQRS, portas, driven adapters
 no app, `DomainExceptionFilter` global, JWT stateful, worker BullMQ, kebab-case, código em inglês,
 **modelagem rica** (entidades com comportamento e invariantes + value objects). A **autenticação é
-cópia direta** dele, inclusive a portaria de aprovação e o login com Google desligado pelo
-interruptor da chave. Onde os dois divergem, vale o que está escrito aqui.
+cópia direta** dele, com o login com Google desligado pelo interruptor da chave — **menos a
+portaria de aprovação, que aqui não existe**: este é um produto aberto ao público. Onde os dois
+divergem, vale o que está escrito aqui.
 
 ## Visão geral
 
@@ -113,18 +114,18 @@ O `model/` NÃO é anêmico. Regras vivem no modelo:
   com métodos **estáticos**, sem portas e sem efeito. Hoje: `MonthlyTotalsCalculator` (transaction),
   `BudgetUsageCalculator` (budget) e `MonthlyIncomeCalculator` (income). Reexportados como **valor**
   pelo `@ctx/adapters`.
-- **Eventos de domínio**: base no `shared` (`DomainEvent`, `AggregateRoot` com `record`/
-  `pullDomainEvents`, porta `EventPublisher`). Hoje só o `auth` usa (`UserRegistered`,
-  `UserApproved`). `pullDomainEvents()` **DRENA** a lista e ela **nunca é `props`** — reconstituir
-  uma linha do banco nasce sem evento. **Quem publica é o CASO DE USO**, com `eventPublisher?`
-  opcional no construtor, chamado **depois** do `repository.xxx(...)`. Evento de **CRIAÇÃO** é
-  montado no caso de uso, não pela entidade (o construtor serve tanto pra criar quanto pra
-  RECONSTITUIR). **`User.reject()` não registra nada** — a decisão de produto ("ser barrado tem que
-  parecer senha errada") mora no modelo, então nenhum caminho consegue vazá-la por engano.
-- **Autorização por caso de uso (role)**: casos de uso restritos a admin **estendem** a base
-  `AdminUseCase<INPUT, OUTPUT>` (do `shared`). Autorização fica em **duas camadas**: guard de role
-  no backend (borda) + a base no domínio. Neste produto só a **portaria** é admin (`ListUsersQuery`,
-  `SetUserApproval`) — finanças são sempre do próprio usuário.
+- **Eventos de domínio**: a base continua no `shared` (`DomainEvent`, `AggregateRoot` com `record`/
+  `pullDomainEvents`, porta `EventPublisher`), mas **nenhum contexto emite evento hoje** — os dois
+  que existiam (`UserRegistered`, `UserApproved`) eram da portaria e saíram com ela. Se um dia
+  voltar a haver um: `pullDomainEvents()` **DRENA** a lista e ela **nunca é `props`** (reconstituir
+  uma linha do banco nasce sem evento), **quem publica é o CASO DE USO** (com `eventPublisher?`
+  opcional no construtor, chamado **depois** do `repository.xxx(...)`) e evento de **CRIAÇÃO** é
+  montado no caso de uso, não pela entidade — o construtor serve tanto pra criar quanto pra
+  RECONSTITUIR.
+- **Não existe role nem caso de uso privilegiado.** Todo dado é do próprio usuário e a autorização
+  é sempre a mesma: o `ownerId` sai do JWT e o recurso de outro dono responde `NOT_FOUND`. Não há
+  `AdminUseCase`, guard de role, nem `AuthenticatedActor` — se um caso de uso pede "quem é o ator"
+  além do `userId`, ele está resolvendo o problema errado.
 - **Fronteiras**: contextos se tocam **só por portas**, nunca import direto entre cores.
   Orquestração cross-context fica na camada de app (backend/worker).
 
@@ -141,7 +142,9 @@ O `model/` NÃO é anêmico. Regras vivem no modelo:
   notificação;
 - toda listagem é `listByOwnerQuery(ownerId)` — a porta nem tem como perguntar "todos".
 
-O **admin** existe só pra portaria (liberar/barrar conta). Ele **não enxerga a finança de ninguém**.
+**Cadastro é aberto**: qualquer pessoa cria a conta e entra na hora. Não existe fila de aprovação,
+tela de contas nem conta privilegiada — o único estado que barra um login é `active` (soft delete
+do próprio usuário, via `DELETE /user/deactivate`).
 
 ## Dinheiro, mês e cálculo
 
@@ -240,7 +243,7 @@ tipo → status é o `DomainExceptionFilter` (global, em `apps/backend/src/share
 |---|---|---|
 | `ValidationError` | 400 | entrada/regra de formato; **único acumulável** via `Validator.combineErrors` |
 | `UnauthorizedError` | 401 | credencial inválida / não autenticado |
-| `AccessDeniedError` | 403 | autenticado, sem permissão (role admin) |
+| `AccessDeniedError` | 403 | autenticado, sem permissão — **hoje sem uso** (não há privilégio) |
 | `NotFoundError` | 404 | recurso inexistente **ou de outro usuário** |
 | `ConflictError` | 409 | estado duplicado/conflitante |
 
@@ -249,20 +252,20 @@ Use-case/domínio **nunca** lança erro interno/500. Códigos ficam em `Errors` 
 
 ## Contextos
 
-- **auth** — cópia do Devs-Bet. `User` (com `role`: `user`/`admin`), `AuthSession`, `OAuthAccount`.
+- **auth** — cópia do Devs-Bet. `User` (email, password, active, nickname, avatarUrl),
+  `AuthSession`, `OAuthAccount`.
   JWT access 15m + refresh 7d **stateful** (rotação + detecção de reuso). VOs: `Email`,
   `StrongPassword`, `PasswordHash`. `nickname`/`avatarUrl` são display-only (nunca autenticam).
-  **Plataforma fechada — portaria**: `User.approvalStatus` (`pending`/`approved`/`rejected`) nasce
-  **`pending`**, pro cadastro por formulário E pro primeiro login via Google. O que cada estado
-  responde no login: `rejected` → `UnauthorizedError`/`INVALID_EMAIL_OR_PASSWORD` (401) — **de
-  propósito idêntico a senha errada**, pra quem foi barrado não descobrir nem que a conta existe;
-  `pending` → `AccessDeniedError`/`ACCOUNT_PENDING_APPROVAL` (403, explícito — é alguém legítimo na
-  fila, e precisa saber por que não entra); o 403 também evita o interceptor de 401 do axios, que
-  tentaria um refresh inútil. `RefreshToken` exige `isApproved` e o **`AuthMiddleware` relê o estado
-  a cada request** — é isso que faz revogar acesso valer na hora, em vez de esperar o access token
-  de 15m expirar. `SetUserApproval` (`AdminUseCase`) recusa alterar o **próprio** status
-  (auto-revogação trancaria a plataforma) e, ao rejeitar, chama `deleteAllByUser` pra derrubar as
-  sessões — **rejeitar é também o "revogar acesso"**.
+  **Plataforma ABERTA — sem portaria**: cadastrar já basta pra entrar, pelo formulário E pelo
+  primeiro login via Google. O front faz os dois numa gesto só — o `register` do `AuthProvider`
+  chama `/auth/register` e emenda `/auth/login` com as mesmas credenciais, porque `RegisterUser`
+  devolve `void` (criar identidade não emite sessão) e obrigar a redigitar a senha seria custo sem
+  razão.
+  **O único estado de conta que barra o login é `active`**, e ele responde
+  `UnauthorizedError`/`INVALID_EMAIL_OR_PASSWORD` (401) — **de propósito idêntico a senha errada**:
+  a resposta nunca descreve o estado de uma conta pra quem está batendo na porta. `RefreshToken`
+  recusa o mesmo e o **`AuthMiddleware` relê o usuário a cada request**, que é o que faz uma
+  desativação valer na hora em vez de esperar o access token de 15m expirar.
   **Onde o refresh token dorme muda por cliente, e é a ÚNICA divergência da sessão**: o front manda
   `X-Client-Type` e o `AuthController.issue` decide — cookie `httpOnly` no web (o JavaScript nunca o
   vê, que é a proteção contra XSS) e **corpo da resposta** no mobile, porque React Native não tem
@@ -271,10 +274,8 @@ Use-case/domínio **nunca** lança erro interno/500. Códigos ficam em `Errors` 
   cookie, não equivalente. `/auth/refresh` e `/user/logout` leem o token do corpo OU do cookie, e a
   rotação/detecção de reuso é a mesma nos dois. Qualquer `X-Client-Type` desconhecido cai no web,
   que é o default mais seguro.
-  ⚠️ Num banco **zerado** o primeiro usuário nasce pendente sem ninguém pra aprovar — desbloquear
-  por SQL, mesmo processo que já se usa pra promover alguém a admin (ver README).
 - **category** — árvore auto-referente **por usuário** (`Category` com `ownerId` + `parentId`
-  opcional). CRUD é do próprio dono (não é admin-only, ao contrário do Devs-Bet). `isLeaf` é do read
+  opcional). CRUD é do próprio dono. `isLeaf` é do read
   model, calculado numa consulta só. Nome único **entre irmãos do mesmo dono** (dois usuários podem
   ter cada um o seu "Lazer"). Apagar exige nó **sem filhos** (`CATEGORY_HAS_CHILDREN`) e **sem uso**
   (`CATEGORY_IN_USE`) — quem resolve "está em uso" é o **backend**, consultando `transaction`,
@@ -321,10 +322,8 @@ Use-case/domínio **nunca** lança erro interno/500. Códigos ficam em `Errors` 
   |---|---|---|
   | `budget_warning` / `budget_exceeded` | dono do teto | worker, na fila `budget-check` |
   | `recurrence_posted` | dono | worker, **dentro da transação** que posta o mês |
-  | `account_approved` | usuário | `AdminUserController` (approve) |
-  | `admin_signup_pending` | admins | `AuthController` (register) |
-  **Rejeitar cadastro NÃO notifica** — de propósito: ser barrado tem que parecer senha errada, e uma
-  linha na caixa de entrada entregaria o jogo. **Idempotência** vem do banco:
+  Os três saem do **worker**, e é por isso que o backend não escreve notificação nenhuma hoje.
+  **Idempotência** vem do banco:
   `@@unique([userId, type, referenceId])` + `createMany({ skipDuplicates: true })`.
 
 ## Filas (Redis/BullMQ) — o que entra e por quê
@@ -351,9 +350,6 @@ Duas filas, pras duas coisas que **não podem acontecer no caminho da requisiç�
 ninguém escuta, então as duas cópias são o contrato.
 
 **Onde a notificação é escrita muda por caminho, e é decisão consciente**:
-- no **backend**, o `DomainEventListener` (implementa `EventPublisher`) traduz evento → notificação
-  **depois** do commit e **engole o próprio erro**: conta aprovada não pode ser desfeita porque a
-  caixa de entrada falhou;
 - no **worker**, `postOccurrence` grava a notificação **dentro da transação** que posta o
   lançamento, porque ali ela é derivada das **mesmas linhas** sendo escritas — não pode se perder
   se o commit deu certo nem sobreviver a um rollback;
@@ -384,7 +380,6 @@ diferente** e ainda avisa — que é o ponto, já que é notícia pior.
 - `notification` (`GET /` [`?limit=`; devolve `{ unreadCount, items }`], `POST /read-all`,
   `POST /:id/read`, `DELETE /all`, `DELETE /:id`, `GET /stream` [**SSE**, ver abaixo — é a ÚNICA
   rota autenticada por token na **query string**, porque `EventSource` não manda header])
-- `admin/users` (GET) e `admin/users/:id/{approve,reject}` — **portaria, admin-only**
 - `upload/{receipts,avatars}` — os dois self-service (o próprio usuário autenticado envia o seu)
 
 **O `report/monthly` é a única rota composta**: o shape (`MonthlyReportDTO`) não pertence a nenhum
@@ -463,8 +458,8 @@ diferente** e ainda avisa — que é o ponto, já que é notícia pior.
 - Arquivos ficam em **`apps/backend/uploads/<tema>/`**, servidos estáticos em **`/uploads/**`** via
   `app.useStaticAssets` (o `main.ts` cria as subpastas no boot, lendo `UPLOADS_SUBDIRS`). A pasta é
   gitignored e, no docker, é **volume nomeado**.
-- Os dois uploads são **self-service** (só `AuthMiddleware`, sem `AdminGuard`): não existe upload
-  admin-only neste produto.
+- Os dois uploads são **self-service** (só `AuthMiddleware`): o usuário autenticado manda o que é
+  dele.
   - `POST /upload/receipts` — comprovante/nota de um lançamento. Aceita `image/*` **ou**
     `application/pdf`, 10 MB. **Nunca recortado nem reencodado**: é documento, e alterá-lo seria
     alterar a prova. A URL vai pra `Transaction.attachmentUrl`.
@@ -530,7 +525,7 @@ tabulares** pros valores, que são lidos em coluna e comparados de relance.
   `src/lib/` pra ela.
 - **Dado fixo (array de opções, mapa de estilo, tabela de rótulos) SEMPRE em `data/`** — nunca solto
   no topo de um `.tsx`/`.ts`. Um arquivo por grupo coeso (`transaction-filters.ts`,
-  `approval-status.ts`), nunca um `constants.ts` genérico. O nível segue **quem usa**: `data/` do
+  `inbox-filters.ts`), nunca um `constants.ts` genérico. O nível segue **quem usa**: `data/` do
   componente (uso local, ex. `BUTTON_VARIANT_CLASSES` em `button/data/` — nunca num
   `components/data/` misturando componentes), `data/` da rota (vários componentes da mesma rota) ou
   `src/data/` global (usado por **rotas diferentes**). **Escalar de ajuste local** (`BADGE_CAP = 99`,
@@ -542,13 +537,13 @@ tabulares** pros valores, que são lidos em coluna e comparados de relance.
 - **Tipo união que enumera um dado mora JUNTO do dado, no `data/`** — `ButtonVariant` com
   `BUTTON_VARIANT_CLASSES`, `TransactionFilterValue` com `TRANSACTION_FILTERS`, `AmountTone` com
   `TONE_CLASSES`, `StatCardAccent` com `ACCENT_CLASSES`, `InboxFilter` com `INBOX_FILTERS`. Quando a
-  união vem do DOMÍNIO (`BudgetStatus`, `ApprovalStatus`), o `data/` guarda só a tabela que a rotula
+  união vem do DOMÍNIO (`BudgetStatus`, `NotificationType`), o `data/` guarda só a tabela que a rotula
   — a tela nunca redeclara o que o domínio já decidiu. O `types/` é pra **modelo de dado** que não é
   o tipo de nenhuma constante. Props que só o próprio arquivo lê (sem `export`) ficam inline — não
   move.
 - **JSX de wrapper repetido entre `page.tsx` do MESMO route group sobe pro `layout.tsx` do grupo** —
   se a moldura é igual pra todo mundo do grupo, duplicá-la em cada `page.tsx` só porque cada rota tem
-  o seu arquivo é repetição à toa. Foi o caso do `(public)`: login, register e pending repetiam o
+  o seu arquivo é repetição à toa. Foi o caso do `(public)`: login e register repetiam o
   mesmo `<main>` de fundo radial + o card `max-w-md` centralizado. ⚠️ A guarda de
   `Loading fullScreen` fica **fora** desse wrapper: ela reivindica a viewport inteira e o `max-w-md`
   do card a espremeria. E a regra é sobre JSX **idêntico** — o `<h1>` de cada tela não sobe, porque
@@ -593,6 +588,10 @@ a mesma decisão que o resto do front já toma:
   `metadata.appleWebApp` no `layout.tsx`, que é o que dá o comportamento de "adicionar à tela
   inicial" no iOS. Cores vêm de `COLORS` do `ui` — o ícone da tela inicial não pode divergir do app
   que ele abre.
+  **O nome instalado é "Financial Management"**, e ele mora em TRÊS lugares que precisam bater:
+  `name`/`short_name` do manifest (Android/desktop), `metadata.appleWebApp.title` (iOS) e o
+  `metadata.title` da aba. Divergir faz o mesmo app aparecer com dois nomes dependendo de onde foi
+  instalado.
 - **Ícones gerados**, não desenhados: `app/icons/icon-mark.tsx` renderiza o mesmo "F" da sidebar via
   `ImageResponse` (`next/og`, que já vem com o Next) e as cinco rotas em `app/icons/*` só escolhem o
   tamanho — um gerador em vez de cinco PNGs quase idênticos. São `force-static`, então saem prontas
@@ -627,7 +626,7 @@ do web.
   É a única divergência consciente da regra "o arquivo de rota É a tela" — e existe por imposição do
   roteador, não por gosto.
 - **Cinco abas** (`(private)/(tabs)/`): mês, lançamentos, orçamentos, renda e "Mais"; o resto
-  (fixos, categorias, notificações, perfil, contas) é empilhado por cima e ganha o botão de voltar
+  (fixos, categorias, notificações, perfil) é empilhado por cima e ganha o botão de voltar
   de graça. A mesma divisão do web abaixo de `sm`.
 - **Ícones**: `react-native-svg` com **o mesmo path data** do web (`src/data/icons.tsx`). A cor vem
   por prop (`ColorValue`), porque React Native não tem herança de CSS pra `currentColor`.

@@ -26,9 +26,9 @@ dashboard, junto com o consumo de cada orçamento e para onde o dinheiro foi.
 worker lança sozinho todo mês, avisando quando lança. Dia 31 em fevereiro entra no último dia — não
 pula nem vira março.
 
-**Acesso.** Cada usuário vê **apenas** o que é dele. Não existe visão compartilhada; o
-administrador existe só para liberar (ou barrar) o cadastro de alguém, e não enxerga a finança de
-ninguém.
+**Acesso.** Qualquer pessoa se cadastra e entra na hora — não existe fila nem aprovação. Cada
+usuário vê **apenas** o que é dele: não há visão compartilhada nem conta privilegiada que enxergue
+a finança de ninguém.
 
 ## Web e app
 
@@ -52,8 +52,9 @@ via BullMQ). Os fronts são o **web** (Next.js) e o **mobile** (Expo). Postgres 
 docker no dev.
 
 O padrão de arquitetura, autenticação e convenções vem do projeto **Devs-Bet** — a autenticação é
-praticamente cópia direta (JWT stateful com rotação e detecção de reuso, portaria de aprovação,
-login com Google desligado pela ausência da chave).
+praticamente cópia direta (JWT stateful com rotação e detecção de reuso, login com Google
+desligado pela ausência da chave) — sem a portaria de aprovação dele, porque aqui o cadastro é
+aberto ao público.
 
 ## Rodando localmente
 
@@ -73,16 +74,8 @@ pendentes (`prisma migrate deploy`) e inicia backend + worker + web em watch:
 
 ### O primeiro usuário
 
-A plataforma é fechada: **toda conta nasce pendente** e precisa ser liberada por um administrador.
-Num banco zerado não existe administrador ainda, então o primeiro acesso se resolve por SQL — o
-mesmo processo usado para promover alguém a admin depois:
-
-```bash
-docker compose exec db psql -U postgres -d financial \
-  -c "UPDATE users SET role = 'admin', approval_status = 'approved' WHERE email = 'voce@exemplo.com';"
-```
-
-Feito isso, esse usuário libera os demais pela tela **Contas** (`/admin`).
+Não tem passo nenhum: abra `/register`, crie a conta e você já cai na visão do mês. O cadastro é
+aberto e o login sai junto dele — nada de SQL para desbloquear ninguém.
 
 ### Rodando o app
 
