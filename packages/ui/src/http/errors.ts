@@ -23,11 +23,3 @@ export function errorMessage(
   }
   return fallback
 }
-
-/** The first domain code of a failure, when the caller needs to branch on it
- * (the login does, to route a pending account to its own screen). */
-export function errorCode(error: unknown): string | null {
-  if (!(error instanceof AxiosError)) return null
-  const body = error.response?.data as ErrorEnvelope | undefined
-  return body?.errors?.[0]?.code ?? null
-}

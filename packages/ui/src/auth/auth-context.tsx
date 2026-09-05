@@ -5,15 +5,16 @@ import type { LoginUserInput, RegisterUserInput, UserDTO } from '@auth/adapters'
 import { api, applyTokens, clearTokens, refreshAccessToken, type AuthTokens } from '../http/api'
 import { clientConfig } from '../config'
 
-// Reuses the DTO from adapters: both apps need the identity, the role (admin
-// UI) and the display fields the navigation shows.
-export type AuthenticatedUser = Pick<UserDTO, 'id' | 'email' | 'role' | 'nickname' | 'avatarUrl'>
+// Reuses the DTO from adapters: both apps need the identity and the display
+// fields the navigation shows.
+export type AuthenticatedUser = Pick<UserDTO, 'id' | 'email' | 'nickname' | 'avatarUrl'>
 
 interface Auth {
   user: AuthenticatedUser | null
   loading: boolean
-  isAdmin: boolean
   login: (input: LoginUserInput) => Promise<void>
+  /** Creates the account AND opens the session — the platform is open, so there
+   * is nothing between signing up and being in. */
   register: (input: RegisterUserInput) => Promise<void>
   /** Google ID token (from the web's NextAuth bridge) — the backend verifies it
    * and issues the SAME session as `login`. */
@@ -72,11 +73,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [loadUser],
   )
 
-  // Sign-up does NOT log anyone in: this is a closed platform, so the account is
-  // created and then waits for an admin to release it.
-  const register = useCallback(async (input: RegisterUserInput) => {
-    await api().post('/auth/register', input)
-  }, [])
+  // Signing up hands back no session (RegisterUser only creates the identity),
+  // so the very same credentials are posted straight to /auth/login. Two calls,
+  // one gesture: the person types a password once and lands inside.
+  const register = useCallback(
+    async (input: RegisterUserInput) => {
+      await api().post('/auth/register', input)
+      await login({ email: input.email, password: input.password })
+    },
+    [login],
+  )
 
   const loginWithGoogle = useCallback(
     async (idToken: string) => {
@@ -109,7 +115,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         loading,
-        isAdmin: user?.role === 'admin',
         login,
         register,
         loginWithGoogle,

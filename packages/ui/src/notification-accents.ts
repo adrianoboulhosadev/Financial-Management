@@ -13,10 +13,6 @@ const ACCENTS: Record<NotificationType, string> = {
   budget_warning: SEMANTIC.warning,
   budget_exceeded: SEMANTIC.negative,
   recurrence_posted: SEMANTIC.accent,
-  account_approved: SEMANTIC.positive,
-  // The only one without a money meaning — it is an errand for the admin, not
-  // news about someone's month.
-  admin_signup_pending: '#a78bfa',
 }
 
 export function accentFor(type: NotificationType): string {
