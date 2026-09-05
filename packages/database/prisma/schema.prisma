@@ -10,27 +10,24 @@ datasource db {
 
 // --- auth ----------------------------------------------------------------------
 
-// Identity/credential. `role` drives authorization (the owner is `admin`); the
-// rich domain `User` maps email/password/role to value objects. Money lives in
-// the finance contexts, never here. `password` is nullable: a user created via
-// an OAuth provider (see OAuthAccount) has none — LoginUser (email+password)
-// already rejects a null password as invalid credentials.
+// Identity/credential. The rich domain `User` maps email/password to value
+// objects. Money lives in the finance contexts, never here. `password` is
+// nullable: a user created via an OAuth provider (see OAuthAccount) has none —
+// LoginUser (email+password) already rejects a null password as invalid
+// credentials.
 //
-// `approvalStatus` gates the closed platform (pending | approved | rejected) and
-// the COLUMN defaults to "pending", same as the entity: this project has had
-// versioned migrations since its first commit, so there is no legacy row to
-// carry — a brand-new account waits for an admin whichever path created it.
+// There is no role and no approval column: the product is open to the public,
+// every account owns only its own finances, and `active` (soft delete) is the
+// single thing that can stop one from logging in.
 model User {
-  id             String    @id @default(uuid())
-  email          String    @unique
-  password       String?
-  role           String    @default("user")
-  active         Boolean   @default(true)
-  nickname       String?
-  avatarUrl      String?   @map("avatar_url")
-  approvalStatus String    @default("pending") @map("approval_status")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  lastLoginAt    DateTime? @map("last_login_at")
+  id          String    @id @default(uuid())
+  email       String    @unique
+  password    String?
+  active      Boolean   @default(true)
+  nickname    String?
+  avatarUrl   String?   @map("avatar_url")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  lastLoginAt DateTime? @map("last_login_at")
 
   @@map("users")
 }
@@ -70,10 +67,10 @@ model OAuthAccount {
 
 // --- notification --------------------------------------------------------------
 
-// One line in a user's inbox. `userId` is a LOGICAL FK (the recipient may be the
-// owner of the money or an admin); title/body are stored ALREADY RENDERED by the
-// domain (Notification.for) — a notification records what was said at the time,
-// so a later wording change never rewrites history.
+// One line in a user's inbox. `userId` is a LOGICAL FK to the owner of the
+// money; title/body are stored ALREADY RENDERED by the domain
+// (Notification.for) — a notification records what was said at the time, so a
+// later wording change never rewrites history.
 //
 // The @@unique triple is what makes delivery IDEMPOTENT: a retried recurrence
 // job or a re-enqueued budget check re-sends the same (userId, type,
