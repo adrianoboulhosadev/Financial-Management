@@ -23,8 +23,8 @@ export interface RequestWithStreamUser extends Request {
  * synchronously — Nest does not await it).
  *
  * Mirrors the AuthMiddleware's two checks: verify the JWT, then RE-READ the
- * account, so a revoked one cannot keep a stream alive on a token issued
- * before the revocation.
+ * account, so a deactivated one cannot keep a stream alive on a token issued
+ * before the deactivation.
  */
 @Injectable()
 export class StreamAuthGuard implements CanActivate {
@@ -45,9 +45,9 @@ export class StreamAuthGuard implements CanActivate {
 
     const user = await this.prisma.user.findUnique({
       where: { id: payload!.userId },
-      select: { id: true, active: true, approvalStatus: true },
+      select: { id: true, active: true },
     })
-    if (!user || !user.active || user.approvalStatus !== 'approved') this.refuse()
+    if (!user || !user.active) this.refuse()
 
     request.streamUserId = user!.id
     return true

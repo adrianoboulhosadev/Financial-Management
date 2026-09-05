@@ -11,7 +11,6 @@ import { GoogleOAuthVerifier } from './google-oauth-verifier'
 import { REFRESH_COOKIE_OPTIONS } from './refresh-cookie-options'
 import { clientTypeOf } from './client-type'
 import { GoogleLoginGuard } from './google-login.guard'
-import { DomainEventListener } from '../notification/domain-event-listener'
 
 @Controller('auth')
 export class AuthController {
@@ -22,7 +21,6 @@ export class AuthController {
     private readonly jwtProvider: JsonWebTokenProvider,
     private readonly oauthAccountRepository: PrismaOAuthAccountRepository,
     private readonly googleVerifier: GoogleOAuthVerifier,
-    private readonly events: DomainEventListener,
   ) {}
 
   // Optional ports: each method uses only what it needs (register, login, refresh).
@@ -35,7 +33,6 @@ export class AuthController {
       this.sessionRepository,
       this.oauthAccountRepository,
       this.googleVerifier,
-      this.events,
     )
   }
 
@@ -64,9 +61,8 @@ export class AuthController {
     return { accessToken: tokens.accessToken }
   }
 
-  // The account is born pending (see the front door in CLAUDE.md); telling the
-  // admins someone is at the gate is the DomainEventListener's job, off the
-  // UserRegistered event the use case publishes.
+  // Creating the account is all there is to it: the front logs straight in with
+  // the same credentials afterwards (see the web/app AuthProvider).
   @Post('register')
   async register(@Body() input: RegisterUserInput) {
     await this.facade().registerUser(input)

@@ -7,8 +7,7 @@ import { UploadAvatarController } from './upload-avatar.controller'
 
 /**
  * Both uploads here are SELF-SERVICE: the authenticated user sends their own
- * receipt or their own avatar, so the AuthMiddleware is the whole guard — there
- * is no admin-only upload in this product.
+ * receipt or their own avatar, so the AuthMiddleware is the whole guard.
  */
 @Module({
   imports: [DbModule, AuthModule],

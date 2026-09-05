@@ -1,32 +1,17 @@
 import { Injectable } from '@nestjs/common'
-import { UserRepository, UserQueryRepository, User, UserDTO, ApprovalStatus } from '@auth/adapters'
-import { Role } from 'shared'
+import { UserRepository, UserQueryRepository, User, UserDTO } from '@auth/adapters'
 import { PrismaService } from '../db/prisma.service'
 
 // The columns the read side projects — the password is never among them.
 const USER_DTO_SELECT = {
   id: true,
   email: true,
-  role: true,
   active: true,
   nickname: true,
   avatarUrl: true,
-  approvalStatus: true,
   createdAt: true,
   lastLoginAt: true,
 } as const
-
-type UserDTORow = {
-  id: string
-  email: string
-  role: string
-  active: boolean
-  nickname: string | null
-  avatarUrl: string | null
-  approvalStatus: string
-  createdAt: Date
-  lastLoginAt: Date | null
-}
 
 @Injectable()
 export class PrismaUserRepository implements UserRepository, UserQueryRepository {
@@ -38,21 +23,17 @@ export class PrismaUserRepository implements UserRepository, UserQueryRepository
     id: string
     email: string
     password: string | null
-    role: string
     active: boolean
     nickname: string | null
     avatarUrl: string | null
-    approvalStatus: string
   }): User {
     return new User({
       id: row.id,
       email: row.email,
       password: row.password ?? undefined,
-      role: row.role as Role,
       active: row.active,
       nickname: row.nickname,
       avatarUrl: row.avatarUrl,
-      approvalStatus: row.approvalStatus as ApprovalStatus,
     })
   }
 
@@ -62,13 +43,9 @@ export class PrismaUserRepository implements UserRepository, UserQueryRepository
         id: user.id.value,
         email: user.email.value,
         password: user.password?.value ?? null,
-        role: user.role,
         active: user.active,
         nickname: user.nickname,
         avatarUrl: user.avatarUrl,
-        // Always explicit: the column's "approved" default exists only to carry
-        // the accounts that predate the approval gate (see schema.prisma).
-        approvalStatus: user.approvalStatus,
         // createdAt/lastLoginAt are infra: the DB handles them (default/update).
       },
     })
@@ -103,29 +80,13 @@ export class PrismaUserRepository implements UserRepository, UserQueryRepository
     await this.prisma.user.update({ where: { id }, data: fields })
   }
 
-  async updateApprovalStatus(id: string, status: ApprovalStatus): Promise<void> {
-    await this.prisma.user.update({ where: { id }, data: { approvalStatus: status } })
-  }
-
   async delete(id: string): Promise<void> {
     await this.prisma.user.delete({ where: { id } })
   }
 
-  // Read side (CQRS): plain query projection, never the password.
+  // Read side (CQRS): plain query projection, never the password. The select
+  // already IS the DTO, so there is nothing to map.
   async findByIdQuery(id: string): Promise<UserDTO | null> {
-    const row = await this.prisma.user.findUnique({ where: { id }, select: USER_DTO_SELECT })
-    return row ? this.toDTO(row) : null
-  }
-
-  async listUsersQuery(): Promise<UserDTO[]> {
-    const rows = await this.prisma.user.findMany({
-      select: USER_DTO_SELECT,
-      orderBy: { createdAt: 'desc' },
-    })
-    return rows.map((row) => this.toDTO(row))
-  }
-
-  private toDTO(row: UserDTORow): UserDTO {
-    return { ...row, role: row.role as Role, approvalStatus: row.approvalStatus as ApprovalStatus }
+    return this.prisma.user.findUnique({ where: { id }, select: USER_DTO_SELECT })
   }
 }

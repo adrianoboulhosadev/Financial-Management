@@ -6,7 +6,7 @@ import { StreamAuthGuard, RequestWithStreamUser } from './stream-auth.guard'
 /**
  * The live channel that replaced the bell's polling: the browser holds one
  * EventSource open here and the backend pushes a ping whenever THIS user's
- * inbox changes (see LiveUpdates / DomainEventListener).
+ * inbox changes (see LiveUpdates).
  *
  * A separate controller from NotificationController on purpose: the
  * AuthMiddleware is applied per CLASS (`forRoutes(NotificationController)`) and

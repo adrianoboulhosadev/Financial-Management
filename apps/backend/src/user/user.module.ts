@@ -4,14 +4,13 @@ import { AuthModule } from '../auth/auth.module'
 import { AuthMiddleware } from '../auth/auth.middleware'
 import { NotificationStoreModule } from '../notification/notification-store.module'
 import { UserController } from './user.controller'
-import { AdminUserController } from './admin-user.controller'
 
 @Module({
   imports: [DbModule, AuthModule, NotificationStoreModule],
-  controllers: [UserController, AdminUserController],
+  controllers: [UserController],
 })
 export class UserModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(AuthMiddleware).forRoutes(UserController, AdminUserController)
+    consumer.apply(AuthMiddleware).forRoutes(UserController)
   }
 }

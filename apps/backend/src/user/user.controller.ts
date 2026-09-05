@@ -30,17 +30,16 @@ export class UserController {
   // Has the full UserDTO available (the middleware already read it fresh), so
   // the presenter just returns what the front needs.
   @Get('me')
-  me(@authenticatedUser() user: UserDTO): Pick<UserDTO, 'id' | 'email' | 'role' | 'nickname' | 'avatarUrl'> {
+  me(@authenticatedUser() user: UserDTO): Pick<UserDTO, 'id' | 'email' | 'nickname' | 'avatarUrl'> {
     return {
       id: user.id,
       email: user.email,
-      role: user.role,
       nickname: user.nickname,
       avatarUrl: user.avatarUrl,
     }
   }
 
-  // Display-only edit (nickname/avatar) — never email/password/role.
+  // Display-only edit (nickname/avatar) — never email/password.
   @Patch('me')
   @HttpCode(204)
   async updateProfile(@Body() input: UpdateProfileInput, @authenticatedUser() user: UserDTO) {
