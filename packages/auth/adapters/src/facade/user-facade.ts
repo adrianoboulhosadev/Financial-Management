@@ -9,7 +9,6 @@ import {
   OAuthAccountRepository,
   GoogleTokenVerifier,
 } from '@auth/core'
-import { AuthenticatedActor, EventPublisher } from 'shared'
 import {
   RegisterUserController,
   LoginUserController,
@@ -20,8 +19,6 @@ import {
   RefreshTokenController,
   LoginWithGoogleController,
   UpdateProfileController,
-  SetUserApprovalController,
-  ListUsersController,
 } from '../controllers'
 import {
   RegisterUserInput,
@@ -29,7 +26,6 @@ import {
   ChangePasswordInput,
   LoginWithGoogleInput,
   UpdateProfileInput,
-  SetUserApprovalInput,
 } from '../@types'
 
 /**
@@ -47,17 +43,10 @@ export default class UserFacade {
     private readonly sessionRepository?: AuthSessionRepository,
     private readonly oauthAccountRepository?: OAuthAccountRepository,
     private readonly googleVerifier?: GoogleTokenVerifier,
-    // Domain events raised by sign-up / the front door (see @auth/core's
-    // events): the app turns them into notifications + a live update.
-    private readonly eventPublisher?: EventPublisher,
   ) {}
 
   async registerUser(input: RegisterUserInput): Promise<void> {
-    const controller = new RegisterUserController(
-      this.userRepository!,
-      this.hashProvider!,
-      this.eventPublisher,
-    )
+    const controller = new RegisterUserController(this.userRepository!, this.hashProvider!)
     await controller.execute(input)
   }
 
@@ -81,7 +70,7 @@ export default class UserFacade {
     return controller.execute(token, secret)
   }
 
-  async findUser(id: string): Promise<Pick<UserDTO, 'id' | 'email' | 'role'>> {
+  async findUser(id: string): Promise<Pick<UserDTO, 'id' | 'email'>> {
     const controller = new FindUserByIdController(this.userQueryRepository!)
     return controller.execute(id)
   }
@@ -104,21 +93,6 @@ export default class UserFacade {
   async updateProfile(input: UpdateProfileInput, userId: string): Promise<void> {
     const controller = new UpdateProfileController(this.userRepository!)
     await controller.execute(input, userId)
-  }
-
-  // Admin-only (the AdminUseCase base re-checks the actor's role in the domain).
-  async setUserApproval(input: SetUserApprovalInput, actor: AuthenticatedActor): Promise<void> {
-    const controller = new SetUserApprovalController(
-      this.userRepository!,
-      this.sessionRepository!,
-      this.eventPublisher,
-    )
-    await controller.execute(input, actor)
-  }
-
-  async listUsers(actor: AuthenticatedActor): Promise<UserDTO[]> {
-    const controller = new ListUsersController(this.userQueryRepository!)
-    return controller.execute(actor)
   }
 
   async loginWithGoogle(input: LoginWithGoogleInput): Promise<JwtTokens> {

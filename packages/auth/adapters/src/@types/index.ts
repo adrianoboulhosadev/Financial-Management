@@ -4,7 +4,6 @@ import {
   ChangePasswordInput,
   LoginWithGoogleInput,
   UpdateProfileInput,
-  SetUserApprovalInput,
 } from './inputs'
 
 export type {
@@ -13,5 +12,4 @@ export type {
   ChangePasswordInput,
   LoginWithGoogleInput,
   UpdateProfileInput,
-  SetUserApprovalInput,
 }
