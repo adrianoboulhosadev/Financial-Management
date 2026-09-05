@@ -13,7 +13,7 @@ const sansFont = Inter({ subsets: ['latin'], variable: '--font-sans' })
 const monoFont = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' })
 
 export const metadata: Metadata = {
-  title: 'Financial',
+  title: 'Financial Management',
   description: 'Controle de gastos: categorias, orçamentos e quanto sobra no mês.',
   // app/manifest.ts wires the <link rel="manifest"> by itself; these two point
   // at the routes in app/icons/ — custom routes rather than the reserved
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Financial',
+    title: 'Financial Management',
   },
 }
 

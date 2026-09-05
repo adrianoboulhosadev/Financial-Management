@@ -23,9 +23,10 @@ export function useRegister() {
   const submit = form.handleSubmit(async ({ email, password }) => {
     setSubmitting(true)
     try {
+      // `register` also opens the session (see the shared AuthProvider), so the
+      // person goes straight to their month instead of back to the login form.
       await registerUser({ email, password })
-      // Signing up does NOT sign anyone in: the account waits for an admin.
-      router.replace('/pending')
+      router.replace('/dashboard')
     } catch (error) {
       notify.error(errorMessage(error, 'Não foi possível criar a conta.'))
     } finally {

@@ -9,6 +9,5 @@ export const SCREEN_TITLES: Record<string, string> = {
   '/categories': 'Categorias',
   '/notifications': 'Notificações',
   '/profile': 'Perfil',
-  '/admin': 'Contas',
   '/more': 'Mais',
 }

@@ -5,14 +5,13 @@ import { useRedirectAuthenticated } from '@/hooks/use-redirect-authenticated'
 import { Loading } from '@/components/loading'
 
 /**
- * Public area (login/register/pending). The guard sends an already-signed-in
- * visitor to the dashboard.
+ * Public area (login/register). The guard sends an already-signed-in visitor to
+ * the dashboard.
  *
- * The centered card chrome lives HERE and not in each page: all three screens
- * wrap the same box, and repeating it three times only because each route has
- * its own file is repetition for nothing. The loading guard stays OUTSIDE the
- * wrapper — it claims the whole viewport, which the card's max-width would
- * squeeze.
+ * The centered card chrome lives HERE and not in each page: both screens wrap
+ * the same box, and repeating it only because each route has its own file is
+ * repetition for nothing. The loading guard stays OUTSIDE the wrapper — it
+ * claims the whole viewport, which the card's max-width would squeeze.
  */
 export default function PublicLayout({ children }: { children: ReactNode }) {
   const { allowed } = useRedirectAuthenticated()

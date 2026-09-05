@@ -10,8 +10,8 @@ import { COLORS } from 'ui'
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Financial',
-    short_name: 'Financial',
+    name: 'Financial Management',
+    short_name: 'Financial Management',
     description: 'Controle de gastos: categorias, orçamentos e quanto sobra no mês.',
     start_url: '/',
     display: 'standalone',

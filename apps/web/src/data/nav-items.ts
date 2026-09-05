@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
 import {
-  AdminIcon,
   BudgetsIcon,
   CategoriesIcon,
   DashboardIcon,
@@ -17,7 +16,6 @@ export interface NavItem {
   /** Shorter label for the bottom tab bar, where the space is a phone's. */
   shortLabel?: string
   icon: (props: { className?: string }) => ReactNode
-  adminOnly?: boolean
   /** Earns a slot in the bottom tab bar. Everything else lives behind "Mais". */
   primary?: boolean
 }
@@ -45,7 +43,6 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/categories', label: 'Categorias', icon: CategoriesIcon },
   { href: '/notifications', label: 'Notificações', icon: NotificationsIcon },
   { href: '/profile', label: 'Perfil', icon: ProfileIcon },
-  { href: '/admin', label: 'Contas', icon: AdminIcon, adminOnly: true },
 ]
 
 /**

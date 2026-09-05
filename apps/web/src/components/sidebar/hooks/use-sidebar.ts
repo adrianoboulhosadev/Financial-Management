@@ -7,7 +7,7 @@ import { NAV_ITEMS } from '@/data/nav-items'
 
 export function useSidebar() {
   const pathname = usePathname()
-  const { user, isAdmin, logout } = useAuth()
+  const { user, logout } = useAuth()
   // The rail widens on click and reveals the labels.
   const [expanded, setExpanded] = useState(true)
 
@@ -18,7 +18,7 @@ export function useSidebar() {
     logout,
     expanded,
     toggle: () => setExpanded((current) => !current),
-    items: NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin),
+    items: NAV_ITEMS,
     isActive: (href: string) => pathname === href || pathname.startsWith(`${href}/`),
     displayName,
     initials: displayName.slice(0, 2).toUpperCase(),

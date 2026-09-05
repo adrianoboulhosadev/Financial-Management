@@ -12,7 +12,7 @@ export default function RegisterPage() {
     <>
       <h1 className="text-2xl font-semibold tracking-tight">Criar conta</h1>
       <p className="mt-1 text-sm text-ink-text-soft">
-        O acesso é liberado por um administrador depois do cadastro.
+        Leva um minuto e você já entra direto na sua visão do mês.
       </p>
 
       <form onSubmit={submit} className="mt-8 space-y-4">

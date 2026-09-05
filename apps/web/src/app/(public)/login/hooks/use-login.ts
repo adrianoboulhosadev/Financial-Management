@@ -4,7 +4,6 @@ import { useCallback, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useRouter } from 'next/navigation'
 import type { LoginUserInput } from '@auth/adapters'
-import { Errors } from 'shared'
 
 import { useGoogleOAuthBridge } from '@/hooks/use-google-oauth-bridge'
 import { useAuth, errorMessage } from 'ui'
@@ -27,12 +26,6 @@ export function useLogin() {
       await login(input)
       router.replace('/dashboard')
     } catch (error) {
-      // A legitimate account still waiting at the gate gets its own screen —
-      // an error toast would suggest they did something wrong.
-      if (isPendingApproval(error)) {
-        router.replace('/pending')
-        return
-      }
       notify.error(errorMessage(error, 'Não foi possível entrar.'))
     } finally {
       setSubmitting(false)
@@ -40,10 +33,4 @@ export function useLogin() {
   })
 
   return { form, submit, submitting }
-}
-
-function isPendingApproval(error: unknown): boolean {
-  const body = (error as { response?: { data?: { errors?: Array<{ code: string }> } } })?.response
-    ?.data
-  return body?.errors?.[0]?.code === Errors.ACCOUNT_PENDING_APPROVAL
 }
