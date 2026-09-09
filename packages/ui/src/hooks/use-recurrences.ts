@@ -13,7 +13,8 @@ import { clientConfig } from '../config'
 /**
  * The fixed monthly movements the worker posts on their own. Every write
  * invalidates the month's checklist too: a new bill is a new line to tick off,
- * and a paused one stops being owed.
+ * a paused one stops being owed, and one given a deadline leaves the list on
+ * the month it ends.
  */
 export function useRecurrences() {
   const queryClient = useQueryClient()

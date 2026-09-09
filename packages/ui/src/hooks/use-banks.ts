@@ -9,6 +9,7 @@ import type {
   UpdateBankInput,
   CreateCardInput,
 } from '@bank/adapters'
+import { CARD_BRAND_LABELS } from '../data/card-brands'
 import { api } from '../http/api'
 import { errorMessage } from '../http/errors'
 import { clientConfig } from '../config'
@@ -113,9 +114,11 @@ export function useBanks() {
     /** How a bank/card reads next to a movement. Empty when there is none, so a
      * caller can simply concatenate it. */
     bankNameOf: (bankId: string | null) => (bankId ? (bankById.get(bankId)?.name ?? '') : ''),
+    /** "Visa ····1234" — the brand and the last digits, which is how the card
+     * reads on a statement and the reason it needs no nickname. */
     cardLabelOf: (cardId: string | null) => {
       const card = cardId ? cardById.get(cardId) : undefined
-      return card ? `${card.name} ····${card.lastFourDigits}` : ''
+      return card ? `${CARD_BRAND_LABELS[card.brand]} ····${card.lastFourDigits}` : ''
     },
     createBank: createBank.mutate,
     creatingBank: createBank.isPending,

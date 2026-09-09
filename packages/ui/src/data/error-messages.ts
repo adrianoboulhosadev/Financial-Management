@@ -33,6 +33,7 @@ export const ERROR_MESSAGES: Record<string, string> = {
   [Errors.RECURRENCE_NOT_FOUND]: 'Lançamento fixo não encontrado.',
   [Errors.RECURRENCE_NOT_ACTIVE]: 'Este lançamento fixo está pausado.',
   [Errors.INVALID_DAY_OF_MONTH]: 'O dia do mês precisa estar entre 1 e 31.',
+  [Errors.INVALID_RECURRENCE_DURATION]: 'A duração precisa ser um número de meses maior que zero.',
   [Errors.RECURRENCE_NOT_VARIABLE]:
     'Só um fixo marcado como de valor variável aceita ajuste de valor no mês.',
   [Errors.INVALID_PAYMENT_METHOD]: 'Escolha uma forma de pagamento válida.',
@@ -46,14 +47,16 @@ export const ERROR_MESSAGES: Record<string, string> = {
   [Errors.BANK_ALREADY_EXISTS]: 'Você já cadastrou um banco com esse nome.',
   [Errors.BANK_IN_USE]: 'Este banco ainda tem cartões, lançamentos ou investimentos.',
   [Errors.CARD_NOT_FOUND]: 'Cartão não encontrado.',
-  [Errors.CARD_ALREADY_EXISTS]: 'Você já tem um cartão com esse nome neste banco.',
+  [Errors.CARD_ALREADY_EXISTS]: 'Você já cadastrou um cartão com esses 4 dígitos neste banco.',
   [Errors.CARD_IN_USE]: 'Este cartão já tem lançamentos.',
   [Errors.INVALID_CARD_KIND]: 'Escolha se o cartão é de débito, crédito ou os dois.',
+  [Errors.INVALID_CARD_BRAND]: 'Escolha a bandeira do cartão.',
   [Errors.INVALID_CARD_LAST_DIGITS]: 'Informe os 4 últimos dígitos do cartão.',
   // investment
   [Errors.INVESTMENT_NOT_FOUND]: 'Investimento não encontrado.',
   [Errors.INVESTMENT_ALREADY_EXISTS]: 'Você já tem um investimento com esse nome.',
   [Errors.INVALID_INVESTMENT_KIND]: 'Escolha um tipo de investimento válido.',
+  [Errors.INVESTMENT_NOT_ACTIVE]: 'Este investimento está resgatado. Reative antes de aportar.',
   // income
   [Errors.INCOME_SOURCE_NOT_FOUND]: 'Fonte de renda não encontrada.',
   [Errors.INCOME_SOURCE_ALREADY_EXISTS]: 'Você já tem uma fonte de renda com esse nome.',

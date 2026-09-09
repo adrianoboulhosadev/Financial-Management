@@ -6,6 +6,7 @@ import type {
   PortfolioDTO,
   CreateInvestmentInput,
   UpdateInvestmentInput,
+  ContributeToInvestmentInput,
 } from '@investment/adapters'
 import { api } from '../http/api'
 import { errorMessage } from '../http/errors'
@@ -35,6 +36,13 @@ export function useInvestments() {
   })
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['investments'] })
+
+  /** A contribution moves money out of the month as well as into the
+   * portfolio, so the report has to be re-read alongside the investments. */
+  const invalidateWithReport = () => {
+    invalidate()
+    queryClient.invalidateQueries({ queryKey: ['report'] })
+  }
 
   const create = useMutation({
     mutationFn: async (input: CreateInvestmentInput) => {
@@ -69,13 +77,27 @@ export function useInvestments() {
       notifier.error(errorMessage(error, 'Não foi possível atualizar o investimento.')),
   })
 
+  const contribute = useMutation({
+    mutationFn: async ({
+      id,
+      ...input
+    }: ContributeToInvestmentInput & { id: string }) => {
+      await api().post(`/investment/${id}/contribution`, input)
+    },
+    onSuccess: () => {
+      notifier.success('Aporte registrado.')
+      invalidateWithReport()
+    },
+    onError: (error) => notifier.error(errorMessage(error, 'Não foi possível registrar o aporte.')),
+  })
+
   const remove = useMutation({
     mutationFn: async (investmentId: string) => {
       await api().delete(`/investment/${investmentId}`)
     },
     onSuccess: () => {
       notifier.success('Investimento excluído.')
-      invalidate()
+      invalidateWithReport()
     },
     onError: (error) =>
       notifier.error(errorMessage(error, 'Não foi possível excluir o investimento.')),
@@ -95,5 +117,9 @@ export function useInvestments() {
     toggleActive: (investment: InvestmentDTO) =>
       setActive.mutate({ id: investment.id, active: !investment.active }),
     remove: remove.mutate,
+    /** Puts money into an investment the owner already has — what the dashboard
+     * offers when a month has something left over. */
+    contribute: contribute.mutate,
+    contributing: contribute.isPending,
   }
 }

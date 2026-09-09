@@ -19,6 +19,9 @@ export interface MonthlyReport {
   committedExpenseCents: number
   /** expenses + commitments: what the dashboard shows as "saiu". */
   totalExpenseCents: number
+  /** What already went into investments this month — off the leftover, because
+   * it left the account on purpose. */
+  investedCents: number
   leftoverCents: number
   /** Money that moved, per category — what the ceilings are measured against. */
   byCategory: CategoryTotalDTO[]
