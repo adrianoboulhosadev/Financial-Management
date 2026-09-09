@@ -33,6 +33,11 @@ export class WorkerRecurrenceRepository implements RecurrenceRepository {
           amount: row.amount,
           dayOfMonth: row.dayOfMonth,
           active: row.active,
+          variableAmount: row.variableAmount,
+          autoPaid: row.autoPaid,
+          bankId: row.bankId,
+          cardId: row.cardId,
+          paymentMethod: row.paymentMethod,
           nextRunAt: row.nextRunAt,
           lastRunAt: row.lastRunAt,
         })
@@ -54,6 +59,9 @@ export class WorkerRecurrenceRepository implements RecurrenceRepository {
             amount: transaction.amount.cents,
             occurredOn: transaction.occurredOn,
             recurrenceId: transaction.recurrenceId,
+            bankId: transaction.bankId,
+            cardId: transaction.cardId,
+            paymentMethod: transaction.paymentMethod,
           },
         ],
         skipDuplicates: true,
@@ -110,5 +118,13 @@ export class WorkerRecurrenceRepository implements RecurrenceRepository {
 
   async existsByCategory(): Promise<boolean> {
     throw new Error('the worker does not answer category usage')
+  }
+
+  async existsByBank(): Promise<boolean> {
+    throw new Error('the worker does not answer bank usage')
+  }
+
+  async existsByCard(): Promise<boolean> {
+    throw new Error('the worker does not answer card usage')
   }
 }

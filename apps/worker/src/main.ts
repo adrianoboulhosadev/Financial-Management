@@ -13,6 +13,7 @@ import {
   BudgetCheckJobData,
 } from './queue/queue.config'
 import { WorkerRecurrenceRepository } from './persistence/worker-recurrence-repository'
+import { WorkerRecurrencePaymentRepository } from './persistence/worker-recurrence-payment-repository'
 import {
   WorkerTransactionQueryRepository,
   WorkerBudgetQueryRepository,
@@ -37,6 +38,7 @@ import { pushLiveUpdates, closeLiveUpdates } from './live-updates'
  */
 
 const recurrenceRepository = new WorkerRecurrenceRepository()
+const recurrencePaymentRepository = new WorkerRecurrencePaymentRepository()
 const recurrenceQueue = new BullMqRecurrenceQueue()
 const transactionQueries = new WorkerTransactionQueryRepository()
 const budgetQueries = new WorkerBudgetQueryRepository()
@@ -48,13 +50,16 @@ const recurrenceWorker = new Worker<RecurrenceJobData>(
     const { recurrenceId } = job.data
     // The facade posts the movement, advances the schedule and files the
     // "posted" notification in ONE transaction (see WorkerRecurrenceRepository),
-    // then schedules next month through the queue port.
+    // then schedules next month through the queue port. The payment port is
+    // what lets a VARIABLE bill post the figure the owner wrote down for the
+    // month rather than the estimate.
     const facade = new TransactionFacade(
       undefined,
       undefined,
       recurrenceRepository,
       undefined,
       recurrenceQueue,
+      recurrencePaymentRepository,
     )
     await facade.runRecurrence(recurrenceId)
 
