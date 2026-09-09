@@ -35,3 +35,12 @@ export interface UpdateInvestmentInput {
 export interface SetInvestmentActiveInput {
   active: boolean
 }
+
+/** Money put into an investment the owner already has — an "aporte", typically
+ * what was left over at the end of a month. */
+export interface ContributeToInvestmentInput {
+  // INTEGER CENTS.
+  amount: number
+  // 'YYYY-MM-DD'; the day the money moved.
+  occurredOn: string
+}

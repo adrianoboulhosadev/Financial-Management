@@ -122,6 +122,24 @@ export class Investment extends Entity<Investment, InvestmentProps> {
     if (fields.bankId !== undefined) this.bankId = fields.bankId
   }
 
+  /**
+   * Money put IN after it was opened — an "aporte", typically what was left
+   * over at the end of a month.
+   *
+   * It raises what the investment is WORTH as well as what was applied, and
+   * that pairing is the whole point: the 200 reais are inside it now, so
+   * raising only the applied amount would report the contribution as an instant
+   * loss of exactly 200. An investment with no current value stays without one
+   * — it is already worth what went in, so there is nothing to correct.
+   */
+  contribute(amountCents: number): void {
+    if (!this.active) ValidationError.throwError(Errors.INVESTMENT_NOT_ACTIVE, this.id.value)
+    const contribution = Investment.validAmount(amountCents)
+
+    this.investedAmount = this.investedAmount.add(contribution)
+    if (this.currentAmount) this.currentAmount = this.currentAmount.add(contribution)
+  }
+
   /** Redeemed or closed — off the portfolio total, still on the books. */
   deactivate(): void {
     this.active = false

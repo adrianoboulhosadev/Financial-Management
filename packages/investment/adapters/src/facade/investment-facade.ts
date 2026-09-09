@@ -1,6 +1,8 @@
 import {
   InvestmentRepository,
   InvestmentQueryRepository,
+  InvestmentContributionRepository,
+  InvestmentContributionQueryRepository,
   InvestmentDTO,
   PortfolioDTO,
 } from '@investment/core'
@@ -11,11 +13,14 @@ import {
   DeleteInvestmentController,
   ListMyInvestmentsController,
   GetMyPortfolioController,
+  ContributeToInvestmentController,
+  GetInvestedInPeriodController,
 } from '../controllers'
 import {
   CreateInvestmentInput,
   UpdateInvestmentInput,
   SetInvestmentActiveInput,
+  ContributeToInvestmentInput,
 } from '../@types'
 
 /**
@@ -27,6 +32,8 @@ export default class InvestmentFacade {
   constructor(
     private readonly repository?: InvestmentRepository,
     private readonly queryRepository?: InvestmentQueryRepository,
+    private readonly contributionRepository?: InvestmentContributionRepository,
+    private readonly contributionQueryRepository?: InvestmentContributionQueryRepository,
   ) {}
 
   async createInvestment(input: CreateInvestmentInput, ownerId: string): Promise<void> {
@@ -59,5 +66,27 @@ export default class InvestmentFacade {
 
   async getMyPortfolio(ownerId: string): Promise<PortfolioDTO> {
     return new GetMyPortfolioController(this.queryRepository!).execute(ownerId)
+  }
+
+  /** Puts money into an investment the owner already has — typically what was
+   * left over at the end of a month. */
+  async contributeToInvestment(
+    investmentId: string,
+    input: ContributeToInvestmentInput,
+    ownerId: string,
+  ): Promise<void> {
+    await new ContributeToInvestmentController(
+      this.repository!,
+      this.contributionRepository!,
+    ).execute(investmentId, input, ownerId)
+  }
+
+  /** How much of a month went into investments, in cents — what the monthly
+   * report subtracts from the leftover. */
+  async getInvestedInPeriod(ownerId: string, period: string): Promise<number> {
+    return new GetInvestedInPeriodController(this.contributionQueryRepository!).execute(
+      ownerId,
+      period,
+    )
   }
 }

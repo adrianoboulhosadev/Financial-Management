@@ -4,6 +4,8 @@ import SetInvestmentActiveController from './set-investment-active-controller'
 import DeleteInvestmentController from './delete-investment-controller'
 import ListMyInvestmentsController from './list-my-investments-controller'
 import GetMyPortfolioController from './get-my-portfolio-controller'
+import ContributeToInvestmentController from './contribute-to-investment-controller'
+import GetInvestedInPeriodController from './get-invested-in-period-controller'
 
 export {
   CreateInvestmentController,
@@ -12,4 +14,6 @@ export {
   DeleteInvestmentController,
   ListMyInvestmentsController,
   GetMyPortfolioController,
+  ContributeToInvestmentController,
+  GetInvestedInPeriodController,
 }

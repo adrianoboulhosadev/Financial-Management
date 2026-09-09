@@ -1,3 +1,13 @@
-import type { InvestmentRepository, InvestmentQueryRepository } from '@investment/core'
+import type {
+  InvestmentRepository,
+  InvestmentQueryRepository,
+  InvestmentContributionRepository,
+  InvestmentContributionQueryRepository,
+} from '@investment/core'
 
-export type { InvestmentRepository, InvestmentQueryRepository }
+export type {
+  InvestmentRepository,
+  InvestmentQueryRepository,
+  InvestmentContributionRepository,
+  InvestmentContributionQueryRepository,
+}

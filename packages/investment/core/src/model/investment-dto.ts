@@ -18,6 +18,15 @@ export interface InvestmentDTO {
   active: boolean
 }
 
+/** READ projection of one contribution ("aporte"). */
+export interface InvestmentContributionDTO {
+  id: string
+  ownerId: string
+  investmentId: string
+  amount: number
+  occurredOn: Date
+}
+
 /** What one kind of investment holds inside the portfolio. */
 export interface PortfolioSliceDTO {
   kind: InvestmentKind
