@@ -5,6 +5,7 @@ import { EmptyState } from '@/components/empty-state'
 import { Loading } from '@/components/loading'
 import { MonthPicker } from '@/components/month-picker'
 import { Screen } from '@/components/screen'
+import { InvestLeftover } from '@/components/invest-leftover'
 import { MonthSplitBar } from '@/components/month-split-bar'
 import { StatCard } from '@/components/stat-card'
 import { formatBRL } from 'ui'
@@ -54,7 +55,13 @@ export function DashboardScreen() {
           label="Sobra"
           accent="accent"
           value={<Amount cents={report.leftoverCents} tone="movement" className="text-2xl" />}
-          hint={report.leftoverCents < 0 ? 'o mês fechou no vermelho' : 'o que ainda está livre'}
+          hint={
+            report.leftoverCents < 0
+              ? 'o mês fechou no vermelho'
+              : report.investedCents > 0
+                ? 'livre, já fora o que foi investido'
+                : 'o que ainda está livre'
+          }
         />
       </View>
 
@@ -73,6 +80,13 @@ export function DashboardScreen() {
           // posted are already inside `fixedCents`, and counting them in both
           // would make the bar add up to more than the month.
           variableCents={Math.max(report.totalExpenseCents - fixedCents, 0)}
+        />
+
+        {/* Deciding what to do with the leftover is the next thought after
+            reading it, not a separate errand. */}
+        <InvestLeftover
+          leftoverCents={report.leftoverCents}
+          investedCents={report.investedCents}
         />
       </View>
 

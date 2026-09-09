@@ -28,7 +28,7 @@ export function useBanksScreen() {
   const [agency, setAgency] = useState('')
   const [accountNumber, setAccountNumber] = useState('')
 
-  const [cardName, setCardName] = useState('')
+  const [cardBrand, setCardBrand] = useState('visa')
   const [cardKind, setCardKind] = useState('credit')
   const [lastFourDigits, setLastFourDigits] = useState('')
 
@@ -45,7 +45,7 @@ export function useBanksScreen() {
   const name = choosingOther ? customName : selected
 
   const resetCardForm = () => {
-    setCardName('')
+    setCardBrand('visa')
     setCardKind('credit')
     setLastFourDigits('')
   }
@@ -102,21 +102,21 @@ export function useBanksScreen() {
       setCardFormBankId(null)
       resetCardForm()
     },
-    cardName,
-    setCardName,
+    cardBrand,
+    setCardBrand,
     cardKind,
     setCardKind,
     lastFourDigits,
     // The full number never belongs in this product, so the field cannot accept
     // one even by accident.
     setLastFourDigits: (value: string) => setLastFourDigits(value.replace(/\D/g, '').slice(0, 4)),
-    canSubmitCard: cardName.trim().length > 0 && lastFourDigits.length === 4,
+    canSubmitCard: lastFourDigits.length === 4,
     creatingCard: data.creatingCard,
     submitCard: () => {
       if (!cardFormBankId) return
       data.createCard({
         bankId: cardFormBankId,
-        name: cardName,
+        brand: cardBrand,
         kind: cardKind,
         lastFourDigits,
       })

@@ -1,5 +1,5 @@
 import { Text, View } from 'react-native'
-import { PAYMENT_METHOD_OPTIONS } from 'ui'
+import { CARD_BRAND_LABELS, PAYMENT_METHOD_OPTIONS } from 'ui'
 import { Field } from '@/components/field'
 import { OptionPicker } from '@/components/option-picker'
 import { usePaymentFields } from './hooks/use-payment-fields'
@@ -92,7 +92,7 @@ export function PaymentFields({
           }
           options={fields.availableCards.map((card) => ({
             value: card.id,
-            label: `${card.name} ····${card.lastFourDigits}`,
+            label: `${CARD_BRAND_LABELS[card.brand]} ····${card.lastFourDigits}`,
           }))}
           onChange={onCardChange}
         />

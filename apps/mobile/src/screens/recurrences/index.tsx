@@ -58,6 +58,9 @@ export function RecurrencesScreen() {
                         real one arrives, and saying so keeps the figure beside
                         it from being read as settled. */}
                     {recurrence.variableAmount ? ' · valor variável' : ''}
+                    {screen.deadlineLabelFor(recurrence)
+                      ? ` · ${screen.deadlineLabelFor(recurrence)}`
+                      : ''}
                   </Text>
                   {screen.paymentLabelFor(recurrence) ? (
                     <Text className="mt-0.5 text-xs text-ink-text-muted" numberOfLines={1}>
@@ -145,6 +148,24 @@ export function RecurrencesScreen() {
                 checked={screen.variableAmount}
                 onChange={screen.setVariableAmount}
               />
+
+              {/* A course that lasts 8 months: after the deadline the bill
+                  leaves the month's list on its own. */}
+              <Checkbox
+                label="Tem prazo para acabar"
+                hint="Curso, financiamento, parcelamento. Depois do último mês ele sai sozinho de A pagar."
+                checked={screen.hasDeadline}
+                onChange={screen.setHasDeadline}
+              />
+
+              {screen.hasDeadline ? (
+                <Field
+                  label="Dura quantos meses"
+                  keyboardType="number-pad"
+                  value={screen.durationMonths}
+                  onChangeText={screen.setDurationMonths}
+                />
+              ) : null}
 
               <Checkbox
                 label="Já é pago automaticamente"

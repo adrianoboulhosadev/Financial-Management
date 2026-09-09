@@ -1,5 +1,5 @@
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native'
-import { CARD_KIND_LABELS, CARD_KIND_OPTIONS } from 'ui'
+import { CARD_BRAND_LABELS, CARD_BRAND_OPTIONS, CARD_KIND_LABELS, CARD_KIND_OPTIONS } from 'ui'
 import { Button } from '@/components/button'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { EmptyState } from '@/components/empty-state'
@@ -77,7 +77,7 @@ export function BanksScreen() {
                       screen.cardsOf(bank.id).map((card) => (
                         <View key={card.id} className="flex-row items-center gap-3">
                           <Text className="flex-1 text-sm text-ink-text" numberOfLines={1}>
-                            {card.name}{' '}
+                            {CARD_BRAND_LABELS[card.brand]}{' '}
                             <Text className="font-mono text-ink-text-muted">
                               ····{card.lastFourDigits}
                             </Text>
@@ -87,7 +87,7 @@ export function BanksScreen() {
                           </Text>
                           <Pressable
                             onPress={() => screen.askToDeleteCard(card)}
-                            accessibilityLabel={`Excluir ${card.name}`}
+                            accessibilityLabel={`Excluir cartão final ${card.lastFourDigits}`}
                             className="px-2 py-1"
                           >
                             <Text className="text-ink-text-muted">✕</Text>
@@ -183,11 +183,14 @@ export function BanksScreen() {
             >
               <Text className="text-base font-semibold text-ink-text">Novo cartão</Text>
 
-              <Field
-                label="Nome do cartão"
-                placeholder="Black, Conta corrente…"
-                value={screen.cardName}
-                onChangeText={screen.setCardName}
+              <OptionPicker
+                label="Bandeira"
+                value={screen.cardBrand}
+                options={CARD_BRAND_OPTIONS.map((option) => ({
+                  value: option.value,
+                  label: option.label,
+                }))}
+                onChange={screen.setCardBrand}
               />
               <OptionPicker
                 label="Tipo"
@@ -221,7 +224,7 @@ export function BanksScreen() {
         title={screen.pendingDeletion?.kind === 'card' ? 'Excluir cartão' : 'Excluir banco'}
         description={
           screen.pendingDeletion?.kind === 'card'
-            ? `"${screen.pendingDeletion.card.name}" sai da lista. Lançamentos que já apontam para ele impedem a exclusão.`
+            ? `O cartão ····${screen.pendingDeletion.card.lastFourDigits} sai da lista. Lançamentos que já apontam para ele impedem a exclusão.`
             : screen.pendingDeletion
               ? `"${screen.pendingDeletion.bank.name}" sai da lista. Bancos com cartões, lançamentos ou investimentos não podem ser excluídos.`
               : undefined
