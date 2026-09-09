@@ -26,8 +26,8 @@ export default class BudgetFacade {
     private readonly budgetQueryRepository?: BudgetQueryRepository,
   ) {}
 
-  async setBudget(input: SetBudgetInput, ownerId: string, categoryIsLeaf?: boolean): Promise<void> {
-    await new SetBudgetController(this.budgetRepository!).execute(input, ownerId, categoryIsLeaf)
+  async setBudget(input: SetBudgetInput, ownerId: string): Promise<void> {
+    await new SetBudgetController(this.budgetRepository!).execute(input, ownerId)
   }
 
   async deleteBudget(budgetId: string, ownerId: string): Promise<void> {

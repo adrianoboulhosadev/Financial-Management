@@ -36,16 +36,13 @@ test('setting the same category twice adjusts the ceiling instead of stacking ro
   expect(repository.budgets[0].amount).toBe(80000)
 })
 
-test('a ceiling belongs on a leaf, not on a branch (CATEGORY_NOT_LEAF)', async () => {
+test('a ceiling may sit on a branch, not only on a leaf', async () => {
+  // Spending lands wherever the owner files it — "casa" as much as
+  // "casa / internet" — so the ceiling has to be able to sit there too.
   const repository = new BudgetRepositoryInMemory()
-  const set = new SetBudget(repository).execute({
-    ownerId: owner,
-    categoryId: 'casa',
-    amount: 50000,
-    categoryIsLeaf: false,
-  })
-  await expect(set).rejects.toMatchObject({ code: Errors.CATEGORY_NOT_LEAF })
-  expect(repository.budgets).toHaveLength(0)
+  await new SetBudget(repository).execute({ ownerId: owner, categoryId: 'casa', amount: 50000 })
+  expect(repository.budgets).toHaveLength(1)
+  expect(repository.budgets[0].categoryId).toBe('casa')
 })
 
 test('each user only sees their own ceilings', async () => {

@@ -1,4 +1,4 @@
-import { UseCase, ValidationError, Errors } from 'shared'
+import { UseCase } from 'shared'
 import { Budget } from '../model'
 import { BudgetRepository } from '../providers'
 
@@ -6,9 +6,6 @@ interface Input {
   ownerId: string
   categoryId: string
   amount: number
-  /** Whether the category exists, belongs to this user AND is a leaf — resolved
-   * by the APP layer (`budget` never imports `category`). */
-  categoryIsLeaf?: boolean
 }
 
 /**
@@ -16,15 +13,16 @@ interface Input {
  * use case for both because from the owner's point of view there is one ceiling
  * per category and they are setting it — whether a row existed before is
  * storage's business, not theirs.
+ *
+ * ANY node of the tree can hold a ceiling, branch or leaf: how deep the owner
+ * files their money is their call, and the ceiling has to be able to sit
+ * wherever the spending does. Whether the category exists and belongs to this
+ * user is the APP layer's check, made before this runs.
  */
 export default class SetBudget implements UseCase<Input, void> {
   constructor(private readonly repository: BudgetRepository) {}
 
-  async execute({ ownerId, categoryId, amount, categoryIsLeaf }: Input): Promise<void> {
-    // A ceiling belongs on the same node the spending lands on; budgeting a
-    // branch would double count every child underneath it.
-    if (categoryIsLeaf === false) ValidationError.throwError(Errors.CATEGORY_NOT_LEAF, categoryId)
-
+  async execute({ ownerId, categoryId, amount }: Input): Promise<void> {
     const existing = await this.repository.findByCategory(ownerId, categoryId)
     if (existing) {
       existing.changeAmount(amount)
