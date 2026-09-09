@@ -365,9 +365,13 @@ Use-case/domínio **nunca** lança erro interno/500. Códigos ficam em `Errors` 
   Apagar um banco exige **sem cartões** e **sem uso** (`BANK_IN_USE`) — quem resolve "está em uso" é
   o backend (`BankUsageResolver`), consultando `transaction`, `recurrence` e `investment` e passando
   `inUse` como dado puro; o contexto `bank` nunca importa os outros. A lista de bancos brasileiros do
-  formulário é **estática** (`packages/ui/src/data/banks.ts`) e só sugestão: o nome é texto livre,
-  então um banco fora da lista continua cadastrável, e não há um serviço externo que precise estar
+  formulário é **estática** (`packages/ui/src/data/banks.ts`) e só um atalho: o domínio guarda texto
+  livre, a opção **"Outro"** revela um campo pra digitar, e não há serviço externo que precise estar
   no ar pro formulário funcionar.
+  ⚠️ O formulário usa um **`<select>` de verdade**, nunca `<input list>` + `<datalist>`: datalist é
+  typeahead, não dropdown — fica invisível até o usuário digitar, e se clicar chega a abrir depende
+  do navegador. Um campo com cara de seletor que não mostra nada ao ser clicado é lido como
+  quebrado, e foi exatamente o que aconteceu.
 - **investment** — o que o dono aplicou pra render. `Investment` (`investedAmount` e
   `currentAmount` em centavos, `startedOn` como DATE, `kind` de lista fechada, `bankId` **opcional**
   — investimento numa corretora que ele não cadastrou continua na lista). O **rendimento é
@@ -725,8 +729,9 @@ do web.
 - **O phone não tem `<select>` nem checkbox**, então existem `OptionPicker` (linha que abre uma
   sheet, irmão do `CategoryPicker` mas genérico: recebe a lista que for) e `Checkbox` (caixa
   desenhada dos mesmos tokens, com a **linha inteira** como alvo de toque — um quadrado de 16px não
-  é algo que se peça a um polegar pra acertar). O `<datalist>` do banco vira **duas** controles que
-  escrevem no mesmo valor: um picker de sugestões e um campo livre.
+  é algo que se peça a um polegar pra acertar). O banco é **um** `OptionPicker` com "Outro" no fim,
+  igual ao `<select>` do web — o campo livre só aparece quando "Outro" é escolhido, então nunca há
+  duas controles disputando o mesmo valor.
 - **Ícones**: `react-native-svg` com **o mesmo path data** do web (`src/data/icons.tsx`). A cor vem
   por prop (`ColorValue`), porque React Native não tem herança de CSS pra `currentColor`.
 - **Formulário longo vira sheet** (`Modal` de baixo pra cima) em vez do painel lateral do web —
