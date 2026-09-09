@@ -24,13 +24,17 @@ Monorepo **Turborepo + npm workspaces** em TypeScript. Arquitetura **hexagonal (
 por bounded context**, com **modelagem RICA** (regras de negócio moram no modelo, não nos casos de
 uso).
 
-Contextos de domínio: `auth`, `category`, `transaction`, `budget`, `income`, `notification`.
-O `auth` é a **referência canônica** de fiação (core → adapters → backend).
+Contextos de domínio: `auth`, `category`, `transaction`, `budget`, `income`, `bank`,
+`investment`, `notification`. O `auth` é a **referência canônica** de fiação
+(core → adapters → backend).
 
 Fluxo do produto: o usuário monta a **árvore de categorias** dele (casa → contas → luz), cadastra a
-**renda** (salário), define **orçamentos** por categoria (lazer = R$500) e vai **lançando** cada
-gasto. O dashboard responde a pergunta que o produto existe pra responder: **quanto sobra no mês**.
-O que se repete todo mês vira **recorrência** e o worker lança sozinho.
+**renda** (salário) e os **bancos/cartões**, define **orçamentos** por categoria (lazer = R$500) e
+vai **lançando** cada gasto — dizendo por onde o dinheiro passou e, no crédito, em quantas parcelas.
+O dashboard responde a pergunta que o produto existe pra responder: **quanto sobra no mês**, já
+descontando os fixos ainda não pagos. O que se repete todo mês vira **recorrência**, o worker lança
+sozinho e a tela **A pagar** é a lista do mês pra marcar o que já foi pago. Sobra vira
+**investimento**, que a carteira acompanha.
 
 **Deployables de produção: 2** — `backend` (API web) e `worker` (recorrências + alerta de
 orçamento). O `web` é o front. Postgres/Redis sobem via docker no dev.
@@ -55,7 +59,7 @@ apps/
 ```
 
 Contextos e scopes: `@auth/*`, `@category/*`, `@transaction/*`, `@budget/*`, `@income/*`,
-`@notification/*`. `core` e `adapters` são **pacotes separados**. Workspaces:
+`@bank/*`, `@investment/*`, `@notification/*`. `core` e `adapters` são **pacotes separados**. Workspaces:
 `["apps/*","packages/shared","packages/database","packages/ui","packages/*/core","packages/*/adapters"]`.
 
 **São TRÊS frontes de um produto só**: o `web` (navegador) e o `mobile` (app) precisam ser
@@ -111,9 +115,10 @@ O `model/` NÃO é anêmico. Regras vivem no modelo:
 - **Controllers do backend (Nest)** montam a Facade num helper `private facade()` que injeta os
   driven adapters uma vez; cada rota chama `this.facade().xxx(...)`.
 - **Domain services**: regras puras que cruzam entidades/linhas → classe em `core/src/domain-services/`
-  com métodos **estáticos**, sem portas e sem efeito. Hoje: `MonthlyTotalsCalculator` (transaction),
-  `BudgetUsageCalculator` (budget) e `MonthlyIncomeCalculator` (income). Reexportados como **valor**
-  pelo `@ctx/adapters`.
+  com métodos **estáticos**, sem portas e sem efeito. Hoje: `MonthlyTotalsCalculator`,
+  `MonthlyChecklistCalculator` e `InstallmentPlanner` (transaction), `BudgetUsageCalculator`
+  (budget), `MonthlyIncomeCalculator` (income) e `PortfolioCalculator` (investment). Reexportados
+  como **valor** pelo `@ctx/adapters`.
 - **Eventos de domínio**: a base continua no `shared` (`DomainEvent`, `AggregateRoot` com `record`/
   `pullDomainEvents`, porta `EventPublisher`), mas **nenhum contexto emite evento hoje** — os dois
   que existiam (`UserRegistered`, `UserApproved`) eram da portaria e saíram com ela. Se um dia
@@ -132,14 +137,15 @@ O `model/` NÃO é anêmico. Regras vivem no modelo:
 ## Dados são de UM usuário (anti-IDOR)
 
 **Não existe catálogo compartilhado nem visão de terceiros.** `Category`, `Transaction`,
-`Recurrence`, `Budget` e `IncomeSource` têm `ownerId` (FK lógica pro `users`), e:
+`Recurrence`, `RecurrencePayment`, `Budget`, `IncomeSource`, `Bank`, `Card` e `Investment` têm
+`ownerId` (FK lógica pro `users`), e:
 
 - o `ownerId` **sempre** vem do JWT, resolvido no `AuthMiddleware` e lido via `@authenticatedUser()`
   — **nunca** do corpo ou da rota;
 - a entidade expõe `belongsTo(userId)` e o use-case checa antes de tocar em qualquer coisa;
 - recurso de outro usuário responde **`NOT_FOUND`, nunca 403**: confirmar a existência já seria
   vazar informação. Vale pra categoria, lançamento, recorrência, orçamento, fonte de renda e
-  notificação;
+  notificação, banco, cartão e investimento;
 - toda listagem é `listByOwnerQuery(ownerId)` — a porta nem tem como perguntar "todos".
 
 **Cadastro é aberto**: qualquer pessoa cria a conta e entra na hora. Não existe fila de aprovação,
@@ -275,8 +281,11 @@ Use-case/domínio **nunca** lança erro interno/500. Códigos ficam em `Errors` 
   rotação/detecção de reuso é a mesma nos dois. Qualquer `X-Client-Type` desconhecido cai no web,
   que é o default mais seguro.
 - **category** — árvore auto-referente **por usuário** (`Category` com `ownerId` + `parentId`
-  opcional). CRUD é do próprio dono. `isLeaf` é do read
-  model, calculado numa consulta só. Nome único **entre irmãos do mesmo dono** (dois usuários podem
+  opcional). CRUD é do próprio dono. `isLeaf` é do read model, calculado numa consulta só, e hoje
+  serve só pra **rotular** a árvore na tela: **lançamento, fixo e teto aceitam QUALQUER nó**, galho
+  ou folha. A regra `CATEGORY_NOT_LEAF` existiu e **saiu**: quão fundo arquivar é decisão do dono
+  (mercado em `casa` ou em `casa / contas / luz`), e o `CategoryResolver` do backend hoje só
+  confirma que a categoria é dele. Nome único **entre irmãos do mesmo dono** (dois usuários podem
   ter cada um o seu "Lazer"). Apagar exige nó **sem filhos** (`CATEGORY_HAS_CHILDREN`) e **sem uso**
   (`CATEGORY_IN_USE`) — quem resolve "está em uso" é o **backend**, consultando `transaction`,
   `recurrence` e `budget` e passando `inUse` como dado puro; o contexto `category` nunca importa os
@@ -284,26 +293,61 @@ Use-case/domínio **nunca** lança erro interno/500. Códigos ficam em `Errors` 
 - **transaction** — o registro do dinheiro que andou. `Transaction` (`expense` | `income`;
   `amount` em centavos positivos; `occurredOn` como DATE; `attachmentUrl` opcional pro comprovante).
   **Despesa exige categoria** (`CATEGORY_REQUIRED_FOR_EXPENSE`) — é o que faz a árvore valer a pena;
-  receita avulsa pode não ter. A categoria tem que ser **folha** (`CATEGORY_NOT_LEAF`): teto e gasto
-  num nó que só agrupa contariam duas vezes.
+  receita avulsa pode não ter. **Qualquer nó serve**, galho ou folha.
+  **Como o dinheiro andou** mora aqui também: `bankId`/`cardId` (FKs lógicas pro `bank`) e
+  `paymentMethod` (`pix|ted|boleto|cash|debit|credit`), todos **opcionais** — toda linha gravada
+  antes de existirem bancos tem `null`, e uma entidade que recusasse reconstituir essas linhas
+  tornaria o próprio histórico ilegível.
+  **Parcelamento**: `installments`/`installmentNumber`/`installmentGroupId`. Uma compra no crédito
+  em N vezes vira **N linhas**, uma por mês, com o mesmo grupo — é o que faz a parcela do mês que
+  vem aparecer hoje em vez de só quando a fatura chegar. `amount` na entrada é o **TOTAL**; quem
+  divide é o domain service `InstallmentPlanner`, que joga o resto da divisão na **primeira**
+  parcela (as partes somam o total) e mantém o dia, com clamp em mês curto. Parcelar só existe no
+  crédito (`INSTALLMENTS_REQUIRE_CREDIT`) — a entidade recusa "3x no pix". Editar um lançamento
+  **não** mexe no parcelamento: virar 6x em 3x é outro conjunto de linhas, não outro valor numa.
   **`Recurrence`** é o que se repete todo mês (aluguel, streaming, salário): guarda `dayOfMonth`
   (1–31, com clamp) e `nextRunAt`. `nextRunAt` é **coluna**, não só job no Redis — é o que permite
   recuperar um job perdido. Métodos: `nextOccurrenceFrom` (este mês se o dia não passou, senão o
   próximo; comparado por DIA, então criar no próprio dia ainda lança hoje), `dueOn`, `markPosted`
   (avança um mês), `pause`/`resume` (**resume reagenda a partir de hoje**, pra uma recorrência
   pausada por meses não acordar devendo todos eles).
+  **`variableAmount`** marca o fixo cuja conta muda todo mês (luz, água): aí o `amount` é só a
+  **estimativa** do dono e o valor real do mês vira uma `RecurrencePayment`. É declarado na
+  **criação e nunca editável** — virar o interruptor num fixo que já teve meses ajustados deixaria
+  números que ninguém explica. **`autoPaid`** marca o que já está em pix programado/débito
+  automático: o mês conta como pago na data do vencimento, sem ninguém marcar.
+  **`RecurrencePayment`** (`(recurrenceId, period)` único) grava **só o DESVIO** do padrão — o mês
+  marcado como pago e/ou quanto a conta veio. É por isso que a checklist não precisa gerar nada por
+  antecipação e um mês que ninguém tocou custa zero escrita. `AdjustRecurrenceAmount` recusa um fixo
+  não-variável (`RECURRENCE_NOT_VARIABLE`), e a regra mora **no caso de uso** porque cruza duas
+  entidades: a linha do mês sabe o valor, a recorrência sabe se ele pode andar.
+  Domain service `MonthlyChecklistCalculator` monta a **lista do mês** a partir das recorrências +
+  desvios: o que o mês custa (ajustado, senão a estimativa) e o que conta como pago (marcado, ou
+  auto e já vencido). Ele também responde `commitmentsOf` — os fixos **ainda não postados** — e
+  **mês já encerrado não compromete nada**, senão o fechamento seria reescrito.
   `RunRecurrence` é **system** (não tem actor — quem pediu foi o calendário) e **idempotente**:
   recorrência ausente/pausada vira no-op, e `postOccurrence` é **operação composta na porta**
   (lançamento + avanço num commit só) porque fazer em duas chamadas deixaria um crash no meio ou
   lançar o mês duas vezes ou pular pra sempre.
+  Ao postar um fixo **variável**, o worker usa o valor que o dono anotou pro mês (via a porta
+  `RecurrencePaymentRepository`, opcional) em vez da estimativa — postar a estimativa colocaria no
+  mês um número que o dono já tinha corrigido.
   Domain service `MonthlyTotalsCalculator` (puro/estático) fecha o mês: entrou, saiu, sobra e o
   gasto por categoria (maior primeiro, com o id como desempate pra ordem estável).
+  ⚠️ **Compromisso ≠ gasto, e a separação é deliberada**: `expenseCents`/`byCategory` é dinheiro que
+  **andou** (é contra isso que um teto é medido) e `committedExpenseCents`/`totalByCategory` inclui
+  os fixos que o mês **deve**. O dashboard soma os dois — é o que faz "quanto sobra" ser honesto no
+  dia 3 —, e o alerta de orçamento **ignora** o compromisso de propósito: um teto nunca pode ser
+  reportado como estourado por uma conta que ninguém pagou.
 - **budget** — teto mensal por categoria ("lazer = R$500"), em centavos. É **recorrente**: o mesmo
   teto vale pra todo mês e o consumo é calculado ao vivo a partir dos lançamentos, então **não há
   linha por competência e nada pra recriar em janeiro**. Um teto por `(dono, categoria)` — aumentar
   é edição, não linha nova (`SetBudget` faz os dois).
   **O teto NUNCA bloqueia um gasto**: dinheiro gasto é fato, e recusar o registro só faria o número
   mentir. Estourar vira **notificação**.
+  O teto pode sentar em **qualquer nó** da árvore, galho ou folha — a mesma mudança que o
+  lançamento sofreu, pela mesma razão: o gasto pousa onde o dono arquiva, e o teto tem que poder
+  pousar junto.
   `BudgetUsageCalculator` (puro/estático) classifica em `ok`/`warning` (≥80%)/`exceeded` (≥100%) e
   devolve `remainingCents` **negativo** quando estoura — "quanto passou" é justamente o que o dono
   precisa ver. `EvaluateBudgetAlert` devolve **`null` quando está tudo bem**, então o worker não
@@ -313,6 +357,25 @@ Use-case/domínio **nunca** lança erro interno/500. Códigos ficam em `Errors` 
   avulsa que o usuário registrou na mão. Fonte que parou de pagar é **desativada, não apagada** — o
   registro do que era o plano continua. `MonthlyIncomeCalculator` soma **só as ativas**, ordenadas
   por dia de recebimento (a ordem em que o dinheiro chega).
+- **bank** — onde o dinheiro fica. `Bank` (nome + agência/conta **opcionais**: o que o produto
+  precisa é de um nome pra arquivar o pagamento, e quase ninguém quer digitar número de conta num
+  app de orçamento) e `Card` (`kind`: `debit|credit|both`, e **só os 4 últimos dígitos** —
+  suficiente pra reconhecer o cartão na fatura e não é número que alguém possa gastar). Nome único
+  por `(dono, banco)` e por `(dono, banco, cartão)`: dois bancos podem cada um ter o seu "Black".
+  Apagar um banco exige **sem cartões** e **sem uso** (`BANK_IN_USE`) — quem resolve "está em uso" é
+  o backend (`BankUsageResolver`), consultando `transaction`, `recurrence` e `investment` e passando
+  `inUse` como dado puro; o contexto `bank` nunca importa os outros. A lista de bancos brasileiros do
+  formulário é **estática** (`packages/ui/src/data/banks.ts`) e só sugestão: o nome é texto livre,
+  então um banco fora da lista continua cadastrável, e não há um serviço externo que precise estar
+  no ar pro formulário funcionar.
+- **investment** — o que o dono aplicou pra render. `Investment` (`investedAmount` e
+  `currentAmount` em centavos, `startedOn` como DATE, `kind` de lista fechada, `bankId` **opcional**
+  — investimento numa corretora que ele não cadastrou continua na lista). O **rendimento é
+  calculado, nunca gravado**, então os dois números não têm como divergir; é o **único número
+  assinado** do produto, porque "quanto eu perdi" é justamente o que precisa aparecer. Investimento
+  sem valor atual vale **o que foi aplicado**, não zero — um desconhecido contado como zero
+  reportaria perda total. Resgatado é **desativado, não apagado**. `PortfolioCalculator`
+  (puro/estático) soma **só os ativos** e fatia por tipo.
 - **notification** — caixa de entrada (sininho + tela `/notifications`). `Notification.for(input)` é
   um factory com `switch` sobre uma **união discriminada** (`NotificationInput`, um shape por tipo),
   então nenhum caller inventa campo nem esquece o valor, e o texto fica numa decisão só em vez de
@@ -372,10 +435,17 @@ diferente** e ainda avisa — que é o ponto, já que é notícia pior.
 - `category` (`/` [GET lista a minha árvore; POST cria], `/:id` [PATCH renomeia, DELETE])
 - `transaction` (`/` [GET com `?period=` ou `?from=&to=`, `?type=`, `?categoryId=`; POST],
   `/summary` [GET, totais do mês], `/:id` [PATCH, DELETE])
-- `recurrence` (`/` [GET, POST], `/:id` [PATCH, DELETE], `/:id/active` [POST, pausa/retoma])
+- `recurrence` (`/` [GET, POST], `/checklist` [GET com `?period=`, a lista do mês], `/:id`
+  [PATCH, DELETE], `/:id/active` [POST, pausa/retoma], `/:id/paid` [POST, marca/desmarca o mês],
+  `/:id/amount` [POST, quanto a conta variável veio no mês; `null` limpa o ajuste])
 - `budget` (`/` [GET, POST define/ajusta], `/usage` [GET com `?period=`, teto × gasto], `/:id` [DELETE])
 - `income` (`/` [GET, POST], `/monthly` [GET, renda do mês], `/:id` [PATCH, DELETE],
   `/:id/active` [POST])
+- `bank` (`/card` [GET, POST], `/card/:id` [PATCH, DELETE], `/` [GET, POST], `/:id`
+  [PATCH, DELETE]) — ⚠️ as rotas de **cartão vêm primeiro** no controller, senão `/:id` engole
+  `/card`
+- `investment` (`/` [GET, POST], `/portfolio` [GET, a carteira], `/:id` [PATCH, DELETE],
+  `/:id/active` [POST, resgata/reativa])
 - `report/monthly` (GET com `?period=` — **rota composta**, cruza income + transaction + budget)
 - `notification` (`GET /` [`?limit=`; devolve `{ unreadCount, items }`], `POST /read-all`,
   `POST /:id/read`, `DELETE /all`, `DELETE /:id`, `GET /stream` [**SSE**, ver abaixo — é a ÚNICA
@@ -393,11 +463,20 @@ diferente** e ainda avisa — que é o ponto, já que é notícia pior.
 - **Models/tabelas**: `User`(users), `AuthSession`(auth_sessions), `OAuthAccount`(oauth_accounts),
   `Notification`(notifications; `@@unique([userId, type, referenceId])`), `Category`(categories;
   self-relation `parent_id` com `onDelete: Restrict`), `Transaction`(transactions;
-  `@@unique([recurrenceId, occurredOn])`), `Recurrence`(recurrences), `Budget`(budgets;
-  `@@unique([ownerId, categoryId])`), `IncomeSource`(income_sources; `@@unique([ownerId, name])`).
+  `@@unique([recurrenceId, occurredOn])`), `Recurrence`(recurrences),
+  `RecurrencePayment`(recurrence_payments; `@@unique([recurrenceId, period])`, relation intra-contexto
+  com `onDelete: Cascade`), `Budget`(budgets; `@@unique([ownerId, categoryId])`),
+  `IncomeSource`(income_sources; `@@unique([ownerId, name])`), `Bank`(banks;
+  `@@unique([ownerId, name])`), `Card`(cards; `@@unique([ownerId, bankId, name])`, relation
+  intra-contexto com `onDelete: Restrict`), `Investment`(investments; `@@unique([ownerId, name])`).
 - **FKs entre contextos são LÓGICAS** (sem relation Prisma cruzando contexto — `owner_id`,
-  `category_id`, `user_id`). A self-relation da `Category` e a `Recurrence → Transaction` são
+  `category_id`, `user_id`, `bank_id`, `card_id`). A self-relation da `Category`, a
+  `Recurrence → Transaction`, a `Recurrence → RecurrencePayment` e a `Bank → Card` são
   intra-contexto, então têm relation Prisma de verdade.
+- **Toda coluna nova em tabela existente é nullable ou tem default**: `bank_id`, `card_id`,
+  `payment_method`, `installments`, `variable_amount`, `auto_paid`. É o que faz cada linha já
+  gravada continuar válida exatamente como está — e a entidade tem que conseguir **reconstituí-la**,
+  senão o produto para de conseguir ler o próprio histórico.
 - **A unicidade de `(dono, pai, nome)` da categoria é do USE-CASE, não um `@@unique`**: `parentId` é
   nulo na raiz e o Postgres deixa dois NULL coexistirem, então a constraint não cobriria exatamente
   as raízes — justo o caso que mais importa.
@@ -418,7 +497,9 @@ diferente** e ainda avisa — que é o ponto, já que é notícia pior.
   precisa dele, e o `WorkerRecurrenceRepository` faz algo que o do backend não faz — grava a
   notificação dentro da mesma transação.
 - Os métodos da porta que o worker **nunca chama** lançam em vez de fingir que funcionam: uma fiação
-  errada falha alto na primeira chamada, em vez de devolver dado vazio pra sempre.
+  errada falha alto na primeira chamada, em vez de devolver dado vazio pra sempre. O
+  `WorkerRecurrencePaymentRepository` implementa **só a leitura** (é o que posta o valor real de um
+  fixo variável); marcar um mês como pago é coisa de gente, nunca do calendário.
 - **Depois** do commit (nunca dentro), publica o ping ao vivo (`pushLiveUpdates`) — um ping por
   linhas que um rollback apagou mandaria o cliente procurar o que não existe.
 - O nome da categoria pro texto do alerta sai de **uma** consulta direta na tabela (mesmo raciocínio
@@ -575,9 +656,22 @@ tabulares** pros valores, que são lidos em coluna e comparados de relance.
   no boot.
 - **Todo valor na tela passa pelo `<Amount>`**: números tabulares e a cor decidida em UM lugar, em
   vez de re-derivada em cada call site.
-- **Categoria só é escolhida entre FOLHAS** (`CategoryPicker`), rotuladas pelo caminho completo
-  ("casa / contas / luz"). Um galho nunca é oferecido — a mesma regra que o backend aplica, feita
-  inclicável aqui pra ninguém descobri-la como mensagem de erro.
+- **O `CategoryPicker` oferece a árvore INTEIRA**, cada nó rotulado pelo caminho completo
+  ("casa / contas / luz"). Galho e folha valem igual — quão fundo arquivar é decisão do dono, e o
+  backend aceita os dois.
+- **`PaymentFields` é um bloco só, usado pelo formulário de lançamento E pelo de fixo**, porque os
+  dois respondem exatamente a mesma pergunta (por onde o dinheiro passou e como). O que aparece
+  **segue o método**: cartão só quando se está usando um, parcelas só no crédito, e os cartões
+  filtrados pelo banco escolhido **e** pelo que o cartão aceita — a mesma regra que o domínio
+  aplica, feita inclicável aqui em vez de descoberta como erro. As regras moram no hook
+  compartilhado (`use-payment-fields`), então os dois fronts não têm como divergir no que oferecem.
+- **Gráfico obedece o tema, não o contrário.** O produto tem **duas cores saturadas com
+  significado** e mais accent/warning — então nada de paleta categórica: a divisão do mês
+  (`MonthSplitBar`) usa os tokens **semânticos** pelo que eles significam (fixo = `warning`,
+  gasto = `negative`, sobra = `positive`) e o ranking por categoria (`CategoryBars`) usa **uma cor
+  só**, porque o comprimento da barra já codifica a grandeza e um degradê em cima só gastaria o
+  único canal livre repetindo o que a barra já diz. Cada fatia carrega **rótulo e valor**, então
+  nada é lido só pela cor. Sem lib de gráfico: três retângulos em linha é o que o flexbox já é.
 
 ## PWA — instalar o web na tela inicial
 
@@ -626,8 +720,13 @@ do web.
   É a única divergência consciente da regra "o arquivo de rota É a tela" — e existe por imposição do
   roteador, não por gosto.
 - **Cinco abas** (`(private)/(tabs)/`): mês, lançamentos, orçamentos, renda e "Mais"; o resto
-  (fixos, categorias, notificações, perfil) é empilhado por cima e ganha o botão de voltar
-  de graça. A mesma divisão do web abaixo de `sm`.
+  (a pagar, fixos, investimentos, bancos, categorias, notificações, perfil) é empilhado por cima e
+  ganha o botão de voltar de graça. A mesma divisão do web abaixo de `sm`.
+- **O phone não tem `<select>` nem checkbox**, então existem `OptionPicker` (linha que abre uma
+  sheet, irmão do `CategoryPicker` mas genérico: recebe a lista que for) e `Checkbox` (caixa
+  desenhada dos mesmos tokens, com a **linha inteira** como alvo de toque — um quadrado de 16px não
+  é algo que se peça a um polegar pra acertar). O `<datalist>` do banco vira **duas** controles que
+  escrevem no mesmo valor: um picker de sugestões e um campo livre.
 - **Ícones**: `react-native-svg` com **o mesmo path data** do web (`src/data/icons.tsx`). A cor vem
   por prop (`ColorValue`), porque React Native não tem herança de CSS pra `currentColor`.
 - **Formulário longo vira sheet** (`Modal` de baixo pra cima) em vez do painel lateral do web —

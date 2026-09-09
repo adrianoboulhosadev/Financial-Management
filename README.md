@@ -1,14 +1,14 @@
 # Financial
 
-Controle de gastos pessoal. Você monta a sua **árvore de categorias**, cadastra a sua **renda**,
-define **quanto pretende gastar** em cada categoria e vai lançando o que sai. A tela principal
-responde a única pergunta que importa no fim do mês: **quanto sobra**.
+Controle de gastos pessoal. Você monta a sua **árvore de categorias**, cadastra a sua **renda** e
+os seus **bancos**, define **quanto pretende gastar** em cada categoria e vai lançando o que sai. A
+tela principal responde a única pergunta que importa no fim do mês: **quanto sobra**.
 
 ## Como funciona
 
 **Categorias com subcategorias.** A árvore é sua e só sua — `Casa → Contas → Luz`, `Lazer`,
-`Cartão de crédito`, `Investimentos`. Cada gasto é lançado na **folha** (o nível mais específico),
-porque um nó que só agrupa outros contaria o mesmo dinheiro duas vezes.
+`Cartão de crédito`. Você lança **em qualquer nível**: pode jogar a compra do mercado em `Casa` ou
+descer até `Casa / Contas / Luz`. Quão fundo ir é decisão sua, não do formulário.
 
 **Renda.** Você cadastra o salário (valor mensal + dia do recebimento) e quantas outras fontes fixas
 quiser. Isso é o lado *planejado* do mês e não vira lançamento — receita avulsa (um freela, um
@@ -19,12 +19,37 @@ recriado em janeiro) e o consumo é calculado ao vivo a partir dos lançamentos.
 um gasto** — dinheiro gasto é fato, e recusar o registro só faria o número mentir. Quando você passa
 de 80% do teto, e de novo quando estoura, chega uma notificação.
 
-**Quanto sobra.** `renda fixa + receitas do mês − despesas do mês`. É o número que abre o
-dashboard, junto com o consumo de cada orçamento e para onde o dinheiro foi.
+**Quanto sobra.** `renda fixa + receitas do mês − (despesas lançadas + fixos do mês)`. Os fixos
+entram **mesmo antes de serem pagos**: se você ganha 4.000, tem 3.000 de fixos e já gastou 400, o
+mês mostra 3.400 de saída e 600 de sobra — porque dinheiro já prometido não é dinheiro para gastar.
+É o número que abre o dashboard, junto com o gráfico de como o mês se divide, o consumo de cada
+orçamento e para onde o dinheiro foi.
 
 **Lançamentos fixos.** Aluguel, streaming, mensalidade: você cadastra uma vez com o dia do mês e o
 worker lança sozinho todo mês, avisando quando lança. Dia 31 em fevereiro entra no último dia — não
 pula nem vira março.
+
+Um fixo pode ser de **valor variável** (conta de luz, água, cartão): você informa quanto costuma
+pagar e, quando a conta chega, ajusta o valor daquele mês em **A pagar**. O valor previsto continua
+visível ao lado do real, que é justamente onde mora a surpresa.
+
+**A pagar.** A lista do mês, montada sozinha a partir dos seus fixos: o que vence quando, quanto é,
+e o que você já pagou. Você marca conforme paga — e o que já está em **pix programado ou débito
+automático** entra como pago na data do vencimento, sem você precisar marcar nada.
+
+**Bancos e cartões.** Você cadastra onde o seu dinheiro fica (nome do banco; agência e conta são
+opcionais) e os cartões de cada banco — débito, crédito ou os dois, e só os **4 últimos dígitos**,
+que é o suficiente para reconhecer o cartão na fatura e não é um número que alguém possa gastar.
+
+**Como você pagou.** Em cada lançamento dá para dizer o banco, a forma de pagamento (pix, débito,
+crédito, boleto, TED, dinheiro) e, no crédito, em **quantas parcelas**. Parcelou em 6x? O valor que
+você digita é o total, e o sistema lança uma parcela por mês — então o que você já deve nos meses
+seguintes aparece hoje, em vez de só quando a fatura chegar.
+
+**Investimentos.** O que você aplicou, onde, de que tipo (CDB, Tesouro, ações, cripto…), quanto
+colocou e quanto vale hoje. A carteira mostra aplicado, valor atual e **quanto rendeu** — o único
+número do produto que pode ser negativo, porque "quanto eu perdi" é exatamente o que precisa
+aparecer. Um investimento resgatado é **desativado, não apagado**.
 
 **Acesso.** Qualquer pessoa se cadastra e entra na hora — não existe fila nem aprovação. Cada
 usuário vê **apenas** o que é dele: não há visão compartilhada nem conta privilegiada que enxergue
@@ -45,7 +70,8 @@ da caixa de entrada. Cada um injeta o seu no boot; o resto do código é o mesmo
 
 Monorepo Turborepo + npm workspaces, TypeScript, **hexagonal (ports & adapters) por bounded
 context**, com **modelagem rica** (entidades com comportamento + value objects; invariantes no
-modelo). Contextos: `auth`, `category`, `transaction`, `budget`, `income`, `notification`.
+modelo). Contextos: `auth`, `category`, `transaction`, `budget`, `income`, `bank`, `investment`,
+`notification`.
 
 Deployables de produção: **backend** (API NestJS) e **worker** (recorrências e alerta de orçamento
 via BullMQ). Os fronts são o **web** (Next.js) e o **mobile** (Expo). Postgres + Redis sobem via
