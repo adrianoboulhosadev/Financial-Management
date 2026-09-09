@@ -5,12 +5,13 @@ import { AuthMiddleware } from '../auth/auth.middleware'
 import { TransactionModule } from '../transaction/transaction.module'
 import { IncomeModule } from '../income/income.module'
 import { BudgetModule } from '../budget/budget.module'
+import { InvestmentModule } from '../investment/investment.module'
 import { ReportController } from './report.controller'
 
-/** Owns no repository of its own: it only crosses what three other modules
+/** Owns no repository of its own: it only crosses what four other modules
  * already export. */
 @Module({
-  imports: [DbModule, AuthModule, TransactionModule, IncomeModule, BudgetModule],
+  imports: [DbModule, AuthModule, TransactionModule, IncomeModule, BudgetModule, InvestmentModule],
   controllers: [ReportController],
 })
 export class ReportModule implements NestModule {

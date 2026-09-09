@@ -5,6 +5,7 @@ import { AuthMiddleware } from '../auth/auth.middleware'
 import { BankModule } from '../bank/bank.module'
 import { InvestmentController } from './investment.controller'
 import { PrismaInvestmentRepository } from './prisma-investment-repository'
+import { PrismaInvestmentContributionRepository } from './prisma-investment-contribution-repository'
 
 /**
  * `forwardRef` because the two modules genuinely need each other and neither is
@@ -15,8 +16,8 @@ import { PrismaInvestmentRepository } from './prisma-investment-repository'
 @Module({
   imports: [DbModule, AuthModule, forwardRef(() => BankModule)],
   controllers: [InvestmentController],
-  providers: [PrismaInvestmentRepository],
-  exports: [PrismaInvestmentRepository],
+  providers: [PrismaInvestmentRepository, PrismaInvestmentContributionRepository],
+  exports: [PrismaInvestmentRepository, PrismaInvestmentContributionRepository],
 })
 export class InvestmentModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

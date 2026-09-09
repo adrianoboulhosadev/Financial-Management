@@ -1,12 +1,19 @@
 import { Injectable } from '@nestjs/common'
-import { Card, CardDTO, CardKind, CardRepository, CardQueryRepository } from '@bank/adapters'
+import {
+  Card,
+  CardDTO,
+  CardKind,
+  CardBrand,
+  CardRepository,
+  CardQueryRepository,
+} from '@bank/adapters'
 import { PrismaService } from '../db/prisma.service'
 
 interface CardRow {
   id: string
   ownerId: string
   bankId: string
-  name: string
+  brand: string
   kind: string
   lastFourDigits: string
 }
@@ -20,7 +27,7 @@ export class PrismaCardRepository implements CardRepository, CardQueryRepository
       id: row.id,
       ownerId: row.ownerId,
       bankId: row.bankId,
-      name: row.name,
+      brand: row.brand,
       kind: row.kind,
       lastFourDigits: row.lastFourDigits,
     })
@@ -37,7 +44,7 @@ export class PrismaCardRepository implements CardRepository, CardQueryRepository
         id: card.id.value,
         ownerId: card.ownerId,
         bankId: card.bankId,
-        name: card.name,
+        brand: card.brand,
         kind: card.kind,
         lastFourDigits: card.lastFourDigits,
       },
@@ -47,7 +54,7 @@ export class PrismaCardRepository implements CardRepository, CardQueryRepository
   async update(card: Card): Promise<void> {
     await this.prisma.card.update({
       where: { id: card.id.value },
-      data: { name: card.name, kind: card.kind, lastFourDigits: card.lastFourDigits },
+      data: { brand: card.brand, kind: card.kind, lastFourDigits: card.lastFourDigits },
     })
   }
 
@@ -55,9 +62,13 @@ export class PrismaCardRepository implements CardRepository, CardQueryRepository
     await this.prisma.card.delete({ where: { id } })
   }
 
-  async existsByName(ownerId: string, bankId: string, name: string): Promise<boolean> {
+  async existsByDigits(
+    ownerId: string,
+    bankId: string,
+    lastFourDigits: string,
+  ): Promise<boolean> {
     const found = await this.prisma.card.findFirst({
-      where: { ownerId, bankId, name },
+      where: { ownerId, bankId, lastFourDigits },
       select: { id: true },
     })
     return found !== null
@@ -66,7 +77,7 @@ export class PrismaCardRepository implements CardRepository, CardQueryRepository
   async listByOwnerQuery(ownerId: string): Promise<CardDTO[]> {
     const rows = await this.prisma.card.findMany({
       where: { ownerId },
-      orderBy: [{ bankId: 'asc' }, { name: 'asc' }],
+      orderBy: [{ bankId: 'asc' }, { brand: 'asc' }, { lastFourDigits: 'asc' }],
     })
     return rows.map((row) => this.toDTO(row))
   }
@@ -77,6 +88,6 @@ export class PrismaCardRepository implements CardRepository, CardQueryRepository
   }
 
   private toDTO(row: CardRow): CardDTO {
-    return { ...row, kind: row.kind as CardKind }
+    return { ...row, kind: row.kind as CardKind, brand: row.brand as CardBrand }
   }
 }

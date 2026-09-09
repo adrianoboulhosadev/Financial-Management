@@ -1,6 +1,7 @@
 import { Controller, Get, Query } from '@nestjs/common'
 import { TransactionFacade, CategoryTotalDTO } from '@transaction/adapters'
 import { IncomeFacade } from '@income/adapters'
+import { InvestmentFacade } from '@investment/adapters'
 import { BudgetFacade, BudgetUsageDTO } from '@budget/adapters'
 import { UserDTO } from '@auth/adapters'
 import { MonthPeriod } from 'shared'
@@ -8,6 +9,7 @@ import { PrismaTransactionRepository } from '../transaction/prisma-transaction-r
 import { PrismaRecurrenceRepository } from '../transaction/prisma-recurrence-repository'
 import { PrismaIncomeSourceRepository } from '../income/prisma-income-source-repository'
 import { PrismaBudgetRepository } from '../budget/prisma-budget-repository'
+import { PrismaInvestmentContributionRepository } from '../investment/prisma-investment-contribution-repository'
 import { authenticatedUser } from '../shared/authenticated-user.decorator'
 
 /**
@@ -16,7 +18,8 @@ import { authenticatedUser } from '../shared/authenticated-user.decorator'
  *
  * No single context owns this shape, so it is assembled HERE in the app layer —
  * `plannedIncome` comes from `income`, the totals (movements AND the month's
- * unpaid fixed bills) from `transaction`, the ceilings from `budget`. Never exported from an adapters package; the front
+ * unpaid fixed bills) from `transaction`, the ceilings from `budget` and what
+ * was put to work from `investment`. Never exported from an adapters package; the front
  * mirrors the type by hand, which is the honest cost of a shape that belongs to
  * no context.
  */
@@ -34,8 +37,11 @@ interface MonthlyReportDTO {
   /** expenses + commitments: what the dashboard shows as "saiu", so a month
    * with 3.000 of fixed bills does not read as 400 spent on the 3rd. */
   totalExpenseCents: number
-  /** planned + realized income − totalExpense: the number the dashboard leads
-   * with. */
+  /** What the owner already put into investments this month — money that left
+   * the account on purpose, so it is not sitting there to be spent again. */
+  investedCents: number
+  /** planned + realized income − totalExpense − invested: the number the
+   * dashboard leads with. */
   leftoverCents: number
   /** Money that moved, per category — what the ceilings are measured against. */
   byCategory: CategoryTotalDTO[]
@@ -52,6 +58,7 @@ export class ReportController {
     private readonly recurrenceRepository: PrismaRecurrenceRepository,
     private readonly incomeRepository: PrismaIncomeSourceRepository,
     private readonly budgetRepository: PrismaBudgetRepository,
+    private readonly contributionRepository: PrismaInvestmentContributionRepository,
   ) {}
 
   @Get('monthly')
@@ -63,7 +70,7 @@ export class ReportController {
     // than silently reporting on the wrong month.
     const month = new MonthPeriod(period ?? MonthPeriod.of().value)
 
-    const [totals, income] = await Promise.all([
+    const [totals, income, investedCents] = await Promise.all([
       // The recurrence port is what makes the totals carry the month's unpaid
       // fixed bills alongside what actually moved.
       new TransactionFacade(
@@ -73,6 +80,12 @@ export class ReportController {
         this.recurrenceRepository,
       ).getMyMonthlyTotals(user.id, month.value),
       new IncomeFacade(undefined, this.incomeRepository).getMyMonthlyIncome(user.id),
+      new InvestmentFacade(
+        undefined,
+        undefined,
+        undefined,
+        this.contributionRepository,
+      ).getInvestedInPeriod(user.id, month.value),
     ])
 
     const spending = totals.byCategory
@@ -92,10 +105,15 @@ export class ReportController {
       expenseCents: totals.expenseCents,
       committedExpenseCents: totals.committedExpenseCents,
       totalExpenseCents,
+      investedCents,
       // A month with 4.000 of income and 3.000 of fixed bills has 600 left over
       // after 400 of loose spending — not 3.600. Counting only what moved would
       // tell the owner they can spend money that is already promised.
-      leftoverCents: income.totalCents + totals.incomeCents - totalExpenseCents,
+      //
+      // What was moved into an investment comes off too, and for the same
+      // reason: it left the account on purpose, so offering it again as "sobra"
+      // would invite spending it twice.
+      leftoverCents: income.totalCents + totals.incomeCents - totalExpenseCents - investedCents,
       byCategory: totals.byCategory,
       totalByCategory: totals.totalByCategory,
       budgets,

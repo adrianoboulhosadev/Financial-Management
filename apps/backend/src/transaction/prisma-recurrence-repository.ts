@@ -25,6 +25,7 @@ interface RecurrenceRow {
   bankId: string | null
   cardId: string | null
   paymentMethod: string | null
+  endsOn: Date | null
   nextRunAt: Date
   lastRunAt: Date | null
 }
@@ -50,6 +51,7 @@ export class PrismaRecurrenceRepository
       bankId: row.bankId,
       cardId: row.cardId,
       paymentMethod: row.paymentMethod,
+      endsOn: row.endsOn,
       nextRunAt: row.nextRunAt,
       lastRunAt: row.lastRunAt,
     })
@@ -77,6 +79,7 @@ export class PrismaRecurrenceRepository
         bankId: recurrence.bankId,
         cardId: recurrence.cardId,
         paymentMethod: recurrence.paymentMethod,
+        endsOn: recurrence.endsOn,
         nextRunAt: recurrence.nextRunAt,
         lastRunAt: recurrence.lastRunAt,
       },
@@ -201,6 +204,7 @@ export class PrismaRecurrenceRepository
       bankId: recurrence.bankId,
       cardId: recurrence.cardId,
       paymentMethod: recurrence.paymentMethod,
+      endsOn: recurrence.endsOn,
       nextRunAt: recurrence.nextRunAt,
       lastRunAt: recurrence.lastRunAt,
     }

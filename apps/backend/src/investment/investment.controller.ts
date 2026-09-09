@@ -6,9 +6,11 @@ import {
   CreateInvestmentInput,
   UpdateInvestmentInput,
   SetInvestmentActiveInput,
+  ContributeToInvestmentInput,
 } from '@investment/adapters'
 import { UserDTO } from '@auth/adapters'
 import { PrismaInvestmentRepository } from './prisma-investment-repository'
+import { PrismaInvestmentContributionRepository } from './prisma-investment-contribution-repository'
 import { PaymentSourceResolver } from '../bank/payment-source.resolver'
 import { authenticatedUser } from '../shared/authenticated-user.decorator'
 import { requireFields } from '../shared/require-fields'
@@ -25,11 +27,17 @@ import { requireFields } from '../shared/require-fields'
 export class InvestmentController {
   constructor(
     private readonly repository: PrismaInvestmentRepository,
+    private readonly contributionRepository: PrismaInvestmentContributionRepository,
     private readonly paymentSources: PaymentSourceResolver,
   ) {}
 
   private facade(): InvestmentFacade {
-    return new InvestmentFacade(this.repository, this.repository)
+    return new InvestmentFacade(
+      this.repository,
+      this.repository,
+      this.contributionRepository,
+      this.contributionRepository,
+    )
   }
 
   @Get()
@@ -61,6 +69,23 @@ export class InvestmentController {
   ) {
     await this.paymentSources.ensureOwned(user.id, input.bankId)
     await this.facade().updateInvestment(id, input, user.id)
+  }
+
+  /**
+   * Puts money into an investment the owner already has — an "aporte", which is
+   * what the dashboard offers when a month has something left over. It raises
+   * the investment and drops the month's leftover by the same amount (see
+   * report/monthly).
+   */
+  @Post(':id/contribution')
+  @HttpCode(201)
+  async contribute(
+    @Param('id') id: string,
+    @Body() input: ContributeToInvestmentInput,
+    @authenticatedUser() user: UserDTO,
+  ) {
+    requireFields(input, ['amount', 'occurredOn'])
+    await this.facade().contributeToInvestment(id, input, user.id)
   }
 
   /** Redeemed (or brought back). Deactivating keeps the row and only drops it

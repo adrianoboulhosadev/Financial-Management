@@ -50,7 +50,7 @@ export class BankController {
   @Post('card')
   @HttpCode(201)
   async createCard(@Body() input: CreateCardInput, @authenticatedUser() user: UserDTO) {
-    requireFields(input, ['bankId', 'name', 'kind', 'lastFourDigits'])
+    requireFields(input, ['bankId', 'brand', 'kind', 'lastFourDigits'])
     await this.facade().createCard(input, user.id)
   }
 
