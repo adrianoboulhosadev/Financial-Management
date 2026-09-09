@@ -30,7 +30,6 @@ export const Errors = {
   // user owns their own tree, so a foreign node is indistinguishable from a
   // missing one.
   CATEGORY_NOT_FOUND: 'CATEGORY_NOT_FOUND',
-  CATEGORY_NOT_LEAF: 'CATEGORY_NOT_LEAF',
   CATEGORY_HAS_CHILDREN: 'CATEGORY_HAS_CHILDREN',
   CATEGORY_ALREADY_EXISTS: 'CATEGORY_ALREADY_EXISTS',
   CATEGORY_IN_USE: 'CATEGORY_IN_USE',
@@ -38,12 +37,39 @@ export const Errors = {
   // transaction
   TRANSACTION_NOT_FOUND: 'TRANSACTION_NOT_FOUND',
   INVALID_TRANSACTION_TYPE: 'INVALID_TRANSACTION_TYPE',
-  // An expense always lands on a (leaf) category — that is the whole point of
-  // the tree. A one-off income does not have to.
+  // An expense always lands on a category — that is the whole point of the
+  // tree. A one-off income does not have to. Any node of the tree serves,
+  // branch or leaf: the owner decides how deep they want to file.
   CATEGORY_REQUIRED_FOR_EXPENSE: 'CATEGORY_REQUIRED_FOR_EXPENSE',
   RECURRENCE_NOT_FOUND: 'RECURRENCE_NOT_FOUND',
   RECURRENCE_NOT_ACTIVE: 'RECURRENCE_NOT_ACTIVE',
   INVALID_DAY_OF_MONTH: 'INVALID_DAY_OF_MONTH',
+  // Only a recurrence declared VARIABLE at creation accepts a per-month amount
+  // (the light bill). A fixed one already knows what it costs.
+  RECURRENCE_NOT_VARIABLE: 'RECURRENCE_NOT_VARIABLE',
+  INVALID_PAYMENT_METHOD: 'INVALID_PAYMENT_METHOD',
+  INVALID_INSTALLMENTS: 'INVALID_INSTALLMENTS',
+  // Splitting into more than one instalment is a CREDIT CARD thing; pix, debit
+  // and the rest settle at once.
+  INSTALLMENTS_REQUIRE_CREDIT: 'INSTALLMENTS_REQUIRE_CREDIT',
+
+  // bank
+  // Also answered when the bank/card belongs to SOMEONE ELSE (anti-IDOR).
+  BANK_NOT_FOUND: 'BANK_NOT_FOUND',
+  BANK_ALREADY_EXISTS: 'BANK_ALREADY_EXISTS',
+  // A bank still holding cards (or referenced by money that moved) is not
+  // deletable — the record of where it went must not lose its name.
+  BANK_IN_USE: 'BANK_IN_USE',
+  CARD_NOT_FOUND: 'CARD_NOT_FOUND',
+  CARD_ALREADY_EXISTS: 'CARD_ALREADY_EXISTS',
+  CARD_IN_USE: 'CARD_IN_USE',
+  INVALID_CARD_KIND: 'INVALID_CARD_KIND',
+  INVALID_CARD_LAST_DIGITS: 'INVALID_CARD_LAST_DIGITS',
+
+  // investment
+  INVESTMENT_NOT_FOUND: 'INVESTMENT_NOT_FOUND',
+  INVESTMENT_ALREADY_EXISTS: 'INVESTMENT_ALREADY_EXISTS',
+  INVALID_INVESTMENT_KIND: 'INVALID_INVESTMENT_KIND',
 
   // budget
   BUDGET_NOT_FOUND: 'BUDGET_NOT_FOUND',
