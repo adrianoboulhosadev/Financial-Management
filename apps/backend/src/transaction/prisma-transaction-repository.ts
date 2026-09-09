@@ -6,6 +6,7 @@ import {
   Transaction,
   TransactionDTO,
   TransactionType,
+  PaymentMethod,
 } from '@transaction/adapters'
 import { Prisma } from 'database'
 import { PrismaService } from '../db/prisma.service'
@@ -20,6 +21,12 @@ interface TransactionRow {
   occurredOn: Date
   attachmentUrl: string | null
   recurrenceId: string | null
+  bankId: string | null
+  cardId: string | null
+  paymentMethod: string | null
+  installments: number
+  installmentNumber: number
+  installmentGroupId: string | null
   createdAt: Date
 }
 
@@ -40,6 +47,12 @@ export class PrismaTransactionRepository
       occurredOn: row.occurredOn,
       attachmentUrl: row.attachmentUrl,
       recurrenceId: row.recurrenceId,
+      bankId: row.bankId,
+      cardId: row.cardId,
+      paymentMethod: row.paymentMethod,
+      installments: row.installments,
+      installmentNumber: row.installmentNumber,
+      installmentGroupId: row.installmentGroupId,
     })
   }
 
@@ -49,19 +62,14 @@ export class PrismaTransactionRepository
   }
 
   async create(transaction: Transaction): Promise<void> {
-    await this.prisma.transaction.create({
-      data: {
-        id: transaction.id.value,
-        ownerId: transaction.ownerId,
-        type: transaction.type,
-        categoryId: transaction.categoryId,
-        description: transaction.description,
-        // Reads the cents off the value object — the column is an Int.
-        amount: transaction.amount.cents,
-        occurredOn: transaction.occurredOn,
-        attachmentUrl: transaction.attachmentUrl,
-        recurrenceId: transaction.recurrenceId,
-      },
+    await this.prisma.transaction.create({ data: this.dataOf(transaction) })
+  }
+
+  /** ONE statement, so a split purchase leaves every month or no month at all —
+   * which is the promise the port makes. */
+  async createMany(transactions: Transaction[]): Promise<void> {
+    await this.prisma.transaction.createMany({
+      data: transactions.map((transaction) => this.dataOf(transaction)),
     })
   }
 
@@ -74,6 +82,9 @@ export class PrismaTransactionRepository
         amount: transaction.amount.cents,
         occurredOn: transaction.occurredOn,
         attachmentUrl: transaction.attachmentUrl,
+        bankId: transaction.bankId,
+        cardId: transaction.cardId,
+        paymentMethod: transaction.paymentMethod,
       },
     })
   }
@@ -85,6 +96,22 @@ export class PrismaTransactionRepository
   async existsByCategory(categoryId: string): Promise<boolean> {
     const found = await this.prisma.transaction.findFirst({
       where: { categoryId },
+      select: { id: true },
+    })
+    return found !== null
+  }
+
+  async existsByBank(bankId: string): Promise<boolean> {
+    const found = await this.prisma.transaction.findFirst({
+      where: { bankId },
+      select: { id: true },
+    })
+    return found !== null
+  }
+
+  async existsByCard(cardId: string): Promise<boolean> {
+    const found = await this.prisma.transaction.findFirst({
+      where: { cardId },
       select: { id: true },
     })
     return found !== null
@@ -123,6 +150,7 @@ export class PrismaTransactionRepository
     const where: Prisma.TransactionWhereInput = { ownerId }
     if (filter?.type) where.type = filter.type
     if (filter?.categoryId) where.categoryId = filter.categoryId
+    if (filter?.bankId) where.bankId = filter.bankId
     // [from, to) — an exclusive upper bound, the same window MonthPeriod builds,
     // which is what keeps the last day of a month from being cut off.
     if (filter?.from || filter?.to) {
@@ -131,7 +159,32 @@ export class PrismaTransactionRepository
     return where
   }
 
+  private dataOf(transaction: Transaction) {
+    return {
+      id: transaction.id.value,
+      ownerId: transaction.ownerId,
+      type: transaction.type,
+      categoryId: transaction.categoryId,
+      description: transaction.description,
+      // Reads the cents off the value object — the column is an Int.
+      amount: transaction.amount.cents,
+      occurredOn: transaction.occurredOn,
+      attachmentUrl: transaction.attachmentUrl,
+      recurrenceId: transaction.recurrenceId,
+      bankId: transaction.bankId,
+      cardId: transaction.cardId,
+      paymentMethod: transaction.paymentMethod,
+      installments: transaction.installments,
+      installmentNumber: transaction.installmentNumber,
+      installmentGroupId: transaction.installmentGroupId,
+    }
+  }
+
   private toDTO(row: TransactionRow): TransactionDTO {
-    return { ...row, type: row.type as TransactionType }
+    return {
+      ...row,
+      type: row.type as TransactionType,
+      paymentMethod: row.paymentMethod as PaymentMethod | null,
+    }
   }
 }

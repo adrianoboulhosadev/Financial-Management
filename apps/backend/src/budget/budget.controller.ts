@@ -58,11 +58,10 @@ export class BudgetController {
   @HttpCode(201)
   async set(@Body() input: SetBudgetInput, @authenticatedUser() user: UserDTO) {
     requireFields(input, ['categoryId', 'amount'])
-    const isLeaf = await new CategoryResolver(this.categoryRepository).isLeafOf(
-      input.categoryId,
-      user.id,
-    )
-    await this.facade().setBudget(input, user.id, isLeaf)
+    // Any node of the tree can hold a ceiling; what still has to be true is
+    // that it belongs to the caller.
+    await new CategoryResolver(this.categoryRepository).ensureOwned(input.categoryId, user.id)
+    await this.facade().setBudget(input, user.id)
   }
 
   @Delete(':id')

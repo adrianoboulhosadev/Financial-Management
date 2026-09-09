@@ -7,6 +7,8 @@ import { CategoryModule } from './category/category.module'
 import { TransactionModule } from './transaction/transaction.module'
 import { BudgetModule } from './budget/budget.module'
 import { IncomeModule } from './income/income.module'
+import { BankModule } from './bank/bank.module'
+import { InvestmentModule } from './investment/investment.module'
 import { ReportModule } from './report/report.module'
 import { UploadModule } from './upload/upload.module'
 import { NotificationModule } from './notification/notification.module'
@@ -21,6 +23,8 @@ import { NotificationModule } from './notification/notification.module'
     TransactionModule,
     BudgetModule,
     IncomeModule,
+    BankModule,
+    InvestmentModule,
     ReportModule,
     UploadModule,
     NotificationModule,

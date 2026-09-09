@@ -12,6 +12,7 @@ import { PrismaTransactionRepository } from './prisma-transaction-repository'
 import { PrismaCategoryRepository } from '../category/prisma-category-repository'
 import { BullMqBudgetCheckQueue } from '../budget/bullmq-budget-check-queue'
 import { CategoryResolver } from './category-resolver'
+import { PaymentSourceResolver } from '../bank/payment-source.resolver'
 import { authenticatedUser } from '../shared/authenticated-user.decorator'
 import { requireFields } from '../shared/require-fields'
 
@@ -19,10 +20,11 @@ import { requireFields } from '../shared/require-fields'
  * The user's own movements. Protected by the AuthMiddleware (see
  * transaction.module): the ownerId ALWAYS comes from the token (anti-IDOR).
  *
- * Two cross-context jobs happen here, in the app layer, because neither context
- * may import the other:
- * - resolving whether the chosen category is a leaf of THIS user's tree, which
- *   travels into the use case as plain data;
+ * Three cross-context jobs happen here, in the app layer, because no context
+ * may import another:
+ * - confirming the chosen category belongs to THIS user (any node of the tree
+ *   will do — branch or leaf);
+ * - confirming the bank/card the money went through is this user's too;
  * - enqueueing the budget check after an expense, so the ceiling is re-evaluated
  *   without slowing down (or endangering) the write itself.
  */
@@ -32,6 +34,7 @@ export class TransactionController {
     private readonly transactionRepository: PrismaTransactionRepository,
     private readonly categoryRepository: PrismaCategoryRepository,
     private readonly budgetCheckQueue: BullMqBudgetCheckQueue,
+    private readonly paymentSources: PaymentSourceResolver,
   ) {}
 
   private facade(): TransactionFacade {
@@ -75,9 +78,10 @@ export class TransactionController {
   @HttpCode(201)
   async record(@Body() input: RecordTransactionInput, @authenticatedUser() user: UserDTO) {
     requireFields(input, ['type', 'description', 'amount', 'occurredOn'])
-    const isLeaf = await this.categories().isLeafOf(input.categoryId, user.id)
+    await this.categories().ensureOwned(input.categoryId, user.id)
+    await this.paymentSources.ensureOwned(user.id, input.bankId, input.cardId)
 
-    await this.facade().recordTransaction(input, user.id, isLeaf)
+    await this.facade().recordTransaction(input, user.id)
     await this.checkBudget(user.id, input.type, input.categoryId, input.occurredOn)
   }
 
@@ -88,8 +92,9 @@ export class TransactionController {
     @Body() input: UpdateTransactionInput,
     @authenticatedUser() user: UserDTO,
   ) {
-    const isLeaf = await this.categories().isLeafOf(input.categoryId, user.id)
-    await this.facade().updateTransaction(id, input, user.id, isLeaf)
+    await this.categories().ensureOwned(input.categoryId, user.id)
+    await this.paymentSources.ensureOwned(user.id, input.bankId, input.cardId)
+    await this.facade().updateTransaction(id, input, user.id)
 
     // An edit moves money around just as much as a new entry does — a raised
     // amount can be exactly what breaks the ceiling.
