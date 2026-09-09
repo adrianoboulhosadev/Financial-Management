@@ -4,6 +4,8 @@ import {
   CreateRecurrenceInput,
   UpdateRecurrenceInput,
   SetRecurrenceActiveInput,
+  SetRecurrencePaidInput,
+  AdjustRecurrenceAmountInput,
 } from './inputs'
 
 export type {
@@ -12,4 +14,6 @@ export type {
   CreateRecurrenceInput,
   UpdateRecurrenceInput,
   SetRecurrenceActiveInput,
+  SetRecurrencePaidInput,
+  AdjustRecurrenceAmountInput,
 }

@@ -10,6 +10,9 @@ import SetRecurrenceActiveController from './set-recurrence-active-controller'
 import DeleteRecurrenceController from './delete-recurrence-controller'
 import ListMyRecurrencesController from './list-my-recurrences-controller'
 import RunRecurrenceController from './run-recurrence-controller'
+import GetMonthlyChecklistController from './get-monthly-checklist-controller'
+import SetRecurrencePaidController from './set-recurrence-paid-controller'
+import AdjustRecurrenceAmountController from './adjust-recurrence-amount-controller'
 
 export {
   RecordTransactionController,
@@ -24,4 +27,7 @@ export {
   DeleteRecurrenceController,
   ListMyRecurrencesController,
   RunRecurrenceController,
+  GetMonthlyChecklistController,
+  SetRecurrencePaidController,
+  AdjustRecurrenceAmountController,
 }

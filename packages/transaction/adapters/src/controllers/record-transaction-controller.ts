@@ -4,13 +4,9 @@ import { RecordTransactionInput } from '../@types'
 export default class RecordTransactionController {
   constructor(private readonly repository: TransactionRepository) {}
 
-  // ownerId comes from the JWT; categoryIsLeaf is resolved by the app layer
-  // (which is the only one allowed to look at the `category` context).
-  async execute(
-    input: RecordTransactionInput,
-    ownerId: string,
-    categoryIsLeaf?: boolean,
-  ): Promise<void> {
+  // ownerId comes from the JWT; the bank/card/category the input points at were
+  // already confirmed to belong to this user by the app layer.
+  async execute(input: RecordTransactionInput, ownerId: string): Promise<void> {
     const useCase = new RecordTransaction(this.repository)
     await useCase.execute({
       ownerId,
@@ -20,7 +16,10 @@ export default class RecordTransactionController {
       amount: input.amount,
       occurredOn: new Date(input.occurredOn),
       attachmentUrl: input.attachmentUrl,
-      categoryIsLeaf,
+      bankId: input.bankId,
+      cardId: input.cardId,
+      paymentMethod: input.paymentMethod,
+      installments: input.installments,
     })
   }
 }

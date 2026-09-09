@@ -6,8 +6,10 @@ import {
   MonthlyTotalsDTO,
   RecurrenceRepository,
   RecurrenceQueryRepository,
+  RecurrencePaymentRepository,
   RecurrenceQueue,
   RecurrenceDTO,
+  MonthlyChecklistDTO,
 } from '@transaction/core'
 import {
   RecordTransactionController,
@@ -22,6 +24,9 @@ import {
   DeleteRecurrenceController,
   ListMyRecurrencesController,
   RunRecurrenceController,
+  GetMonthlyChecklistController,
+  SetRecurrencePaidController,
+  AdjustRecurrenceAmountController,
 } from '../controllers'
 import {
   RecordTransactionInput,
@@ -29,6 +34,8 @@ import {
   CreateRecurrenceInput,
   UpdateRecurrenceInput,
   SetRecurrenceActiveInput,
+  SetRecurrencePaidInput,
+  AdjustRecurrenceAmountInput,
 } from '../@types'
 
 /**
@@ -36,9 +43,10 @@ import {
  * constructor: each method uses only what it needs, so the worker can wire the
  * recurrence side alone and never touch the query repositories.
  *
- * `ownerId` is always the authenticated id resolved from the JWT, and
- * `categoryIsLeaf` is the answer the app already got from the `category`
- * context — this facade never looks it up itself.
+ * `ownerId` is always the authenticated id resolved from the JWT. Whether the
+ * category/bank/card an input points at belongs to that user is confirmed by
+ * the APP layer before it gets here — this facade never looks across contexts
+ * itself.
  */
 export default class TransactionFacade {
   constructor(
@@ -47,25 +55,21 @@ export default class TransactionFacade {
     private readonly recurrenceRepository?: RecurrenceRepository,
     private readonly recurrenceQueryRepository?: RecurrenceQueryRepository,
     private readonly recurrenceQueue?: RecurrenceQueue,
+    private readonly recurrencePaymentRepository?: RecurrencePaymentRepository,
   ) {}
 
-  async recordTransaction(
-    input: RecordTransactionInput,
-    ownerId: string,
-    categoryIsLeaf?: boolean,
-  ): Promise<void> {
+  async recordTransaction(input: RecordTransactionInput, ownerId: string): Promise<void> {
     const controller = new RecordTransactionController(this.transactionRepository!)
-    await controller.execute(input, ownerId, categoryIsLeaf)
+    await controller.execute(input, ownerId)
   }
 
   async updateTransaction(
     transactionId: string,
     input: UpdateTransactionInput,
     ownerId: string,
-    categoryIsLeaf?: boolean,
   ): Promise<void> {
     const controller = new UpdateTransactionController(this.transactionRepository!)
-    await controller.execute(transactionId, input, ownerId, categoryIsLeaf)
+    await controller.execute(transactionId, input, ownerId)
   }
 
   async deleteTransaction(transactionId: string, ownerId: string): Promise<void> {
@@ -82,11 +86,13 @@ export default class TransactionFacade {
     )
   }
 
+  /** The month's totals. When the recurrence port was wired in, they also
+   * carry what the month still owes in fixed bills. */
   async getMyMonthlyTotals(ownerId: string, period: string): Promise<MonthlyTotalsDTO> {
-    return new GetMyMonthlyTotalsController(this.transactionQueryRepository!).execute(
-      ownerId,
-      period,
-    )
+    return new GetMyMonthlyTotalsController(
+      this.transactionQueryRepository!,
+      this.recurrenceQueryRepository,
+    ).execute(ownerId, period)
   }
 
   /** System path (worker): how much a category consumed in a month, in cents. */
@@ -98,29 +104,24 @@ export default class TransactionFacade {
     )
   }
 
-  async createRecurrence(
-    input: CreateRecurrenceInput,
-    ownerId: string,
-    categoryIsLeaf?: boolean,
-  ): Promise<void> {
+  async createRecurrence(input: CreateRecurrenceInput, ownerId: string): Promise<void> {
     const controller = new CreateRecurrenceController(
       this.recurrenceRepository!,
       this.recurrenceQueue,
     )
-    await controller.execute(input, ownerId, categoryIsLeaf)
+    await controller.execute(input, ownerId)
   }
 
   async updateRecurrence(
     recurrenceId: string,
     input: UpdateRecurrenceInput,
     ownerId: string,
-    categoryIsLeaf?: boolean,
   ): Promise<void> {
     const controller = new UpdateRecurrenceController(
       this.recurrenceRepository!,
       this.recurrenceQueue,
     )
-    await controller.execute(recurrenceId, input, ownerId, categoryIsLeaf)
+    await controller.execute(recurrenceId, input, ownerId)
   }
 
   async setRecurrenceActive(
@@ -145,7 +146,42 @@ export default class TransactionFacade {
 
   /** System path (worker): posts the due occurrence and schedules the next. */
   async runRecurrence(recurrenceId: string): Promise<void> {
-    const controller = new RunRecurrenceController(this.recurrenceRepository!, this.recurrenceQueue)
+    const controller = new RunRecurrenceController(
+      this.recurrenceRepository!,
+      this.recurrenceQueue,
+      this.recurrencePaymentRepository,
+    )
     await controller.execute(recurrenceId)
+  }
+
+  /** The month's to-do list of fixed bills — derived, never stored. */
+  async getMonthlyChecklist(ownerId: string, period: string): Promise<MonthlyChecklistDTO> {
+    return new GetMonthlyChecklistController(this.recurrenceQueryRepository!).execute(
+      ownerId,
+      period,
+    )
+  }
+
+  async setRecurrencePaid(
+    recurrenceId: string,
+    input: SetRecurrencePaidInput,
+    ownerId: string,
+  ): Promise<void> {
+    await new SetRecurrencePaidController(
+      this.recurrenceRepository!,
+      this.recurrencePaymentRepository!,
+    ).execute(recurrenceId, input, ownerId)
+  }
+
+  /** What a VARIABLE bill actually came to this month. */
+  async adjustRecurrenceAmount(
+    recurrenceId: string,
+    input: AdjustRecurrenceAmountInput,
+    ownerId: string,
+  ): Promise<void> {
+    await new AdjustRecurrenceAmountController(
+      this.recurrenceRepository!,
+      this.recurrencePaymentRepository!,
+    ).execute(recurrenceId, input, ownerId)
   }
 }

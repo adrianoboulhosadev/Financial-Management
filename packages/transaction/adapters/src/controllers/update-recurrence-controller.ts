@@ -11,9 +11,8 @@ export default class UpdateRecurrenceController {
     recurrenceId: string,
     input: UpdateRecurrenceInput,
     ownerId: string,
-    categoryIsLeaf?: boolean,
   ): Promise<void> {
     const useCase = new UpdateRecurrence(this.repository, this.queue)
-    await useCase.execute({ ownerId, recurrenceId, ...input, categoryIsLeaf })
+    await useCase.execute({ ownerId, recurrenceId, ...input })
   }
 }

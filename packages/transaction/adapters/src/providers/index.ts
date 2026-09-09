@@ -4,9 +4,11 @@ import type {
   TransactionFilter,
   RecurrenceRepository,
   RecurrenceQueryRepository,
+  RecurrencePaymentRepository,
   RecurrenceQueue,
   RecurrenceRunCommand,
   Countable,
+  InstallmentPlanEntry,
 } from '@transaction/core'
 
 export type {
@@ -15,7 +17,9 @@ export type {
   TransactionFilter,
   RecurrenceRepository,
   RecurrenceQueryRepository,
+  RecurrencePaymentRepository,
   RecurrenceQueue,
   RecurrenceRunCommand,
   Countable,
+  InstallmentPlanEntry,
 }
