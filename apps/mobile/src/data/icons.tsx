@@ -97,6 +97,33 @@ export const LogoutIcon = ({ color, size }: IconProps) => (
   </Svg>
 )
 
+export const ChecklistIcon = ({ color, size }: IconProps) => (
+  <Svg {...stroke(color, size)}>
+    <Path d="M4 6.5 6 8.5l3-3.5" />
+    <Path d="M4 17.5 6 19.5l3-3.5" />
+    <Path d="M12 7h8" />
+    <Path d="M12 18h8" />
+  </Svg>
+)
+
+export const BanksIcon = ({ color, size }: IconProps) => (
+  <Svg {...stroke(color, size)}>
+    <Path d="M3 9.5 12 4l9 5.5" />
+    <Path d="M5 10v8" />
+    <Path d="M10 10v8" />
+    <Path d="M14 10v8" />
+    <Path d="M19 10v8" />
+    <Path d="M3 20h18" />
+  </Svg>
+)
+
+export const InvestmentsIcon = ({ color, size }: IconProps) => (
+  <Svg {...stroke(color, size)}>
+    <Path d="M4 17l5-5 3.5 3.5L20 8" />
+    <Path d="M15 8h5v5" />
+  </Svg>
+)
+
 export const MoreIcon = ({ color, size }: IconProps) => (
   <Svg {...stroke(color, size)}>
     <Circle cx="5" cy="12" r="1.4" />

@@ -5,6 +5,7 @@ import { EmptyState } from '@/components/empty-state'
 import { Loading } from '@/components/loading'
 import { MonthPicker } from '@/components/month-picker'
 import { Screen } from '@/components/screen'
+import { MonthSplitBar } from '@/components/month-split-bar'
 import { StatCard } from '@/components/stat-card'
 import { formatBRL } from 'ui'
 import { useDashboard } from './hooks/use-dashboard'
@@ -12,12 +13,15 @@ import { useDashboard } from './hooks/use-dashboard'
 /** The screen the product exists for: how much is left this month. Same three
  * headline numbers, same order and same colours as the web's. */
 export function DashboardScreen() {
-  const { period, setPeriod, report, loading, labelFor } = useDashboard()
+  const { period, setPeriod, report, loading, fixedCents, pendingFixedCents, labelFor } =
+    useDashboard()
 
   if (loading || !report) return <Loading />
 
   const incomeCents = report.plannedIncomeCents + report.realizedIncomeCents
-  const biggest = report.byCategory.slice(0, 6)
+  // The ranking that adds up to what the screen leads with — the month's
+  // unpaid fixed bills included.
+  const biggest = report.totalByCategory.slice(0, 6)
 
   return (
     <Screen>
@@ -37,14 +41,38 @@ export function DashboardScreen() {
         <StatCard
           label="Saiu"
           accent="negative"
-          value={<Amount cents={report.expenseCents} tone="expense" className="text-2xl" />}
-          hint="despesas lançadas no mês"
+          // The fixed bills of the month count here whether or not they have
+          // been paid yet: money already promised is not money to spend.
+          value={<Amount cents={report.totalExpenseCents} tone="expense" className="text-2xl" />}
+          hint={
+            report.committedExpenseCents > 0
+              ? `inclui ${formatBRL(report.committedExpenseCents)} de fixos ainda não lançados`
+              : 'despesas lançadas no mês'
+          }
         />
         <StatCard
           label="Sobra"
           accent="accent"
           value={<Amount cents={report.leftoverCents} tone="movement" className="text-2xl" />}
           hint={report.leftoverCents < 0 ? 'o mês fechou no vermelho' : 'o que ainda está livre'}
+        />
+      </View>
+
+      <View className="gap-3 rounded-card border border-ink-border bg-ink-surface p-4">
+        <View className="flex-row items-center justify-between">
+          <Text className="text-sm font-semibold text-ink-text">Como o mês se divide</Text>
+          {pendingFixedCents > 0 ? (
+            <Text className="text-xs text-accent">{formatBRL(pendingFixedCents)} a pagar</Text>
+          ) : null}
+        </View>
+
+        <MonthSplitBar
+          incomeCents={incomeCents}
+          fixedCents={fixedCents}
+          // What was spent OUTSIDE the fixed bills: the rows a recurrence
+          // posted are already inside `fixedCents`, and counting them in both
+          // would make the bar add up to more than the month.
+          variableCents={Math.max(report.totalExpenseCents - fixedCents, 0)}
         />
       </View>
 
@@ -95,7 +123,7 @@ export function DashboardScreen() {
                 <View
                   className="h-full rounded-full bg-accent"
                   style={{
-                    width: `${report.expenseCents === 0 ? 0 : Math.round((total.spentCents / report.expenseCents) * 100)}%`,
+                    width: `${report.totalExpenseCents === 0 ? 0 : Math.round((total.spentCents / report.totalExpenseCents) * 100)}%`,
                   }}
                 />
               </View>

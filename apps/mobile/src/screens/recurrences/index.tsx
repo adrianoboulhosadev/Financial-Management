@@ -5,7 +5,9 @@ import { Button } from '@/components/button'
 import { CategoryPicker } from '@/components/category-picker'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { EmptyState } from '@/components/empty-state'
+import { Checkbox } from '@/components/checkbox'
 import { Field } from '@/components/field'
+import { PaymentFields } from '@/components/payment-fields'
 import { Loading } from '@/components/loading'
 import { Screen } from '@/components/screen'
 import { SegmentedControl } from '@/components/segmented-control'
@@ -19,7 +21,7 @@ export function RecurrencesScreen() {
       <Screen>
         <Text className="text-sm text-ink-text-soft">
           O que se repete todo mês — aluguel, assinatura, mensalidade. Na data marcada o lançamento
-          entra sozinho e você recebe um aviso.
+          entra sozinho e você recebe um aviso. Para marcar o que já pagou, veja Mais › A pagar.
         </Text>
 
         <Button label="Novo lançamento fixo" onPress={screen.openForm} />
@@ -52,7 +54,16 @@ export function RecurrencesScreen() {
                     {recurrence.active
                       ? ` · próximo em ${formatDate(recurrence.nextRunAt)}`
                       : ' · pausado'}
+                    {/* A variable bill's amount is only an estimate until the
+                        real one arrives, and saying so keeps the figure beside
+                        it from being read as settled. */}
+                    {recurrence.variableAmount ? ' · valor variável' : ''}
                   </Text>
+                  {screen.paymentLabelFor(recurrence) ? (
+                    <Text className="mt-0.5 text-xs text-ink-text-muted" numberOfLines={1}>
+                      {screen.paymentLabelFor(recurrence)}
+                    </Text>
+                  ) : null}
                 </View>
 
                 <Amount
@@ -107,7 +118,7 @@ export function RecurrencesScreen() {
                 onChangeText={screen.setDescription}
               />
               <Field
-                label="Valor (R$)"
+                label={screen.variableAmount ? 'Valor aproximado (R$)' : 'Valor (R$)'}
                 money
                 placeholder="0,00"
                 value={screen.amount}
@@ -123,6 +134,32 @@ export function RecurrencesScreen() {
                 value={screen.categoryId}
                 onChange={screen.setCategoryId}
                 allowEmpty={!screen.categoryRequired}
+              />
+
+              {/* Declared at creation and never editable afterwards — flipping
+                  it on a bill whose months were already corrected would leave
+                  figures nobody could explain. */}
+              <Checkbox
+                label="O valor muda todo mês"
+                hint="Conta de luz, água, cartão. Você informa um valor aproximado agora e ajusta em A pagar quando a conta chegar."
+                checked={screen.variableAmount}
+                onChange={screen.setVariableAmount}
+              />
+
+              <Checkbox
+                label="Já é pago automaticamente"
+                hint="Pix programado ou débito automático: entra como pago na data do vencimento, sem você precisar marcar."
+                checked={screen.autoPaid}
+                onChange={screen.setAutoPaid}
+              />
+
+              <PaymentFields
+                bankId={screen.bankId}
+                onBankChange={screen.setBankId}
+                paymentMethod={screen.paymentMethod}
+                onPaymentMethodChange={screen.setPaymentMethod}
+                cardId={screen.cardId}
+                onCardChange={screen.setCardId}
               />
 
               {/* Day 31 does not exist every month; the domain clamps it instead

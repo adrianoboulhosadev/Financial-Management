@@ -29,7 +29,10 @@ export default function PrivateLayout() {
       }}
     >
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="checklist" options={{ title: 'A pagar' }} />
       <Stack.Screen name="recurrences" options={{ title: 'Fixos do mês' }} />
+      <Stack.Screen name="investments" options={{ title: 'Investimentos' }} />
+      <Stack.Screen name="banks" options={{ title: 'Bancos e cartões' }} />
       <Stack.Screen name="categories" options={{ title: 'Categorias' }} />
       <Stack.Screen name="notifications" options={{ title: 'Notificações' }} />
       <Stack.Screen name="profile" options={{ title: 'Perfil' }} />

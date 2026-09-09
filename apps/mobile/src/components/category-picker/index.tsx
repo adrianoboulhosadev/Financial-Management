@@ -12,7 +12,7 @@ interface CategoryPickerProps {
 
 /**
  * A phone does not have a `<select>`, so the same choice is a sheet. What is
- * OFFERED is identical to the web's picker: leaves only, labelled by path.
+ * OFFERED is identical to the web's picker: the whole tree, labelled by path.
  */
 export function CategoryPicker({
   label = 'Categoria',
@@ -40,7 +40,7 @@ export function CategoryPicker({
 
       {!picker.loading && picker.options.length === 0 ? (
         <Text className="text-sm text-ink-text-muted">
-          Você ainda não tem uma categoria final. Crie uma em Mais › Categorias.
+          Você ainda não tem categorias. Crie uma em Mais › Categorias.
         </Text>
       ) : null}
 

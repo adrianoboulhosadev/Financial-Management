@@ -7,6 +7,7 @@ import { ConfirmDialog } from '@/components/confirm-dialog'
 import { EmptyState } from '@/components/empty-state'
 import { Field } from '@/components/field'
 import { Loading } from '@/components/loading'
+import { PaymentFields } from '@/components/payment-fields'
 import { MonthPicker } from '@/components/month-picker'
 import { Screen } from '@/components/screen'
 import { SegmentedControl } from '@/components/segmented-control'
@@ -58,6 +59,13 @@ export function TransactionsScreen() {
                         nobody wonders where it came from. */}
                     {transaction.recurrenceId ? ' · fixo' : ''}
                   </Text>
+                  {/* Where the money went through, on its own line: a different
+                      question from "when and on what". */}
+                  {screen.paymentLabelFor(transaction) ? (
+                    <Text className="mt-0.5 text-xs text-ink-text-muted" numberOfLines={1}>
+                      {screen.paymentLabelFor(transaction)}
+                    </Text>
+                  ) : null}
                 </View>
 
                 <Amount
@@ -127,6 +135,17 @@ export function TransactionsScreen() {
                 value={screen.categoryId}
                 onChange={screen.setCategoryId}
                 allowEmpty={!screen.categoryRequired}
+              />
+
+              <PaymentFields
+                bankId={screen.bankId}
+                onBankChange={screen.setBankId}
+                paymentMethod={screen.paymentMethod}
+                onPaymentMethodChange={screen.setPaymentMethod}
+                cardId={screen.cardId}
+                onCardChange={screen.setCardId}
+                installments={screen.installments}
+                onInstallmentsChange={screen.setInstallments}
               />
 
               <Button

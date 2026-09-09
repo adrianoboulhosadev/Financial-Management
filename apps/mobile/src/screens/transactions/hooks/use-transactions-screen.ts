@@ -2,10 +2,12 @@ import { useState } from 'react'
 import type { TransactionDTO, TransactionType } from '@transaction/adapters'
 
 import {
+  paymentMethodLabel,
   toCents,
   toDateInputValue,
   toPeriod,
   type TransactionFilterValue,
+  useBanks,
   useCategories,
   useTransactions,
 } from 'ui'
@@ -24,7 +26,12 @@ export function useTransactionsScreen() {
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState('')
   const [occurredOn, setOccurredOn] = useState(() => toDateInputValue())
+  const [bankId, setBankId] = useState('')
+  const [cardId, setCardId] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState('')
+  const [installments, setInstallments] = useState('1')
   const { pathOf } = useCategories()
+  const { bankNameOf, cardLabelOf } = useBanks()
 
   const data = useTransactions({ period, type: filter === 'all' ? undefined : filter })
 
@@ -33,6 +40,10 @@ export function useTransactionsScreen() {
     setAmount('')
     setCategoryId('')
     setOccurredOn(toDateInputValue())
+    setBankId('')
+    setCardId('')
+    setPaymentMethod('')
+    setInstallments('1')
   }
 
   return {
@@ -59,6 +70,14 @@ export function useTransactionsScreen() {
     setAmount,
     occurredOn,
     setOccurredOn,
+    bankId,
+    setBankId,
+    cardId,
+    setCardId,
+    paymentMethod,
+    setPaymentMethod,
+    installments,
+    setInstallments,
     // Only an expense must land on a category — that is the tree's whole point.
     categoryRequired: type === 'expense',
     canSubmit: Boolean(description.trim() && amount && (type !== 'expense' || categoryId)),
@@ -69,6 +88,12 @@ export function useTransactionsScreen() {
         description,
         amount: toCents(amount),
         occurredOn,
+        // Empty means "not informed", which the domain stores as null — an
+        // empty string would be an unknown payment method.
+        bankId: bankId || null,
+        cardId: cardId || null,
+        paymentMethod: paymentMethod || null,
+        installments: paymentMethod === 'credit' ? Number(installments) || 1 : 1,
       })
       setFormOpen(false)
       resetForm()
@@ -82,5 +107,18 @@ export function useTransactionsScreen() {
       setPendingDeletion(null)
     },
     labelFor: (categoryId: string | null) => (categoryId ? pathOf(categoryId) : 'Sem categoria'),
+    /** How a row's payment reads — the same line the web shows, built from the
+     * same pieces. Every part is optional, and the missing ones simply do not
+     * show up rather than printing "sem banco". */
+    paymentLabelFor: (transaction: TransactionDTO): string =>
+      [
+        paymentMethodLabel(transaction.paymentMethod),
+        cardLabelOf(transaction.cardId) || bankNameOf(transaction.bankId),
+        transaction.installments > 1
+          ? `${transaction.installmentNumber}/${transaction.installments}`
+          : '',
+      ]
+        .filter(Boolean)
+        .join(' · '),
   }
 }
