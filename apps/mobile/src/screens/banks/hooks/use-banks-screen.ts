@@ -1,7 +1,11 @@
 import { useState } from 'react'
 import type { BankDTO, CardDTO } from '@bank/adapters'
 
-import { useBanks } from 'ui'
+import { BANK_SUGGESTIONS, useBanks } from 'ui'
+
+/** The option that reveals the free-text field — the same escape hatch the
+ * web's form has, so the two ask the question the same way. */
+export const OTHER_BANK = '__other__'
 
 type PendingDeletion = { kind: 'bank'; bank: BankDTO } | { kind: 'card'; card: CardDTO } | null
 
@@ -19,7 +23,8 @@ export function useBanksScreen() {
   const [cardFormBankId, setCardFormBankId] = useState<string | null>(null)
   const [pendingDeletion, setPendingDeletion] = useState<PendingDeletion>(null)
 
-  const [name, setName] = useState('')
+  const [selected, setSelected] = useState('')
+  const [customName, setCustomName] = useState('')
   const [agency, setAgency] = useState('')
   const [accountNumber, setAccountNumber] = useState('')
 
@@ -28,10 +33,16 @@ export function useBanksScreen() {
   const [lastFourDigits, setLastFourDigits] = useState('')
 
   const resetBankForm = () => {
-    setName('')
+    setSelected('')
+    setCustomName('')
     setAgency('')
     setAccountNumber('')
   }
+
+  // Derived from the two controls, so there is a single answer to "what is
+  // being submitted" instead of two fields that can disagree.
+  const choosingOther = selected === OTHER_BANK
+  const name = choosingOther ? customName : selected
 
   const resetCardForm = () => {
     setCardName('')
@@ -55,8 +66,15 @@ export function useBanksScreen() {
       setBankFormOpen(false)
       resetBankForm()
     },
-    name,
-    setName,
+    bankOptions: [
+      ...BANK_SUGGESTIONS.map((bank) => ({ value: bank, label: bank })),
+      { value: OTHER_BANK, label: 'Outro (digitar o nome)' },
+    ],
+    selected,
+    setSelected,
+    choosingOther,
+    customName,
+    setCustomName,
     agency,
     setAgency,
     accountNumber,

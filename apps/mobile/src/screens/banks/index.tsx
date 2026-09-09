@@ -1,5 +1,5 @@
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native'
-import { BANK_SUGGESTIONS, CARD_KIND_LABELS, CARD_KIND_OPTIONS } from 'ui'
+import { CARD_KIND_LABELS, CARD_KIND_OPTIONS } from 'ui'
 import { Button } from '@/components/button'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { EmptyState } from '@/components/empty-state'
@@ -14,9 +14,6 @@ import { useBanksScreen } from './hooks/use-banks-screen'
  * because a card is never reached without its bank — only the two forms move
  * into sheets, which is what the viewport allows.
  *
- * The bank name is a picker of suggestions PLUS a free-text field: a phone has
- * no `<datalist>`, so the two halves of the web's one control become two
- * controls that write into the same value.
  */
 export function BanksScreen() {
   const screen = useBanksScreen()
@@ -129,24 +126,23 @@ export function BanksScreen() {
             >
               <Text className="text-base font-semibold text-ink-text">Novo banco</Text>
 
-              {/* Suggestions and free text write into the SAME value: picking
-                  one fills the field, and a bank nobody listed is still
-                  typeable. */}
+              {/* One control, with "Outro" as the escape hatch — the list is a
+                  shortcut, not a limit. */}
               <OptionPicker
-                label="Escolher da lista"
-                value={BANK_SUGGESTIONS.includes(screen.name) ? screen.name : ''}
-                placeholder="Ou digite abaixo"
-                allowEmpty
-                options={BANK_SUGGESTIONS.map((bank) => ({ value: bank, label: bank }))}
-                onChange={screen.setName}
+                label="Banco"
+                value={screen.selected}
+                options={screen.bankOptions}
+                onChange={screen.setSelected}
               />
 
-              <Field
-                label="Banco"
-                placeholder="Itaú, Nubank…"
-                value={screen.name}
-                onChangeText={screen.setName}
-              />
+              {screen.choosingOther ? (
+                <Field
+                  label="Nome do banco"
+                  placeholder="Como ele aparece pra você"
+                  value={screen.customName}
+                  onChangeText={screen.setCustomName}
+                />
+              ) : null}
               <Field
                 label="Agência (opcional)"
                 placeholder="0001"
