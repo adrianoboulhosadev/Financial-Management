@@ -122,8 +122,9 @@ model Category {
 
 // A recorded movement of money: an expense (the common case) or a one-off
 // income. `amount` is INTEGER CENTS and always positive — the direction lives in
-// `type`, never in the sign. `categoryId` is a LOGICAL FK to a LEAF category
-// (cross-context), required for an expense and optional for an income.
+// `type`, never in the sign. `categoryId` is a LOGICAL FK to a category
+// (cross-context) — ANY node of the tree, branch or leaf — required for an
+// expense and optional for an income.
 //
 // `occurredOn` is a DATE, not a timestamp: what matters is the day the money
 // moved, and a date column cannot drift a record into the neighbouring month
@@ -142,6 +143,19 @@ model Transaction {
   occurredOn    DateTime    @map("occurred_on") @db.Date
   attachmentUrl String?     @map("attachment_url")
   recurrenceId  String?     @map("recurrence_id")
+  // Where the money came from / went to, and how. All LOGICAL FKs to the
+  // `bank` context (cross-context), and all nullable: rows recorded before
+  // banks existed carry none, and the entity has to be able to reconstitute
+  // them unchanged.
+  bankId        String?     @map("bank_id")
+  cardId        String?     @map("card_id")
+  paymentMethod String?     @map("payment_method")
+  // A credit purchase split over N months materializes N rows sharing an
+  // `installmentGroupId`, one per month, so the future ones are already
+  // visible as "what I owe" instead of appearing only when they are charged.
+  installments      Int     @default(1)
+  installmentNumber Int     @default(1) @map("installment_number")
+  installmentGroupId String? @map("installment_group_id")
   createdAt     DateTime    @default(now()) @map("created_at")
   updatedAt     DateTime    @updatedAt @map("updated_at")
   recurrence    Recurrence? @relation(fields: [recurrenceId], references: [id], onDelete: SetNull)
@@ -149,6 +163,8 @@ model Transaction {
   @@unique([recurrenceId, occurredOn])
   @@index([ownerId, occurredOn])
   @@index([ownerId, categoryId, occurredOn])
+  @@index([ownerId, bankId])
+  @@index([installmentGroupId])
   @@map("transactions")
 }
 
@@ -169,15 +185,55 @@ model Recurrence {
   amount       Int
   dayOfMonth   Int           @map("day_of_month")
   active       Boolean       @default(true)
+  // A bill whose amount changes every month (the electricity one). `amount` is
+  // then only the ESTIMATE the owner typed; the month's real figure lands in a
+  // RecurrencePayment when the bill arrives. Declared at creation, because it
+  // is what decides whether adjusting a month is allowed at all.
+  variableAmount Boolean     @default(false) @map("variable_amount")
+  // Already on pix/direct debit: the month is settled on its due date without
+  // anyone ticking it off in the checklist.
+  autoPaid     Boolean       @default(false) @map("auto_paid")
+  bankId       String?       @map("bank_id")
+  cardId       String?       @map("card_id")
+  paymentMethod String?      @map("payment_method")
   nextRunAt    DateTime      @map("next_run_at")
   lastRunAt    DateTime?     @map("last_run_at")
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
   transactions Transaction[]
+  payments     RecurrencePayment[]
 
   @@index([ownerId])
   @@index([active, nextRunAt])
   @@map("recurrences")
+}
+
+// What the owner did about ONE month of ONE recurrence: ticked it off in the
+// checklist (`paidAt`) and/or, for a variable bill, what it actually came to
+// (`amount`, integer cents).
+//
+// The checklist is DERIVED, not stored: an item exists for every active
+// recurrence of the month whether or not a row is here. A row only records a
+// DEVIATION from the default — which is why nothing has to be created in
+// advance, and why a month nobody touched costs zero writes.
+//
+// The relation to Recurrence is intra-context, so it is a real Prisma one; the
+// unique pair is what keeps ticking twice from ever producing two rows.
+model RecurrencePayment {
+  id           String     @id @default(uuid())
+  ownerId      String     @map("owner_id")
+  recurrenceId String     @map("recurrence_id")
+  // YYYY-MM, the same competence month MonthPeriod speaks.
+  period       String
+  amount       Int?
+  paidAt       DateTime?  @map("paid_at")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+  recurrence   Recurrence @relation(fields: [recurrenceId], references: [id], onDelete: Cascade)
+
+  @@unique([recurrenceId, period])
+  @@index([ownerId, period])
+  @@map("recurrence_payments")
 }
 
 // --- budget --------------------------------------------------------------------
@@ -221,4 +277,74 @@ model IncomeSource {
   @@unique([ownerId, name])
   @@index([ownerId])
   @@map("income_sources")
+}
+
+// --- bank ----------------------------------------------------------------------
+
+// A bank the owner keeps money in. `agency`/`accountNumber` are OPTIONAL: what
+// the product needs is a name to file a payment under, and most people do not
+// want to type an account number into a budgeting app. `ownerId` is a logical
+// FK — there is no shared catalogue of banks, each user registers their own.
+model Bank {
+  id            String   @id @default(uuid())
+  ownerId       String   @map("owner_id")
+  name          String
+  agency        String?
+  accountNumber String?  @map("account_number")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  cards         Card[]
+
+  @@unique([ownerId, name])
+  @@index([ownerId])
+  @@map("banks")
+}
+
+// A card issued by one of the owner's banks. `kind` says what it can pay with
+// (debit / credit / both) and `lastFourDigits` is the ONLY part of the number
+// stored — it is enough to recognise the card on a statement and it is not a
+// number anyone can spend. The relation to Bank is intra-context.
+model Card {
+  id             String   @id @default(uuid())
+  ownerId        String   @map("owner_id")
+  bankId         String   @map("bank_id")
+  name           String
+  kind           String
+  lastFourDigits String   @map("last_four_digits")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  bank           Bank     @relation(fields: [bankId], references: [id], onDelete: Restrict)
+
+  @@unique([ownerId, bankId, name])
+  @@index([ownerId])
+  @@index([bankId])
+  @@map("cards")
+}
+
+// --- investment ----------------------------------------------------------------
+
+// Money the owner put somewhere to grow. `investedAmount` is what went in and
+// `currentAmount` what it is worth today (both INTEGER CENTS) — the difference
+// is the return, and it is computed, never stored, so the two can never drift.
+// `bankId` is an OPTIONAL logical FK to the `bank` context: an investment at a
+// broker the user did not register still belongs on the list.
+model Investment {
+  id             String    @id @default(uuid())
+  ownerId        String    @map("owner_id")
+  bankId         String?   @map("bank_id")
+  name           String
+  kind           String
+  investedAmount Int       @map("invested_amount")
+  currentAmount  Int?      @map("current_amount")
+  // DATE, not a timestamp: what matters is the day the money was applied.
+  startedOn      DateTime  @map("started_on") @db.Date
+  maturityOn     DateTime? @map("maturity_on") @db.Date
+  notes          String?
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  @@unique([ownerId, name])
+  @@index([ownerId])
+  @@map("investments")
 }
