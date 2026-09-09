@@ -1,10 +1,10 @@
 'use client'
 
 import type { CreateBankInput } from '@bank/adapters'
-import { BANK_SUGGESTIONS } from 'ui'
 import { Button } from '@/components/button'
 import { Field } from '@/components/field'
-import { useBankForm } from './hooks/use-bank-form'
+import { Select } from '@/components/select'
+import { OTHER_BANK, useBankForm } from './hooks/use-bank-form'
 
 interface BankFormProps {
   onSubmit: (input: CreateBankInput) => void
@@ -12,10 +12,14 @@ interface BankFormProps {
 }
 
 /**
- * Registering a bank. The name field is a plain input backed by a `<datalist>`
- * rather than a `<select>`: the suggestions spare the owner from typing
- * "Bradesco", and a bank nobody listed is still typeable — which a closed
- * dropdown would make impossible.
+ * Registering a bank. A real `<select>` and NOT an `<input list>` + `<datalist>`:
+ * a datalist is a typeahead, not a dropdown — it stays invisible until the
+ * owner types, and whether clicking opens it at all differs per browser. A
+ * field that looks like a picker and shows nothing when clicked reads as broken,
+ * which is exactly what it was.
+ *
+ * "Outro" is the escape hatch that keeps the list a shortcut rather than a
+ * limit: it reveals a text field, so a bank nobody listed is still registerable.
  */
 export function BankForm({ onSubmit, submitting }: BankFormProps) {
   const form = useBankForm(onSubmit)
@@ -30,18 +34,29 @@ export function BankForm({ onSubmit, submitting }: BankFormProps) {
     >
       <h2 className="text-sm font-semibold">Novo banco</h2>
 
-      <Field
+      <Select
         label="Banco"
-        placeholder="Itaú, Nubank…"
-        list="bank-suggestions"
-        value={form.name}
-        onChange={(event) => form.setName(event.target.value)}
-      />
-      <datalist id="bank-suggestions">
-        {BANK_SUGGESTIONS.map((bank) => (
-          <option key={bank} value={bank} />
+        value={form.selected}
+        onChange={(event) => form.setSelected(event.target.value)}
+      >
+        <option value="">Selecione…</option>
+        {form.suggestions.map((bank) => (
+          <option key={bank} value={bank}>
+            {bank}
+          </option>
         ))}
-      </datalist>
+        <option value={OTHER_BANK}>Outro (digitar o nome)</option>
+      </Select>
+
+      {form.choosingOther && (
+        <Field
+          label="Nome do banco"
+          placeholder="Como ele aparece pra você"
+          autoFocus
+          value={form.customName}
+          onChange={(event) => form.setCustomName(event.target.value)}
+        />
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field

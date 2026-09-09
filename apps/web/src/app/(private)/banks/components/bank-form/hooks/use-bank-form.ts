@@ -2,17 +2,36 @@
 
 import { useState } from 'react'
 import type { CreateBankInput } from '@bank/adapters'
+import { BANK_SUGGESTIONS } from 'ui'
 
-/** The new-bank form's own state. The name is free text with a datalist of
- * suggestions behind it, so anything not on the list is still registerable. */
+/** The option that reveals the free-text field. A local scalar, so it lives
+ * next to the only two files that read it rather than in a `data/` of its own. */
+export const OTHER_BANK = '__other__'
+
+/**
+ * The new-bank form's own state. The bank is chosen from a real dropdown, with
+ * one escape hatch — "Outro" — that reveals a text field: the list is only a
+ * shortcut, and a bank nobody listed has to stay registerable.
+ *
+ * `name` is DERIVED from the two, so there is a single answer to "what is being
+ * submitted" instead of two fields that can disagree.
+ */
 export function useBankForm(onSubmit: (input: CreateBankInput) => void) {
-  const [name, setName] = useState('')
+  const [selected, setSelected] = useState('')
+  const [customName, setCustomName] = useState('')
   const [agency, setAgency] = useState('')
   const [accountNumber, setAccountNumber] = useState('')
 
+  const choosingOther = selected === OTHER_BANK
+  const name = choosingOther ? customName : selected
+
   return {
-    name,
-    setName,
+    suggestions: BANK_SUGGESTIONS,
+    selected,
+    setSelected,
+    choosingOther,
+    customName,
+    setCustomName,
     agency,
     setAgency,
     accountNumber,
@@ -26,7 +45,8 @@ export function useBankForm(onSubmit: (input: CreateBankInput) => void) {
         agency: agency.trim() || null,
         accountNumber: accountNumber.trim() || null,
       })
-      setName('')
+      setSelected('')
+      setCustomName('')
       setAgency('')
       setAccountNumber('')
     },
