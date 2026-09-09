@@ -196,6 +196,11 @@ model Recurrence {
   bankId       String?       @map("bank_id")
   cardId       String?       @map("card_id")
   paymentMethod String?      @map("payment_method")
+  // Last day this recurrence is owed — a course paid over 8 months, a
+  // financing that ends. NULL is the ordinary case: it repeats forever. After
+  // this date it stops being posted and leaves the month's checklist on its
+  // own, with nobody having to remember to pause it.
+  endsOn       DateTime?     @map("ends_on") @db.Date
   nextRunAt    DateTime      @map("next_run_at")
   lastRunAt    DateTime?     @map("last_run_at")
   createdAt    DateTime      @default(now()) @map("created_at")
@@ -301,21 +306,27 @@ model Bank {
 }
 
 // A card issued by one of the owner's banks. `kind` says what it can pay with
-// (debit / credit / both) and `lastFourDigits` is the ONLY part of the number
-// stored — it is enough to recognise the card on a statement and it is not a
-// number anyone can spend. The relation to Bank is intra-context.
+// (debit / credit / both), `brand` is the network printed on it (visa,
+// mastercard, elo…) and `lastFourDigits` is the ONLY part of the number stored
+// — it is enough to recognise the card on a statement and it is not a number
+// anyone can spend. The relation to Bank is intra-context.
+//
+// There is no NAME: "Visa ····1234" already identifies a card on a statement,
+// and asking someone to invent a nickname for their own card is a field with no
+// answer. That also makes the natural key (bank + last four digits) the real
+// one — two different cards of the same bank do not share their last digits.
 model Card {
   id             String   @id @default(uuid())
   ownerId        String   @map("owner_id")
   bankId         String   @map("bank_id")
-  name           String
+  brand          String
   kind           String
   lastFourDigits String   @map("last_four_digits")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
   bank           Bank     @relation(fields: [bankId], references: [id], onDelete: Restrict)
 
-  @@unique([ownerId, bankId, name])
+  @@unique([ownerId, bankId, lastFourDigits])
   @@index([ownerId])
   @@index([bankId])
   @@map("cards")
@@ -343,8 +354,32 @@ model Investment {
   active         Boolean   @default(true)
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
+  contributions  InvestmentContribution[]
 
   @@unique([ownerId, name])
   @@index([ownerId])
   @@map("investments")
+}
+
+// Money put INTO an investment after it was opened — an "aporte". It is kept as
+// its own row, rather than only bumping `invested_amount`, for two reasons: it
+// is what explains WHY the applied amount grew, and it is what lets the month
+// know how much of its leftover was already put to work (see the monthly
+// report). The relation to Investment is intra-context.
+//
+// `occurredOn` is a DATE for the same reason a movement's is: what matters is
+// the day the money moved, and a date column cannot drift the row into the
+// neighbouring month depending on the reader's timezone.
+model InvestmentContribution {
+  id           String     @id @default(uuid())
+  ownerId      String     @map("owner_id")
+  investmentId String     @map("investment_id")
+  amount       Int
+  occurredOn   DateTime   @map("occurred_on") @db.Date
+  createdAt    DateTime   @default(now()) @map("created_at")
+  investment   Investment @relation(fields: [investmentId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId, occurredOn])
+  @@index([investmentId])
+  @@map("investment_contributions")
 }
