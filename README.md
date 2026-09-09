@@ -33,13 +33,19 @@ Um fixo pode ser de **valor variável** (conta de luz, água, cartão): você in
 pagar e, quando a conta chega, ajusta o valor daquele mês em **A pagar**. O valor previsto continua
 visível ao lado do real, que é justamente onde mora a surpresa.
 
+E pode ter **prazo**: um curso pago em 8 meses, um financiamento que acaba. Você diz quantos meses
+dura e, passado o último, ele **sai sozinho** da lista do mês — sem você precisar lembrar de ir lá
+pausar. No último mês a lista avisa que é o último.
+
 **A pagar.** A lista do mês, montada sozinha a partir dos seus fixos: o que vence quando, quanto é,
 e o que você já pagou. Você marca conforme paga — e o que já está em **pix programado ou débito
 automático** entra como pago na data do vencimento, sem você precisar marcar nada.
 
 **Bancos e cartões.** Você cadastra onde o seu dinheiro fica (nome do banco; agência e conta são
-opcionais) e os cartões de cada banco — débito, crédito ou os dois, e só os **4 últimos dígitos**,
-que é o suficiente para reconhecer o cartão na fatura e não é um número que alguém possa gastar.
+opcionais) e os cartões de cada banco: a **bandeira** (Visa, Mastercard, Elo…), se é débito, crédito
+ou os dois, e só os **4 últimos dígitos** — o suficiente para reconhecer o cartão na fatura, e não é
+um número que alguém possa gastar. O cartão não tem apelido: ele aparece como "Visa ····1234", que
+é como você o lê no extrato.
 
 **Como você pagou.** Em cada lançamento dá para dizer o banco, a forma de pagamento (pix, débito,
 crédito, boleto, TED, dinheiro) e, no crédito, em **quantas parcelas**. Parcelou em 6x? O valor que
@@ -50,6 +56,11 @@ seguintes aparece hoje, em vez de só quando a fatura chegar.
 colocou e quanto vale hoje. A carteira mostra aplicado, valor atual e **quanto rendeu** — o único
 número do produto que pode ser negativo, porque "quanto eu perdi" é exatamente o que precisa
 aparecer. Um investimento resgatado é **desativado, não apagado**.
+
+**Investir a sobra.** Sobraram 700 no mês e você quer guardar 200? A tela inicial pergunta isso ali
+mesmo, logo abaixo da sobra: escolhe o investimento, o valor, e pronto. Os 200 entram no
+investimento e **saem da sobra** — porque o dinheiro saiu da conta de verdade, e continuar
+oferecendo ele como disponível seria convidar a gastar o mesmo dinheiro duas vezes.
 
 **Acesso.** Qualquer pessoa se cadastra e entra na hora — não existe fila nem aprovação. Cada
 usuário vê **apenas** o que é dele: não há visão compartilhada nem conta privilegiada que enxergue

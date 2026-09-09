@@ -316,14 +316,21 @@ Use-case/domínio **nunca** lança erro interno/500. Códigos ficam em `Errors` 
   **criação e nunca editável** — virar o interruptor num fixo que já teve meses ajustados deixaria
   números que ninguém explica. **`autoPaid`** marca o que já está em pix programado/débito
   automático: o mês conta como pago na data do vencimento, sem ninguém marcar.
+  **`endsOn`** é o último dia em que o fixo é devido — um curso pago em 8 meses, um financiamento
+  que acaba. `null` é o caso comum (repete pra sempre). Passado o prazo ele **sai sozinho** da
+  checklist e o worker para de lançar e de reagendar: ninguém precisa lembrar de pausar uma conta
+  que já terminou. A entrada é a **DURAÇÃO EM MESES** (`durationMonths`), não uma data, porque é o
+  que o dono sabe — quem converte é `Recurrence.limitToMonths`, que conta a próxima ocorrência como
+  a primeira e obedece o mesmo clamp da agenda (curso que começa dia 31 acaba dia 28 em fevereiro).
+  Editar recontagem a partir da próxima ocorrência ("mais 3 meses"), e `null` limpa o prazo.
   **`RecurrencePayment`** (`(recurrenceId, period)` único) grava **só o DESVIO** do padrão — o mês
   marcado como pago e/ou quanto a conta veio. É por isso que a checklist não precisa gerar nada por
   antecipação e um mês que ninguém tocou custa zero escrita. `AdjustRecurrenceAmount` recusa um fixo
   não-variável (`RECURRENCE_NOT_VARIABLE`), e a regra mora **no caso de uso** porque cruza duas
   entidades: a linha do mês sabe o valor, a recorrência sabe se ele pode andar.
   Domain service `MonthlyChecklistCalculator` monta a **lista do mês** a partir das recorrências +
-  desvios: o que o mês custa (ajustado, senão a estimativa) e o que conta como pago (marcado, ou
-  auto e já vencido). Ele também responde `commitmentsOf` — os fixos **ainda não postados** — e
+  desvios: se a linha **existe** (pausado e prazo vencido não são devidos), o que o mês custa
+  (ajustado, senão a estimativa) e o que conta como pago (marcado, ou auto e já vencido). Ele também responde `commitmentsOf` — os fixos **ainda não postados** — e
   **mês já encerrado não compromete nada**, senão o fechamento seria reescrito.
   `RunRecurrence` é **system** (não tem actor — quem pediu foi o calendário) e **idempotente**:
   recorrência ausente/pausada vira no-op, e `postOccurrence` é **operação composta na porta**
@@ -359,9 +366,12 @@ Use-case/domínio **nunca** lança erro interno/500. Códigos ficam em `Errors` 
   por dia de recebimento (a ordem em que o dinheiro chega).
 - **bank** — onde o dinheiro fica. `Bank` (nome + agência/conta **opcionais**: o que o produto
   precisa é de um nome pra arquivar o pagamento, e quase ninguém quer digitar número de conta num
-  app de orçamento) e `Card` (`kind`: `debit|credit|both`, e **só os 4 últimos dígitos** —
-  suficiente pra reconhecer o cartão na fatura e não é número que alguém possa gastar). Nome único
-  por `(dono, banco)` e por `(dono, banco, cartão)`: dois bancos podem cada um ter o seu "Black".
+  app de orçamento) e `Card` (`brand` de lista fechada, `kind`: `debit|credit|both`, e **só os 4
+  últimos dígitos** — suficiente pra reconhecer o cartão na fatura e não é número que alguém possa
+  gastar). O cartão **não tem nome**: "Visa ····1234" é como ele se lê numa fatura, e pedir que
+  alguém invente um apelido pro próprio cartão é um campo sem resposta — daí a chave natural ser
+  `(dono, banco, 4 dígitos)`, já que dois cartões diferentes do mesmo banco não repetem os últimos
+  dígitos. Banco tem nome único por dono.
   Apagar um banco exige **sem cartões** e **sem uso** (`BANK_IN_USE`) — quem resolve "está em uso" é
   o backend (`BankUsageResolver`), consultando `transaction`, `recurrence` e `investment` e passando
   `inUse` como dado puro; o contexto `bank` nunca importa os outros. A lista de bancos brasileiros do
@@ -380,6 +390,14 @@ Use-case/domínio **nunca** lança erro interno/500. Códigos ficam em `Errors` 
   sem valor atual vale **o que foi aplicado**, não zero — um desconhecido contado como zero
   reportaria perda total. Resgatado é **desativado, não apagado**. `PortfolioCalculator`
   (puro/estático) soma **só os ativos** e fatia por tipo.
+  **`InvestmentContribution`** é o aporte — dinheiro colocado DEPOIS de abrir, tipicamente a sobra
+  do mês. É linha própria, e não só um `investedAmount` maior, por duas razões: é o que **explica**
+  o crescimento do aplicado, e é o que deixa o mês saber quanto da sobra já foi trabalhar (o
+  `report/monthly` desconta). `Investment.contribute` sobe o aplicado **e o valor de hoje** — os 200
+  estão lá dentro agora, e subir só o aplicado reportaria o aporte como um prejuízo instantâneo de
+  exatamente 200; um investimento sem valor atual continua sem, porque já vale o que foi aplicado.
+  Aportar num resgatado é recusado (`INVESTMENT_NOT_ACTIVE`). A porta `record` é **operação
+  composta** (aporte + investimento num commit só), mesmo raciocínio do `postOccurrence`.
 - **notification** — caixa de entrada (sininho + tela `/notifications`). `Notification.for(input)` é
   um factory com `switch` sobre uma **união discriminada** (`NotificationInput`, um shape por tipo),
   então nenhum caller inventa campo nem esquece o valor, e o texto fica numa decisão só em vez de
@@ -449,7 +467,7 @@ diferente** e ainda avisa — que é o ponto, já que é notícia pior.
   [PATCH, DELETE]) — ⚠️ as rotas de **cartão vêm primeiro** no controller, senão `/:id` engole
   `/card`
 - `investment` (`/` [GET, POST], `/portfolio` [GET, a carteira], `/:id` [PATCH, DELETE],
-  `/:id/active` [POST, resgata/reativa])
+  `/:id/active` [POST, resgata/reativa], `/:id/contribution` [POST, aporte])
 - `report/monthly` (GET com `?period=` — **rota composta**, cruza income + transaction + budget)
 - `notification` (`GET /` [`?limit=`; devolve `{ unreadCount, items }`], `POST /read-all`,
   `POST /:id/read`, `DELETE /all`, `DELETE /:id`, `GET /stream` [**SSE**, ver abaixo — é a ÚNICA
@@ -471,14 +489,16 @@ diferente** e ainda avisa — que é o ponto, já que é notícia pior.
   `RecurrencePayment`(recurrence_payments; `@@unique([recurrenceId, period])`, relation intra-contexto
   com `onDelete: Cascade`), `Budget`(budgets; `@@unique([ownerId, categoryId])`),
   `IncomeSource`(income_sources; `@@unique([ownerId, name])`), `Bank`(banks;
-  `@@unique([ownerId, name])`), `Card`(cards; `@@unique([ownerId, bankId, name])`, relation
-  intra-contexto com `onDelete: Restrict`), `Investment`(investments; `@@unique([ownerId, name])`).
+  `@@unique([ownerId, name])`), `Card`(cards; `@@unique([ownerId, bankId, lastFourDigits])`, relation
+  intra-contexto com `onDelete: Restrict`), `Investment`(investments; `@@unique([ownerId, name])`),
+  `InvestmentContribution`(investment_contributions; relation intra-contexto com
+  `onDelete: Cascade`).
 - **FKs entre contextos são LÓGICAS** (sem relation Prisma cruzando contexto — `owner_id`,
   `category_id`, `user_id`, `bank_id`, `card_id`). A self-relation da `Category`, a
   `Recurrence → Transaction`, a `Recurrence → RecurrencePayment` e a `Bank → Card` são
   intra-contexto, então têm relation Prisma de verdade.
 - **Toda coluna nova em tabela existente é nullable ou tem default**: `bank_id`, `card_id`,
-  `payment_method`, `installments`, `variable_amount`, `auto_paid`. É o que faz cada linha já
+  `payment_method`, `installments`, `variable_amount`, `auto_paid`, `ends_on`, `brand`. É o que faz cada linha já
   gravada continuar válida exatamente como está — e a entidade tem que conseguir **reconstituí-la**,
   senão o produto para de conseguir ler o próprio histórico.
 - **A unicidade de `(dono, pai, nome)` da categoria é do USE-CASE, não um `@@unique`**: `parentId` é
