@@ -1,10 +1,17 @@
-import { Card, CardDTO, CardKind, CardRepository, CardQueryRepository } from '../../src'
+import {
+  Card,
+  CardDTO,
+  CardBrand,
+  CardKind,
+  CardRepository,
+  CardQueryRepository,
+} from '../../src'
 
 interface CardRow {
   id: string
   ownerId: string
   bankId: string
-  name: string
+  brand: CardBrand
   kind: CardKind
   lastFourDigits: string
 }
@@ -31,9 +38,16 @@ export default class CardRepositoryInMemory implements CardRepository, CardQuery
     if (index >= 0) this.cards.splice(index, 1)
   }
 
-  async existsByName(ownerId: string, bankId: string, name: string): Promise<boolean> {
+  async existsByDigits(
+    ownerId: string,
+    bankId: string,
+    lastFourDigits: string,
+  ): Promise<boolean> {
     return this.cards.some(
-      (card) => card.ownerId === ownerId && card.bankId === bankId && card.name === name,
+      (card) =>
+        card.ownerId === ownerId &&
+        card.bankId === bankId &&
+        card.lastFourDigits === lastFourDigits,
     )
   }
 
@@ -51,7 +65,7 @@ export default class CardRepositoryInMemory implements CardRepository, CardQuery
       id: card.id.value,
       ownerId: card.ownerId,
       bankId: card.bankId,
-      name: card.name,
+      brand: card.brand,
       kind: card.kind,
       lastFourDigits: card.lastFourDigits,
     }

@@ -5,4 +5,4 @@
 export { Bank, Card } from '@bank/core'
 // The kinds table is a VALUE too: the app and the fronts render the options
 // from it instead of re-declaring what the domain already decided.
-export { CARD_KINDS } from '@bank/core'
+export { CARD_KINDS, CARD_BRANDS } from '@bank/core'

@@ -1,12 +1,15 @@
 import { Entity, EntityProps, ValidationError, Errors } from 'shared'
 import { CardKind, assertCardKind } from './card-kind'
+import { CardBrand, assertCardBrand } from './card-brand'
 
 export interface CardProps extends EntityProps {
   ownerId?: string
   // The bank that issued it. Intra-context, and never optional: a card without
   // a bank cannot answer "what am I paying this with".
   bankId?: string
-  name?: string
+  // The network printed on it. It is what identifies the card on screen, which
+  // is why there is no nickname: "Visa ····1234" is already the answer.
+  brand?: string
   kind?: string
   // The ONLY part of the number that is stored. It is enough to recognise the
   // card on a statement and it is not something anyone can spend.
@@ -18,13 +21,17 @@ export interface CardProps extends EntityProps {
  * make it trustworthy: it always points at a bank, and the only digits it ever
  * holds are the last four — the full number never enters the product, so it
  * cannot leak from it either.
+ *
+ * It has no NAME: a card is recognised by its network and its last digits, the
+ * same way it reads on a statement, and asking someone to invent a nickname for
+ * their own card is a field with no answer.
  */
 export class Card extends Entity<Card, CardProps> {
   static readonly LAST_DIGITS_REGEX = /^\d{4}$/
 
   readonly ownerId: string
   readonly bankId: string
-  name: string
+  brand: CardBrand
   kind: CardKind
   lastFourDigits: string
 
@@ -37,7 +44,7 @@ export class Card extends Entity<Card, CardProps> {
 
     this.ownerId = ownerId
     this.bankId = bankId
-    this.name = Card.validName(props.name)
+    this.brand = assertCardBrand(props.brand)
     this.kind = assertCardKind(props.kind)
     this.lastFourDigits = Card.validLastDigits(props.lastFourDigits)
   }
@@ -61,23 +68,17 @@ export class Card extends Entity<Card, CardProps> {
    * Validated before anything is assigned, so a rejected edit leaves the card
    * exactly as it was.
    */
-  edit(fields: { name?: string; kind?: string; lastFourDigits?: string }): void {
-    const name = fields.name !== undefined ? Card.validName(fields.name) : this.name
+  edit(fields: { brand?: string; kind?: string; lastFourDigits?: string }): void {
+    const brand = fields.brand !== undefined ? assertCardBrand(fields.brand) : this.brand
     const kind = fields.kind !== undefined ? assertCardKind(fields.kind) : this.kind
     const lastFourDigits =
       fields.lastFourDigits !== undefined
         ? Card.validLastDigits(fields.lastFourDigits)
         : this.lastFourDigits
 
-    this.name = name
+    this.brand = brand
     this.kind = kind
     this.lastFourDigits = lastFourDigits
-  }
-
-  private static validName(name?: string): string {
-    const trimmed = name?.trim() ?? ''
-    if (!trimmed) ValidationError.throwError(Errors.REQUIRED_FIELD, 'name')
-    return trimmed
   }
 
   private static validLastDigits(lastFourDigits?: string): string {

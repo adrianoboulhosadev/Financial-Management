@@ -29,7 +29,7 @@ test('a bank needs a name; agency and account are optional', () => {
 })
 
 test('a card holds only the last four digits, and always a bank', () => {
-  const card = { ownerId: owner, bankId: 'b1', name: 'Black', kind: 'credit' }
+  const card = { ownerId: owner, bankId: 'b1', brand: 'visa', kind: 'credit' }
 
   expect(() => new Card({ ...card, lastFourDigits: '1234567890123456' })).toThrow(ValidationError)
   expect(() => new Card({ ...card, lastFourDigits: '12a4' })).toThrow(ValidationError)
@@ -44,13 +44,24 @@ test('a card holds only the last four digits, and always a bank', () => {
   expect(new Card({ ...card, lastFourDigits: '1234' }).lastFourDigits).toBe('1234')
 })
 
-test('what a card can pay with is a closed list', () => {
-  const card = { ownerId: owner, bankId: 'b1', name: 'Black', lastFourDigits: '1234' }
+test('what a card can pay with, and its brand, are closed lists', () => {
+  const card = { ownerId: owner, bankId: 'b1', brand: 'visa', lastFourDigits: '1234' }
 
   expect(() => new Card({ ...card, kind: 'voucher' })).toThrow(ValidationError)
   expect(new Card({ ...card, kind: 'both' }).allowsCredit).toBe(true)
   expect(new Card({ ...card, kind: 'both' }).allowsDebit).toBe(true)
   expect(new Card({ ...card, kind: 'debit' }).allowsCredit).toBe(false)
+
+  // A brand nobody listed is `other`, never free text — the brand is what
+  // identifies the card on screen.
+  expect(() => new Card({ ...card, kind: 'credit', brand: 'Visa Infinite' })).toThrow(
+    ValidationError,
+  )
+  try {
+    new Card({ ...card, kind: 'credit', brand: 'nubank' })
+  } catch (error) {
+    expect((error as ValidationError).code).toBe(Errors.INVALID_CARD_BRAND)
+  }
 })
 
 test('a rejected edit leaves the bank untouched', () => {
@@ -79,7 +90,7 @@ test('a bank still holding cards is not deletable', async () => {
   await new CreateCard(repository.cardRepository, repository).execute({
     ownerId: owner,
     bankId,
-    name: 'Black',
+    brand: 'visa',
     kind: 'both',
     lastFourDigits: '1234',
   })
@@ -110,7 +121,7 @@ test('a card can only hang from a bank of the same owner', async () => {
   const create = new CreateCard(repository.cardRepository, repository).execute({
     ownerId: owner,
     bankId: foreign,
-    name: 'Black',
+    brand: 'visa',
     kind: 'credit',
     lastFourDigits: '1234',
   })
@@ -119,19 +130,20 @@ test('a card can only hang from a bank of the same owner', async () => {
   expect(repository.cardRepository.cards).toHaveLength(0)
 })
 
-test('two banks may each have a "Black", one bank may not', async () => {
+test('the same digits may repeat across banks, never inside one', async () => {
   const repository = new BankRepositoryInMemory()
   const createBank = new CreateBank(repository)
   await createBank.execute(itau)
   await createBank.execute({ ownerId: owner, name: 'Nubank' })
   const [first, second] = repository.banks
   const createCard = new CreateCard(repository.cardRepository, repository)
-  const card = { ownerId: owner, name: 'Black', kind: 'credit', lastFourDigits: '1234' }
+  const card = { ownerId: owner, brand: 'visa', kind: 'credit', lastFourDigits: '1234' }
 
   await createCard.execute({ ...card, bankId: first.id })
   await createCard.execute({ ...card, bankId: second.id })
   expect(repository.cardRepository.cards).toHaveLength(2)
 
+  // Registering the same card twice is the only clash there is to prevent.
   await expect(createCard.execute({ ...card, bankId: first.id })).rejects.toMatchObject({
     code: Errors.CARD_ALREADY_EXISTS,
   })
@@ -144,7 +156,7 @@ test("someone else's bank and card answer as missing (anti-IDOR)", async () => {
   await new CreateCard(repository.cardRepository, repository).execute({
     ownerId: stranger,
     bankId: foreignBank,
-    name: 'Black',
+    brand: 'visa',
     kind: 'credit',
     lastFourDigits: '1234',
   })
@@ -160,7 +172,7 @@ test("someone else's bank and card answer as missing (anti-IDOR)", async () => {
     new UpdateCard(repository.cardRepository).execute({
       ownerId: owner,
       cardId: foreignCard,
-      name: 'Meu',
+      brand: 'elo',
     }),
   ).rejects.toMatchObject({ code: Errors.CARD_NOT_FOUND })
 
@@ -183,8 +195,8 @@ test('the listing says how many cards a bank still holds', async () => {
   await new CreateBank(repository).execute(itau)
   const bankId = repository.banks[0].id
   const createCard = new CreateCard(repository.cardRepository, repository)
-  await createCard.execute({ ownerId: owner, bankId, name: 'Black', kind: 'credit', lastFourDigits: '1234' })
-  await createCard.execute({ ownerId: owner, bankId, name: 'Conta', kind: 'debit', lastFourDigits: '5678' })
+  await createCard.execute({ ownerId: owner, bankId, brand: 'visa', kind: 'credit', lastFourDigits: '1234' })
+  await createCard.execute({ ownerId: owner, bankId, brand: 'elo', kind: 'debit', lastFourDigits: '5678' })
 
   const [bank] = await new ListMyBanksQuery(repository).execute(owner)
   expect(bank.cardCount).toBe(2)

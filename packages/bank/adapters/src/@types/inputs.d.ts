@@ -16,7 +16,9 @@ export interface UpdateBankInput {
 
 export interface CreateCardInput {
   bankId: string
-  name: string
+  // The network printed on it — see CARD_BRANDS. It is what identifies the
+  // card on screen, which is why there is no nickname.
+  brand: string
   // 'debit' | 'credit' | 'both'
   kind: string
   // Exactly four digits — the only part of the number the product ever holds.
@@ -24,7 +26,7 @@ export interface CreateCardInput {
 }
 
 export interface UpdateCardInput {
-  name?: string
+  brand?: string
   kind?: string
   lastFourDigits?: string
 }

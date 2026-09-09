@@ -1,3 +1,3 @@
-import type { BankDTO, CardDTO, CardKind } from '@bank/core'
+import type { BankDTO, CardDTO, CardKind, CardBrand } from '@bank/core'
 
-export type { BankDTO, CardDTO, CardKind }
+export type { BankDTO, CardDTO, CardKind, CardBrand }

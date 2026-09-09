@@ -1,4 +1,5 @@
 import { CardKind } from './card-kind'
+import { CardBrand } from './card-brand'
 
 /** READ projection (CQRS) of a bank. Plain interface — no entity, no value
  * objects. `cardCount` is computed by the query so the screen can say what a
@@ -18,7 +19,7 @@ export interface CardDTO {
   id: string
   ownerId: string
   bankId: string
-  name: string
+  brand: CardBrand
   kind: CardKind
   lastFourDigits: string
 }
