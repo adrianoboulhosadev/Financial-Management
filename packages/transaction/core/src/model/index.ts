@@ -1,4 +1,6 @@
 export * from './transaction-type'
+export * from './payment-method'
 export * from './transaction'
 export * from './recurrence'
+export * from './recurrence-payment'
 export * from './transaction-dto'

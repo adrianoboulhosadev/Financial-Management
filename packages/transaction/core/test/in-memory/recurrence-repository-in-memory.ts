@@ -1,11 +1,14 @@
 import {
   Recurrence,
   RecurrenceDTO,
+  RecurrencePaymentDTO,
   RecurrenceRepository,
   RecurrenceQueryRepository,
   Transaction,
   TransactionType,
+  PaymentMethod,
 } from '../../src'
+import RecurrencePaymentRepositoryInMemory from './recurrence-payment-repository-in-memory'
 import TransactionRepositoryInMemory from './transaction-repository-in-memory'
 
 interface RecurrenceRow {
@@ -17,6 +20,11 @@ interface RecurrenceRow {
   amount: number
   dayOfMonth: number
   active: boolean
+  variableAmount: boolean
+  autoPaid: boolean
+  bankId: string | null
+  cardId: string | null
+  paymentMethod: PaymentMethod | null
   nextRunAt: Date
   lastRunAt: Date | null
 }
@@ -31,10 +39,17 @@ export default class RecurrenceRepositoryInMemory
 {
   readonly recurrences: RecurrenceRow[] = []
 
-  constructor(private readonly transactions = new TransactionRepositoryInMemory()) {}
+  constructor(
+    private readonly transactions = new TransactionRepositoryInMemory(),
+    private readonly payments = new RecurrencePaymentRepositoryInMemory(),
+  ) {}
 
   get transactionRepository(): TransactionRepositoryInMemory {
     return this.transactions
+  }
+
+  get paymentRepository(): RecurrencePaymentRepositoryInMemory {
+    return this.payments
   }
 
   async findById(id: string): Promise<Recurrence | null> {
@@ -60,6 +75,14 @@ export default class RecurrenceRepositoryInMemory
     return this.recurrences.some((recurrence) => recurrence.categoryId === categoryId)
   }
 
+  async existsByBank(bankId: string): Promise<boolean> {
+    return this.recurrences.some((recurrence) => recurrence.bankId === bankId)
+  }
+
+  async existsByCard(cardId: string): Promise<boolean> {
+    return this.recurrences.some((recurrence) => recurrence.cardId === cardId)
+  }
+
   async postOccurrence(transaction: Transaction, recurrence: Recurrence): Promise<boolean> {
     // Stands in for the database's (recurrence_id, occurred_on) unique index:
     // a month already posted is skipped, never duplicated.
@@ -82,6 +105,21 @@ export default class RecurrenceRepositoryInMemory
     return row ? { ...row } : null
   }
 
+  async listPaymentsQuery(ownerId: string, period: string): Promise<RecurrencePaymentDTO[]> {
+    return this.payments.listByOwnerAndPeriod(ownerId, period)
+  }
+
+  async listPostedRecurrenceIds(ownerId: string, from: Date, to: Date): Promise<string[]> {
+    const rows = await this.transactions.listByOwnerQuery(ownerId, { from, to })
+    return [
+      ...new Set(
+        rows
+          .map((row) => row.recurrenceId)
+          .filter((recurrenceId): recurrenceId is string => recurrenceId !== null),
+      ),
+    ]
+  }
+
   private toRow(recurrence: Recurrence): RecurrenceRow {
     return {
       id: recurrence.id.value,
@@ -92,6 +130,11 @@ export default class RecurrenceRepositoryInMemory
       amount: recurrence.amount.cents,
       dayOfMonth: recurrence.dayOfMonth,
       active: recurrence.active,
+      variableAmount: recurrence.variableAmount,
+      autoPaid: recurrence.autoPaid,
+      bankId: recurrence.bankId,
+      cardId: recurrence.cardId,
+      paymentMethod: recurrence.paymentMethod,
       nextRunAt: recurrence.nextRunAt,
       lastRunAt: recurrence.lastRunAt,
     }

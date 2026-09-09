@@ -5,6 +5,7 @@ import {
   TransactionQueryRepository,
   TransactionFilter,
   TransactionType,
+  PaymentMethod,
 } from '../../src'
 
 interface TransactionRow {
@@ -17,6 +18,12 @@ interface TransactionRow {
   occurredOn: Date
   attachmentUrl: string | null
   recurrenceId: string | null
+  bankId: string | null
+  cardId: string | null
+  paymentMethod: PaymentMethod | null
+  installments: number
+  installmentNumber: number
+  installmentGroupId: string | null
   createdAt: Date
 }
 
@@ -32,6 +39,12 @@ export default class TransactionRepositoryInMemory
 
   async create(transaction: Transaction): Promise<void> {
     this.transactions.push(this.toRow(transaction))
+  }
+
+  /** All or nothing, like the adapter's single statement: a split purchase
+   * leaves every month or no month at all. */
+  async createMany(transactions: Transaction[]): Promise<void> {
+    this.transactions.push(...transactions.map((transaction) => this.toRow(transaction)))
   }
 
   async update(transaction: Transaction): Promise<void> {
@@ -50,6 +63,14 @@ export default class TransactionRepositoryInMemory
     return this.transactions.some((transaction) => transaction.categoryId === categoryId)
   }
 
+  async existsByBank(bankId: string): Promise<boolean> {
+    return this.transactions.some((transaction) => transaction.bankId === bankId)
+  }
+
+  async existsByCard(cardId: string): Promise<boolean> {
+    return this.transactions.some((transaction) => transaction.cardId === cardId)
+  }
+
   async listByOwnerQuery(ownerId: string, filter?: TransactionFilter): Promise<TransactionDTO[]> {
     return this.transactions
       .filter((row) => row.ownerId === ownerId)
@@ -58,6 +79,7 @@ export default class TransactionRepositoryInMemory
       .filter((row) => !filter?.to || row.occurredOn.getTime() < filter.to.getTime())
       .filter((row) => !filter?.type || row.type === filter.type)
       .filter((row) => !filter?.categoryId || row.categoryId === filter.categoryId)
+      .filter((row) => !filter?.bankId || row.bankId === filter.bankId)
       .sort((left, right) => right.occurredOn.getTime() - left.occurredOn.getTime())
       .map((row) => ({ ...row }))
   }
@@ -96,6 +118,12 @@ export default class TransactionRepositoryInMemory
       occurredOn: transaction.occurredOn,
       attachmentUrl: transaction.attachmentUrl,
       recurrenceId: transaction.recurrenceId,
+      bankId: transaction.bankId,
+      cardId: transaction.cardId,
+      paymentMethod: transaction.paymentMethod,
+      installments: transaction.installments,
+      installmentNumber: transaction.installmentNumber,
+      installmentGroupId: transaction.installmentGroupId,
       createdAt: new Date(),
     }
   }

@@ -42,6 +42,9 @@ test('a month with nothing in it is zero, not empty state to handle', () => {
     expenseCents: 0,
     netCents: 0,
     byCategory: [],
+    totalByCategory: [],
+    committedExpenseCents: 0,
+    committedIncomeCents: 0,
   })
 })
 
@@ -63,7 +66,6 @@ test('the query sums exactly the requested month', async () => {
     description: 'Cinema',
     amount: 4500,
     occurredOn: day('2026-08-31'),
-    categoryIsLeaf: true,
   })
   await record.execute({
     ownerId: owner,
@@ -72,7 +74,6 @@ test('the query sums exactly the requested month', async () => {
     description: 'Show',
     amount: 12000,
     occurredOn: day('2026-09-01'),
-    categoryIsLeaf: true,
   })
 
   const august = await new GetMyMonthlyTotalsQuery(repository).execute({
@@ -90,4 +91,41 @@ test('an invalid period is refused by the MonthPeriod value object', async () =>
     period: '2026-13',
   })
   await expect(query).rejects.toBeInstanceOf(ValidationError)
+})
+
+test('a commitment is counted apart from what actually moved', () => {
+  // The month spent 400 and still owes 3000 of fixed bills. `expenseCents`
+  // stays at what MOVED — that is what a ceiling is measured against — and the
+  // dashboard is the one that adds the two together.
+  const totals = MonthlyTotalsCalculator.calculate(
+    [{ type: 'expense', categoryId: 'mercado', amount: 40000 }],
+    [
+      { type: 'expense', categoryId: 'casa', amount: 250000 },
+      { type: 'expense', categoryId: 'mercado', amount: 50000 },
+    ],
+  )
+
+  expect(totals.expenseCents).toBe(40000)
+  expect(totals.committedExpenseCents).toBe(300000)
+  expect(totals.byCategory).toEqual([{ categoryId: 'mercado', spentCents: 40000 }])
+  // The ranking the dashboard shows has to add up to the figure it leads with,
+  // so it folds the commitments in — and merges them into the category that
+  // already spent something instead of listing it twice.
+  expect(totals.totalByCategory).toEqual([
+    { categoryId: 'casa', spentCents: 250000 },
+    { categoryId: 'mercado', spentCents: 90000 },
+  ])
+})
+
+test('a committed income does not become realized income', () => {
+  const totals = MonthlyTotalsCalculator.calculate(
+    [],
+    [{ type: 'income', categoryId: null, amount: 400000 }],
+  )
+
+  expect(totals.incomeCents).toBe(0)
+  expect(totals.committedIncomeCents).toBe(400000)
+  // Nothing was spent, so nothing to rank — a committed income is not a
+  // category total.
+  expect(totals.totalByCategory).toEqual([])
 })

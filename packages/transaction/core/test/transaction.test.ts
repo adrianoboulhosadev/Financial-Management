@@ -61,17 +61,18 @@ test('editing re-applies the invariants instead of trusting the caller', () => {
 
 test('records a movement through the use case', async () => {
   const repository = new TransactionRepositoryInMemory()
-  await new RecordTransaction(repository).execute({ ...expense, categoryIsLeaf: true })
+  await new RecordTransaction(repository).execute({ ...expense })
   expect(repository.transactions).toHaveLength(1)
   expect(repository.transactions[0].amount).toBe(4500)
 })
 
-test('money is filed on a LEAF, never on a branch (CATEGORY_NOT_LEAF)', async () => {
+test('money may be filed on a BRANCH, not only on a leaf', async () => {
+  // "casa" groups "casa / internet", and both are valid places to file a
+  // grocery run or the wifi bill: how deep to go is the owner's call, so the
+  // use case has no say in it at all.
   const repository = new TransactionRepositoryInMemory()
-  const record = new RecordTransaction(repository).execute({ ...expense, categoryIsLeaf: false })
-  await expect(record).rejects.toBeInstanceOf(ValidationError)
-  await expect(record).rejects.toMatchObject({ code: Errors.CATEGORY_NOT_LEAF })
-  expect(repository.transactions).toHaveLength(0)
+  await new RecordTransaction(repository).execute({ ...expense, categoryId: 'casa' })
+  expect(repository.transactions[0].categoryId).toBe('casa')
 })
 
 test("someone else's movement answers as missing, never as forbidden (anti-IDOR)", async () => {
@@ -79,7 +80,6 @@ test("someone else's movement answers as missing, never as forbidden (anti-IDOR)
   await new RecordTransaction(repository).execute({
     ...expense,
     ownerId: stranger,
-    categoryIsLeaf: true,
   })
   const foreign = repository.transactions[0].id
 
@@ -101,7 +101,7 @@ test("someone else's movement answers as missing, never as forbidden (anti-IDOR)
 
 test('updates and deletes the caller own movement', async () => {
   const repository = new TransactionRepositoryInMemory()
-  await new RecordTransaction(repository).execute({ ...expense, categoryIsLeaf: true })
+  await new RecordTransaction(repository).execute({ ...expense })
   const id = repository.transactions[0].id
 
   await new UpdateTransaction(repository).execute({
@@ -120,10 +120,10 @@ test('updates and deletes the caller own movement', async () => {
 test('listing is scoped to the owner and narrowed by the filter', async () => {
   const repository = new TransactionRepositoryInMemory()
   const record = new RecordTransaction(repository)
-  await record.execute({ ...expense, categoryIsLeaf: true })
-  await record.execute({ ...expense, occurredOn: day('2026-09-02'), categoryIsLeaf: true })
+  await record.execute({ ...expense })
+  await record.execute({ ...expense, occurredOn: day('2026-09-02') })
   await record.execute({ ...expense, type: 'income', categoryId: null, description: 'Freela' })
-  await record.execute({ ...expense, ownerId: stranger, categoryIsLeaf: true })
+  await record.execute({ ...expense, ownerId: stranger })
 
   const query = new ListMyTransactionsQuery(repository)
   expect(await query.execute({ ownerId: owner })).toHaveLength(3)

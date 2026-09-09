@@ -8,6 +8,7 @@ export interface TransactionFilter {
   to?: Date
   type?: 'expense' | 'income'
   categoryId?: string
+  bankId?: string
 }
 
 /** Transaction READ port (query side of CQRS). */

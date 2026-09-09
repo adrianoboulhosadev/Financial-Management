@@ -16,5 +16,7 @@ export interface RecurrenceRepository {
   update(recurrence: Recurrence): Promise<void>
   delete(id: string): Promise<void>
   existsByCategory(categoryId: string): Promise<boolean>
+  existsByBank(bankId: string): Promise<boolean>
+  existsByCard(cardId: string): Promise<boolean>
   postOccurrence(transaction: Transaction, recurrence: Recurrence): Promise<boolean>
 }

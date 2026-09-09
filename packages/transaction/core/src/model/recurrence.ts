@@ -1,5 +1,6 @@
 import { Entity, EntityProps, Money, MonthPeriod, ValidationError, Errors } from 'shared'
 import { TransactionType, assertTransactionType } from './transaction-type'
+import { PaymentMethod, assertPaymentMethod } from './payment-method'
 
 export interface RecurrenceProps extends EntityProps {
   ownerId?: string
@@ -11,6 +12,25 @@ export interface RecurrenceProps extends EntityProps {
   // is CLAMPED, never rolled over — see MonthPeriod.dayAt.
   dayOfMonth?: number
   active?: boolean
+  /**
+   * A bill whose amount changes every month (the electricity one). `amount` is
+   * then only the ESTIMATE the owner typed, and the month's real figure lands
+   * in a RecurrencePayment when the bill arrives.
+   *
+   * Declared at CREATION and not editable afterwards: it is what decides
+   * whether adjusting a month is allowed at all, and flipping it on a
+   * recurrence that already has adjusted months would leave figures nobody
+   * could explain.
+   */
+  variableAmount?: boolean
+  // Already on pix/direct debit: the month settles on its due date, with
+  // nobody ticking it off in the checklist.
+  autoPaid?: boolean
+  // Which account/card it is paid through and how — logical FKs to the `bank`
+  // context, all optional for the same reason a movement's are.
+  bankId?: string | null
+  cardId?: string | null
+  paymentMethod?: string | null
   // When this recurrence is next due. Kept as state (not only as a job in
   // Redis) so a lost job can always be recovered from the row itself.
   nextRunAt?: Date
@@ -22,6 +42,10 @@ export interface RecurrenceProps extends EntityProps {
  * a real Transaction every month. Rich entity: it owns the scheduling rule —
  * when it is next due, how a day the month lacks is resolved, and what advancing
  * after a run means.
+ *
+ * It also owns the two things the month's checklist reads off it: whether its
+ * amount VARIES (so a month may be adjusted when the bill arrives) and whether
+ * it settles by ITSELF (pix/direct debit, so nobody has to tick it off).
  */
 export class Recurrence extends Entity<Recurrence, RecurrenceProps> {
   static readonly MIN_DAY = 1
@@ -34,6 +58,11 @@ export class Recurrence extends Entity<Recurrence, RecurrenceProps> {
   amount: Money
   dayOfMonth: number
   active: boolean
+  readonly variableAmount: boolean
+  autoPaid: boolean
+  bankId: string | null
+  cardId: string | null
+  paymentMethod: PaymentMethod | null
   nextRunAt: Date
   lastRunAt: Date | null
 
@@ -49,6 +78,11 @@ export class Recurrence extends Entity<Recurrence, RecurrenceProps> {
     this.amount = Recurrence.validAmount(props.amount)
     this.dayOfMonth = Recurrence.validDay(props.dayOfMonth)
     this.active = props.active ?? true
+    this.variableAmount = props.variableAmount ?? false
+    this.autoPaid = props.autoPaid ?? false
+    this.bankId = props.bankId ?? null
+    this.cardId = props.cardId ?? null
+    this.paymentMethod = assertPaymentMethod(props.paymentMethod)
     // A brand-new recurrence has no schedule yet: it starts at its next
     // occurrence from today. Reconstituting a row always brings its own.
     this.nextRunAt = props.nextRunAt ?? Recurrence.nextOccurrenceFrom(this.dayOfMonth, new Date())
@@ -59,6 +93,16 @@ export class Recurrence extends Entity<Recurrence, RecurrenceProps> {
 
   get isExpense(): boolean {
     return this.type === 'expense'
+  }
+
+  /**
+   * What this recurrence costs in a month nobody has adjusted. For a fixed one
+   * that IS the amount; for a variable one it is only the owner's estimate,
+   * which is still the honest thing to plan the month with until the bill
+   * arrives.
+   */
+  get estimatedCents(): number {
+    return this.amount.cents
   }
 
   belongsTo(userId: string): boolean {
@@ -110,6 +154,10 @@ export class Recurrence extends Entity<Recurrence, RecurrenceProps> {
     description?: string
     amount?: number
     dayOfMonth?: number
+    autoPaid?: boolean
+    bankId?: string | null
+    cardId?: string | null
+    paymentMethod?: string | null
   }): void {
     const categoryId = fields.categoryId !== undefined ? fields.categoryId : this.categoryId
     const description =
@@ -119,11 +167,19 @@ export class Recurrence extends Entity<Recurrence, RecurrenceProps> {
     const amount = fields.amount !== undefined ? Recurrence.validAmount(fields.amount) : this.amount
     const dayChanged = fields.dayOfMonth !== undefined && fields.dayOfMonth !== this.dayOfMonth
     const dayOfMonth = dayChanged ? Recurrence.validDay(fields.dayOfMonth) : this.dayOfMonth
+    const paymentMethod =
+      fields.paymentMethod !== undefined
+        ? assertPaymentMethod(fields.paymentMethod)
+        : this.paymentMethod
     Recurrence.ensureCategoryWhenExpense(this.type, categoryId)
 
     this.categoryId = categoryId
     this.description = description
     this.amount = amount
+    this.paymentMethod = paymentMethod
+    if (fields.autoPaid !== undefined) this.autoPaid = fields.autoPaid
+    if (fields.bankId !== undefined) this.bankId = fields.bankId
+    if (fields.cardId !== undefined) this.cardId = fields.cardId
     if (dayChanged) {
       this.dayOfMonth = dayOfMonth
       this.nextRunAt = Recurrence.nextOccurrenceFrom(dayOfMonth, new Date())

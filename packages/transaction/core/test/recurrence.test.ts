@@ -77,7 +77,7 @@ test('a paused recurrence refuses to post (RECURRENCE_NOT_ACTIVE)', () => {
 test('creating schedules the first run through the queue', async () => {
   const repository = new RecurrenceRepositoryInMemory()
   const queue = new RecurrenceQueueInMemory()
-  await new CreateRecurrence(repository, queue).execute({ ...rent, categoryIsLeaf: true })
+  await new CreateRecurrence(repository, queue).execute({ ...rent })
 
   expect(repository.recurrences).toHaveLength(1)
   expect(queue.scheduled).toHaveLength(1)
@@ -87,20 +87,20 @@ test('creating schedules the first run through the queue', async () => {
 
 test('the queue is optional — a caller that does not schedule still creates', async () => {
   const repository = new RecurrenceRepositoryInMemory()
-  await new CreateRecurrence(repository).execute({ ...rent, categoryIsLeaf: true })
+  await new CreateRecurrence(repository).execute({ ...rent })
   expect(repository.recurrences).toHaveLength(1)
 })
 
-test('a fixed expense also has to point at a LEAF category', async () => {
+test('a fixed expense may point at a branch category too', async () => {
   const repository = new RecurrenceRepositoryInMemory()
-  const create = new CreateRecurrence(repository).execute({ ...rent, categoryIsLeaf: false })
-  await expect(create).rejects.toMatchObject({ code: Errors.CATEGORY_NOT_LEAF })
+  await new CreateRecurrence(repository).execute({ ...rent, categoryId: 'casa' })
+  expect(repository.recurrences[0].categoryId).toBe('casa')
 })
 
 test('running posts the month occurrence and schedules the next', async () => {
   const repository = new RecurrenceRepositoryInMemory()
   const queue = new RecurrenceQueueInMemory()
-  await new CreateRecurrence(repository).execute({ ...rent, categoryIsLeaf: true })
+  await new CreateRecurrence(repository).execute({ ...rent })
   const id = repository.recurrences[0].id
   const due = repository.recurrences[0].nextRunAt
 
@@ -124,7 +124,7 @@ test('running posts the month occurrence and schedules the next', async () => {
 
 test('running the same month twice posts once (the queue delivers at least once)', async () => {
   const repository = new RecurrenceRepositoryInMemory()
-  await new CreateRecurrence(repository).execute({ ...rent, categoryIsLeaf: true })
+  await new CreateRecurrence(repository).execute({ ...rent })
   const id = repository.recurrences[0].id
 
   await new RunRecurrence(repository).execute({ recurrenceId: id })
@@ -139,7 +139,7 @@ test('running the same month twice posts once (the queue delivers at least once)
 
 test('a paused or deleted recurrence runs to nothing instead of failing', async () => {
   const repository = new RecurrenceRepositoryInMemory()
-  await new CreateRecurrence(repository).execute({ ...rent, categoryIsLeaf: true })
+  await new CreateRecurrence(repository).execute({ ...rent })
   const id = repository.recurrences[0].id
   await new SetRecurrenceActive(repository).execute({
     ownerId: owner,
@@ -159,7 +159,7 @@ test('a paused or deleted recurrence runs to nothing instead of failing', async 
 test('resuming re-schedules from today instead of owing the months it slept', async () => {
   const repository = new RecurrenceRepositoryInMemory()
   const queue = new RecurrenceQueueInMemory()
-  await new CreateRecurrence(repository).execute({ ...rent, categoryIsLeaf: true })
+  await new CreateRecurrence(repository).execute({ ...rent })
   const id = repository.recurrences[0].id
   const setActive = new SetRecurrenceActive(repository, queue)
 
@@ -174,7 +174,7 @@ test('resuming re-schedules from today instead of owing the months it slept', as
 test('changing the day re-schedules the recurrence', async () => {
   const repository = new RecurrenceRepositoryInMemory()
   const queue = new RecurrenceQueueInMemory()
-  await new CreateRecurrence(repository).execute({ ...rent, categoryIsLeaf: true })
+  await new CreateRecurrence(repository).execute({ ...rent })
   const id = repository.recurrences[0].id
 
   await new UpdateRecurrence(repository, queue).execute({
@@ -197,7 +197,6 @@ test("someone else's recurrence answers as missing (anti-IDOR)", async () => {
   await new CreateRecurrence(repository).execute({
     ...rent,
     ownerId: stranger,
-    categoryIsLeaf: true,
   })
   const foreign = repository.recurrences[0].id
 
@@ -218,7 +217,7 @@ test("someone else's recurrence answers as missing (anti-IDOR)", async () => {
 
 test('deleting the rule keeps the rows it already posted', async () => {
   const repository = new RecurrenceRepositoryInMemory()
-  await new CreateRecurrence(repository).execute({ ...rent, categoryIsLeaf: true })
+  await new CreateRecurrence(repository).execute({ ...rent })
   const id = repository.recurrences[0].id
   await new RunRecurrence(repository).execute({ recurrenceId: id })
 
@@ -231,11 +230,10 @@ test('deleting the rule keeps the rows it already posted', async () => {
 
 test('listing is scoped to the owner', async () => {
   const repository = new RecurrenceRepositoryInMemory()
-  await new CreateRecurrence(repository).execute({ ...rent, categoryIsLeaf: true })
+  await new CreateRecurrence(repository).execute({ ...rent })
   await new CreateRecurrence(repository).execute({
     ...rent,
     ownerId: stranger,
-    categoryIsLeaf: true,
   })
 
   expect(await new ListMyRecurrencesQuery(repository).execute(owner)).toHaveLength(1)
