@@ -41,11 +41,10 @@ export function CategoryPicker({
         ))}
       </select>
 
-      {/* A tree with only branches (or none at all) leaves nothing to pick, and
-          an empty dropdown explains nothing — point at where to fix it. */}
+      {/* An empty dropdown explains nothing — point at where to fix it. */}
       {!loading && options.length === 0 && (
         <span className="block text-sm text-ink-text-muted">
-          Você ainda não tem uma categoria final.{' '}
+          Você ainda não tem categorias.{' '}
           <Link href="/categories" className="text-accent hover:underline">
             Criar categoria
           </Link>

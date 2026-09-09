@@ -87,6 +87,33 @@ export const LogoutIcon = ({ className }: IconProps) => (
   </svg>
 )
 
+export const ChecklistIcon = ({ className }: IconProps) => (
+  <svg {...base(className)}>
+    <path d="M4 6.5 6 8.5l3-3.5" />
+    <path d="M4 17.5 6 19.5l3-3.5" />
+    <path d="M12 7h8" />
+    <path d="M12 18h8" />
+  </svg>
+)
+
+export const BanksIcon = ({ className }: IconProps) => (
+  <svg {...base(className)}>
+    <path d="M3 9.5 12 4l9 5.5" />
+    <path d="M5 10v8" />
+    <path d="M10 10v8" />
+    <path d="M14 10v8" />
+    <path d="M19 10v8" />
+    <path d="M3 20h18" />
+  </svg>
+)
+
+export const InvestmentsIcon = ({ className }: IconProps) => (
+  <svg {...base(className)}>
+    <path d="M4 17l5-5 3.5 3.5L20 8" />
+    <path d="M15 8h5v5" />
+  </svg>
+)
+
 export const MoreIcon = ({ className }: IconProps) => (
   <svg {...base(className)}>
     <circle cx="5" cy="12" r="1.4" />

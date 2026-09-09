@@ -1,9 +1,12 @@
 import type { ReactNode } from 'react'
 import {
+  BanksIcon,
   BudgetsIcon,
   CategoriesIcon,
+  ChecklistIcon,
   DashboardIcon,
   IncomeIcon,
+  InvestmentsIcon,
   NotificationsIcon,
   ProfileIcon,
   RecurrencesIcon,
@@ -39,7 +42,10 @@ export const NAV_ITEMS: NavItem[] = [
   },
   { href: '/budgets', label: 'Orçamentos', shortLabel: 'Teto', icon: BudgetsIcon, primary: true },
   { href: '/income', label: 'Renda', icon: IncomeIcon, primary: true },
+  { href: '/checklist', label: 'A pagar', icon: ChecklistIcon },
   { href: '/recurrences', label: 'Fixos do mês', icon: RecurrencesIcon },
+  { href: '/investments', label: 'Investimentos', icon: InvestmentsIcon },
+  { href: '/banks', label: 'Bancos e cartões', icon: BanksIcon },
   { href: '/categories', label: 'Categorias', icon: CategoriesIcon },
   { href: '/notifications', label: 'Notificações', icon: NotificationsIcon },
   { href: '/profile', label: 'Perfil', icon: ProfileIcon },

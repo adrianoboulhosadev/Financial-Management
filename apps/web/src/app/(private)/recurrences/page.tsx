@@ -1,11 +1,15 @@
 'use client'
 
+import Link from 'next/link'
+
 import { Amount } from '@/components/amount'
 import { Button } from '@/components/button'
 import { CategoryPicker } from '@/components/category-picker'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { EmptyState } from '@/components/empty-state'
+import { Checkbox } from '@/components/checkbox'
 import { Field } from '@/components/field'
+import { PaymentFields } from '@/components/payment-fields'
 import { Loading } from '@/components/loading'
 import { formatDate } from 'ui'
 import { TRANSACTION_TYPES } from 'ui'
@@ -19,7 +23,11 @@ export default function RecurrencesPage() {
       <section className="space-y-4">
         <p className="text-sm text-ink-text-soft">
           O que se repete todo mês — aluguel, assinatura, mensalidade. Na data marcada o lançamento
-          entra sozinho e você recebe um aviso.
+          entra sozinho e você recebe um aviso. Para marcar o que já pagou, veja{' '}
+          <Link href="/checklist" className="text-accent hover:underline">
+            A pagar
+          </Link>
+          .
         </p>
 
         {page.loading ? (
@@ -44,7 +52,16 @@ export default function RecurrencesPage() {
                     {recurrence.active
                       ? ` · próximo em ${formatDate(recurrence.nextRunAt)}`
                       : ' · pausado'}
+                    {/* A variable bill's amount is only an estimate until the
+                        real one arrives, and saying so keeps the figure beside
+                        it from being read as settled. */}
+                    {recurrence.variableAmount && ' · valor variável'}
                   </p>
+                  {page.paymentLabelFor(recurrence) && (
+                    <p className="mt-0.5 truncate text-xs text-ink-text-muted">
+                      {page.paymentLabelFor(recurrence)}
+                    </p>
+                  )}
                 </div>
 
                 <Amount
@@ -111,7 +128,7 @@ export default function RecurrencesPage() {
             onChange={(event) => page.setDescription(event.target.value)}
           />
           <Field
-            label="Valor (R$)"
+            label={page.variableAmount ? 'Valor aproximado (R$)' : 'Valor (R$)'}
             money
             placeholder="0,00"
             value={page.amount}
@@ -129,6 +146,32 @@ export default function RecurrencesPage() {
             value={page.categoryId}
             onChange={page.setCategoryId}
             allowEmpty={!page.categoryRequired}
+          />
+
+          {/* Declared at creation and never editable afterwards — flipping it
+              on a bill whose months were already corrected would leave figures
+              nobody could explain. */}
+          <Checkbox
+            label="O valor muda todo mês"
+            hint="Conta de luz, água, cartão. Você informa um valor aproximado agora e ajusta em A pagar quando a conta chegar."
+            checked={page.variableAmount}
+            onChange={(event) => page.setVariableAmount(event.target.checked)}
+          />
+
+          <Checkbox
+            label="Já é pago automaticamente"
+            hint="Pix programado ou débito automático: entra como pago na data do vencimento, sem você precisar marcar."
+            checked={page.autoPaid}
+            onChange={(event) => page.setAutoPaid(event.target.checked)}
+          />
+
+          <PaymentFields
+            bankId={page.bankId}
+            onBankChange={page.setBankId}
+            paymentMethod={page.paymentMethod}
+            onPaymentMethodChange={page.setPaymentMethod}
+            cardId={page.cardId}
+            onCardChange={page.setCardId}
           />
 
           {/* Day 31 does not exist every month; the domain clamps it instead of

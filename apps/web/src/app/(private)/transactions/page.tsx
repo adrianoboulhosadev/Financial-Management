@@ -25,6 +25,7 @@ export default function TransactionsPage() {
     cancelDeletion,
     confirmDeletion,
     labelFor,
+    paymentLabelFor,
   } = useTransactions()
 
   return (
@@ -70,6 +71,14 @@ export default function TransactionsPage() {
                         nobody wonders where it came from. */}
                     {transaction.recurrenceId && ' · fixo'}
                   </p>
+                  {/* Where the money went through, on its own line: it is the
+                      answer to "what did I pay this with", which is a different
+                      question from "when and on what". */}
+                  {paymentLabelFor(transaction) && (
+                    <p className="mt-0.5 truncate text-xs text-ink-text-muted">
+                      {paymentLabelFor(transaction)}
+                    </p>
+                  )}
                 </div>
 
                 <Amount

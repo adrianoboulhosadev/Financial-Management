@@ -4,6 +4,7 @@ import type { RecordTransactionInput } from '@transaction/adapters'
 import { Button } from '@/components/button'
 import { Field } from '@/components/field'
 import { CategoryPicker } from '@/components/category-picker'
+import { PaymentFields } from '@/components/payment-fields'
 import { TRANSACTION_TYPES } from 'ui'
 import { useTransactionForm } from './hooks/use-transaction-form'
 
@@ -13,8 +14,19 @@ interface TransactionFormProps {
 }
 
 export function TransactionForm({ onSubmit, submitting }: TransactionFormProps) {
-  const { form, submit, type, categoryId, setCategoryId, categoryRequired } =
-    useTransactionForm(onSubmit)
+  const {
+    form,
+    submit,
+    type,
+    categoryId,
+    setCategoryId,
+    categoryRequired,
+    payment,
+    setBankId,
+    setPaymentMethod,
+    setCardId,
+    setInstallments,
+  } = useTransactionForm(onSubmit)
 
   return (
     <form
@@ -78,6 +90,17 @@ export function TransactionForm({ onSubmit, submitting }: TransactionFormProps) 
             ? 'Toda despesa precisa de uma categoria.'
             : undefined
         }
+      />
+
+      <PaymentFields
+        bankId={payment.bankId}
+        onBankChange={setBankId}
+        paymentMethod={payment.paymentMethod}
+        onPaymentMethodChange={setPaymentMethod}
+        cardId={payment.cardId}
+        onCardChange={setCardId}
+        installments={payment.installments}
+        onInstallmentsChange={setInstallments}
       />
 
       <Button

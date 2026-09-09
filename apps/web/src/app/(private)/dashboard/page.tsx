@@ -3,20 +3,22 @@
 import Link from 'next/link'
 import { Amount } from '@/components/amount'
 import { BudgetBar } from '@/components/budget-bar'
+import { CategoryBars } from '@/components/category-bars'
 import { EmptyState } from '@/components/empty-state'
 import { Loading } from '@/components/loading'
 import { MonthPicker } from '@/components/month-picker'
+import { MonthSplitBar } from '@/components/month-split-bar'
 import { StatCard } from '@/components/stat-card'
 import { formatBRL } from 'ui'
 import { useDashboard } from './hooks/use-dashboard'
 
 export default function DashboardPage() {
-  const { period, setPeriod, report, loading, labelFor } = useDashboard()
+  const { period, setPeriod, report, loading, bars, fixedCents, pendingFixedCents, labelFor } =
+    useDashboard()
 
   if (loading || !report) return <Loading />
 
   const incomeCents = report.plannedIncomeCents + report.realizedIncomeCents
-  const biggest = report.byCategory.slice(0, 6)
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -44,8 +46,14 @@ export default function DashboardPage() {
         <StatCard
           label="Saiu"
           accent="negative"
-          value={<Amount cents={report.expenseCents} tone="expense" />}
-          hint="despesas lançadas no mês"
+          // The fixed bills of the month count here whether or not they have
+          // been paid yet: money already promised is not money to spend.
+          value={<Amount cents={report.totalExpenseCents} tone="expense" />}
+          hint={
+            report.committedExpenseCents > 0
+              ? `inclui ${formatBRL(report.committedExpenseCents)} de fixos ainda não lançados`
+              : 'despesas lançadas no mês'
+          }
         />
         <StatCard
           label="Sobra"
@@ -53,6 +61,28 @@ export default function DashboardPage() {
           value={<Amount cents={report.leftoverCents} tone="movement" />}
           hint={report.leftoverCents < 0 ? 'o mês fechou no vermelho' : 'o que ainda está livre'}
         />
+      </section>
+
+      <section className="rounded-card border border-ink-border bg-ink-surface p-5 shadow-card">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-sm font-semibold">Como o mês se divide</h2>
+          {pendingFixedCents > 0 && (
+            <Link href="/checklist" className="text-xs text-accent hover:underline">
+              {formatBRL(pendingFixedCents)} de fixos a pagar
+            </Link>
+          )}
+        </div>
+
+        <div className="mt-4">
+          <MonthSplitBar
+            incomeCents={incomeCents}
+            fixedCents={fixedCents}
+            // What was spent OUTSIDE the fixed bills: the rows a recurrence
+            // posted are already inside `fixedCents`, and counting them in both
+            // would make the bar add up to more than the month.
+            variableCents={Math.max(report.totalExpenseCents - fixedCents, 0)}
+          />
+        </div>
       </section>
 
       <section className="rounded-card border border-ink-border bg-ink-surface p-5 shadow-card">
@@ -90,32 +120,17 @@ export default function DashboardPage() {
       <section className="rounded-card border border-ink-border bg-ink-surface p-5 shadow-card">
         <h2 className="text-sm font-semibold">Para onde foi</h2>
 
-        {biggest.length === 0 ? (
+        {bars.length === 0 ? (
           <EmptyState
             title="Nenhuma despesa neste mês"
             description="Assim que você lançar um gasto, ele aparece aqui separado por categoria."
           />
         ) : (
-          <ul className="mt-4 space-y-2.5">
-            {biggest.map((total) => (
-              <li key={total.categoryId ?? 'none'} className="space-y-1.5">
-                <div className="flex items-baseline justify-between gap-3 text-sm">
-                  <span className="truncate text-ink-text-soft">{labelFor(total.categoryId)}</span>
-                  <Amount cents={total.spentCents} />
-                </div>
-                {/* Share of the month's spending, so the list reads as a
-                    ranking and not just as numbers. */}
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-ink-surface-soft">
-                  <div
-                    className="h-full rounded-full bg-accent/70"
-                    style={{
-                      width: `${report.expenseCents === 0 ? 0 : Math.round((total.spentCents / report.expenseCents) * 100)}%`,
-                    }}
-                  />
-                </div>
-              </li>
-            ))}
-          </ul>
+          <div className="mt-4">
+            {/* Ranked against the month's whole spending, not against the rows
+                on screen: a top-six list must not rescale itself. */}
+            <CategoryBars bars={bars} totalCents={report.totalExpenseCents} />
+          </div>
         )}
       </section>
     </div>

@@ -4,8 +4,10 @@ import { useState } from 'react'
 import type { TransactionDTO } from '@transaction/adapters'
 
 import {
+  paymentMethodLabel,
   toPeriod,
   type TransactionFilterValue,
+  useBanks,
   useCategories,
   useTransactions as useTransactionsData,
 } from 'ui'
@@ -21,6 +23,7 @@ export function useTransactions() {
   const [filter, setFilter] = useState<TransactionFilterValue>('all')
   const [pendingDeletion, setPendingDeletion] = useState<TransactionDTO | null>(null)
   const { pathOf } = useCategories()
+  const { bankNameOf, cardLabelOf } = useBanks()
 
   const data = useTransactionsData({
     period,
@@ -45,5 +48,21 @@ export function useTransactions() {
       setPendingDeletion(null)
     },
     labelFor: (categoryId: string | null) => (categoryId ? pathOf(categoryId) : 'Sem categoria'),
+    /**
+     * The second line of a row: how it was paid, through what, and which
+     * instalment it is. Pure presentation, so it may live in the hook next to
+     * the state it reads — every part is optional, and the parts that are
+     * missing simply do not show up rather than printing "sem banco".
+     */
+    paymentLabelFor: (transaction: TransactionDTO): string =>
+      [
+        paymentMethodLabel(transaction.paymentMethod),
+        cardLabelOf(transaction.cardId) || bankNameOf(transaction.bankId),
+        transaction.installments > 1
+          ? `${transaction.installmentNumber}/${transaction.installments}`
+          : '',
+      ]
+        .filter(Boolean)
+        .join(' · '),
   }
 }

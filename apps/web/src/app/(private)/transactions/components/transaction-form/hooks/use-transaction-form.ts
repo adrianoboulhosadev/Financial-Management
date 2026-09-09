@@ -10,9 +10,20 @@ interface TransactionFormFields {
   type: TransactionType
   categoryId: string
   description: string
-  // Typed in reais; converted to cents on submit (see lib/money).
+  // Typed in reais; converted to cents on submit (see lib/money). On a split
+  // purchase this is the TOTAL — the backend divides it.
   amount: string
   occurredOn: string
+}
+
+/** The payment block's own state. Kept apart from react-hook-form because the
+ * three pickers depend on each other (a card belongs to a bank, instalments
+ * only to credit) and clearing one from another is far clearer as plain state. */
+interface PaymentFormFields {
+  bankId: string
+  paymentMethod: string
+  cardId: string
+  installments: string
 }
 
 const emptyForm = (): TransactionFormFields => ({
@@ -23,10 +34,21 @@ const emptyForm = (): TransactionFormFields => ({
   occurredOn: toDateInputValue(),
 })
 
+const emptyPayment = (): PaymentFormFields => ({
+  bankId: '',
+  paymentMethod: '',
+  cardId: '',
+  installments: '1',
+})
+
 export function useTransactionForm(onSubmit: (input: RecordTransactionInput) => void) {
   const form = useForm<TransactionFormFields>({ defaultValues: emptyForm() })
   const [categoryId, setCategoryId] = useState('')
+  const [payment, setPayment] = useState<PaymentFormFields>(emptyPayment)
   const type = form.watch('type')
+
+  const patchPayment = (fields: Partial<PaymentFormFields>) =>
+    setPayment((current) => ({ ...current, ...fields }))
 
   const submit = form.handleSubmit((fields) => {
     onSubmit({
@@ -37,9 +59,16 @@ export function useTransactionForm(onSubmit: (input: RecordTransactionInput) => 
       description: fields.description,
       amount: toCents(fields.amount),
       occurredOn: fields.occurredOn,
+      // Empty means "not informed", which the domain stores as null — an empty
+      // string would be an unknown payment method.
+      bankId: payment.bankId || null,
+      cardId: payment.cardId || null,
+      paymentMethod: payment.paymentMethod || null,
+      installments: payment.paymentMethod === 'credit' ? Number(payment.installments) || 1 : 1,
     })
     form.reset(emptyForm())
     setCategoryId('')
+    setPayment(emptyPayment())
   })
 
   return {
@@ -48,6 +77,11 @@ export function useTransactionForm(onSubmit: (input: RecordTransactionInput) => 
     type,
     categoryId,
     setCategoryId,
+    payment,
+    setBankId: (bankId: string) => patchPayment({ bankId }),
+    setPaymentMethod: (paymentMethod: string) => patchPayment({ paymentMethod }),
+    setCardId: (cardId: string) => patchPayment({ cardId }),
+    setInstallments: (installments: string) => patchPayment({ installments }),
     // Only an expense must land on a category — that is the tree's whole point.
     categoryRequired: type === 'expense',
   }
