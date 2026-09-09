@@ -13,6 +13,16 @@ interface Input {
    * Declared here and never again — see the entity. */
   variableAmount?: boolean
   autoPaid?: boolean
+  /**
+   * How many months it lasts, counting the next occurrence as the first — "8
+   * months of course" is 8 charges. Absent means it repeats forever, which is
+   * the ordinary case.
+   *
+   * A COUNT and not a date because that is what the owner knows; turning it
+   * into a deadline is the entity's job, since the date has to obey the same
+   * clamping the schedule does.
+   */
+  durationMonths?: number | null
   bankId?: string | null
   cardId?: string | null
   paymentMethod?: string | null
@@ -44,6 +54,8 @@ export default class CreateRecurrence implements UseCase<Input, void> {
       cardId: input.cardId,
       paymentMethod: input.paymentMethod,
     })
+
+    if (input.durationMonths) recurrence.limitToMonths(input.durationMonths)
 
     await this.repository.create(recurrence)
     await this.queue?.scheduleRun({ recurrenceId: recurrence.id.value, at: recurrence.nextRunAt })

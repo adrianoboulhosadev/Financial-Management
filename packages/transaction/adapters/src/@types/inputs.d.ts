@@ -46,6 +46,9 @@ export interface CreateRecurrenceInput {
   // Declared at creation and never editable — see the Recurrence entity.
   variableAmount?: boolean
   autoPaid?: boolean
+  /** How many months it lasts, counting the next occurrence as the first — a
+   * course paid over 8 months. Absent repeats forever. */
+  durationMonths?: number | null
   bankId?: string | null
   cardId?: string | null
   paymentMethod?: string | null
@@ -56,6 +59,9 @@ export interface UpdateRecurrenceInput {
   description?: string
   amount?: number
   dayOfMonth?: number
+  /** A new deadline counted from the next occurrence; `null` goes back to
+   * repeating forever. Omit to leave it alone. */
+  durationMonths?: number | null
   autoPaid?: boolean
   bankId?: string | null
   cardId?: string | null

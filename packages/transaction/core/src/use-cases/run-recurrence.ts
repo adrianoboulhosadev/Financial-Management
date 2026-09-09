@@ -18,8 +18,8 @@ interface Input {
  *
  * IDEMPOTENT by construction, which matters because a queue delivers at least
  * once:
- * - a recurrence that no longer exists, or was paused after the job was
- *   scheduled, does nothing;
+ * - a recurrence that no longer exists, was paused after the job was scheduled,
+ *   or is already past its deadline, does nothing;
  * - the write is one composed operation on the port, and the transaction it
  *   posts is unique per (recurrence, day), so re-running a month already posted
  *   writes nothing and still moves the schedule forward.
@@ -41,6 +41,10 @@ export default class RunRecurrence implements UseCase<Input, void> {
     if (!recurrence || !recurrence.active) return
 
     const dueOn = recurrence.dueOn
+    // Past its deadline the recurrence simply stops: nothing is posted and
+    // nothing is scheduled, so the chain ends itself instead of needing anyone
+    // to remember to pause a bill that already finished.
+    if (recurrence.endedBy(dueOn)) return
     const transaction = new Transaction({
       ownerId: recurrence.ownerId,
       type: recurrence.type,
@@ -56,7 +60,11 @@ export default class RunRecurrence implements UseCase<Input, void> {
 
     recurrence.markPosted()
     await this.repository.postOccurrence(transaction, recurrence)
-    await this.queue?.scheduleRun({ recurrenceId: recurrence.id.value, at: recurrence.nextRunAt })
+    // The month just posted may have been the last one — scheduling a job that
+    // would only no-op is waste the queue does not need.
+    if (!recurrence.endedBy(recurrence.dueOn)) {
+      await this.queue?.scheduleRun({ recurrenceId: recurrence.id.value, at: recurrence.nextRunAt })
+    }
   }
 
   private async amountFor(

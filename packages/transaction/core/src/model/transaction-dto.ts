@@ -44,6 +44,8 @@ export interface RecurrenceDTO {
   bankId: string | null
   cardId: string | null
   paymentMethod: PaymentMethod | null
+  // Last day it is owed; null repeats forever.
+  endsOn: Date | null
   nextRunAt: Date
   lastRunAt: Date | null
 }
@@ -86,6 +88,9 @@ export interface ChecklistItemDTO {
   autoPaid: boolean
   dueOn: Date
   dayOfMonth: number
+  // The month this line is the LAST one — worth saying on screen, so a bill
+  // about to disappear does not just vanish next month.
+  lastMonth: boolean
   bankId: string | null
   cardId: string | null
   paymentMethod: PaymentMethod | null

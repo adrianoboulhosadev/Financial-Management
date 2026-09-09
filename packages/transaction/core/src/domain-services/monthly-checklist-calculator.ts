@@ -11,12 +11,16 @@ import { Countable } from './monthly-totals-calculator'
  * Pure domain service (no ports, no side effects): what the owner still has to
  * pay this month.
  *
- * The checklist is DERIVED, never stored: one line per ACTIVE recurrence,
- * crossed with the deviations the owner recorded (a bill that came in at a
- * different amount, a month ticked off). Nothing is generated in advance, so no
- * month can be missing from it and an untouched month costs no writes at all.
+ * The checklist is DERIVED, never stored: one line per recurrence still OWED
+ * that month, crossed with the deviations the owner recorded (a bill that came
+ * in at a different amount, a month ticked off). Nothing is generated in
+ * advance, so no month can be missing from it and an untouched month costs no
+ * writes at all.
  *
- * It owns the two rules that decide what a line says:
+ * It owns the three rules that decide what a line says:
+ * - whether the line EXISTS at all: a paused recurrence is not owed, and
+ *   neither is one whose deadline has passed — a course that lasted 8 months
+ *   leaves the list on its own, without anyone remembering to pause it;
  * - what the month COSTS is the adjusted figure when the bill arrived,
  *   otherwise the recurrence's own amount (an estimate, for a variable one);
  * - what counts as PAID is either the owner ticking it off or the bill settling
@@ -42,7 +46,10 @@ export class MonthlyChecklistCalculator {
     const posted = new Set(postedRecurrenceIds)
 
     const items = recurrences
-      .filter((recurrence) => recurrence.active)
+      .filter(
+        (recurrence) =>
+          recurrence.active && !MonthlyChecklistCalculator.endedBefore(recurrence, month),
+      )
       .map((recurrence) =>
         MonthlyChecklistCalculator.itemOf(
           recurrence,
@@ -92,6 +99,17 @@ export class MonthlyChecklistCalculator {
       }))
   }
 
+  /**
+   * Whether the deadline falls before this month's due day. Restated here
+   * rather than borrowed from the entity because the read side works over plain
+   * rows and never builds one — the same reason `valueOf` is restated in the
+   * portfolio calculator.
+   */
+  private static endedBefore(recurrence: RecurrenceDTO, month: MonthPeriod): boolean {
+    if (!recurrence.endsOn) return false
+    return month.dayAt(recurrence.dayOfMonth).getTime() > new Date(recurrence.endsOn).getTime()
+  }
+
   private static itemOf(
     recurrence: RecurrenceDTO,
     month: MonthPeriod,
@@ -121,6 +139,11 @@ export class MonthlyChecklistCalculator {
       autoPaid: recurrence.autoPaid,
       dueOn,
       dayOfMonth: recurrence.dayOfMonth,
+      // This month is owed (it is on the list at all) and the NEXT one is not:
+      // the deadline lands here, so the line is about to disappear.
+      lastMonth:
+        recurrence.endsOn !== null &&
+        MonthlyChecklistCalculator.endedBefore(recurrence, month.next()),
       bankId: recurrence.bankId,
       cardId: recurrence.cardId,
       paymentMethod: recurrence.paymentMethod,

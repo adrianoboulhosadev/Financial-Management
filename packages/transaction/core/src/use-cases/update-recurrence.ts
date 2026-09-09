@@ -8,6 +8,9 @@ interface Input {
   description?: string
   amount?: number
   dayOfMonth?: number
+  /** A new deadline counted from the NEXT occurrence, or `null` to go back to
+   * repeating forever. Omit to leave the deadline alone. */
+  durationMonths?: number | null
   autoPaid?: boolean
   bankId?: string | null
   cardId?: string | null
@@ -21,7 +24,9 @@ interface Input {
  *
  * `variableAmount` is deliberately absent: it is fixed at creation, because
  * flipping it on a recurrence whose months were already adjusted would leave
- * figures nobody could explain.
+ * figures nobody could explain. The DEADLINE, on the other hand, is editable:
+ * a course gets extended, and re-counting from the next occurrence is what
+ * "mais N meses" means.
  */
 export default class UpdateRecurrence implements UseCase<Input, void> {
   constructor(
@@ -45,6 +50,13 @@ export default class UpdateRecurrence implements UseCase<Input, void> {
       cardId: input.cardId,
       paymentMethod: input.paymentMethod,
     })
+
+    // Re-counted from the next occurrence, so "mais 3 meses" means three more
+    // charges from here — never three from a start date already in the past.
+    if (input.durationMonths !== undefined) {
+      if (input.durationMonths === null) recurrence.clearDeadline()
+      else recurrence.limitToMonths(input.durationMonths)
+    }
 
     await this.repository.update(recurrence)
     if (recurrence.active) {

@@ -31,6 +31,15 @@ export interface RecurrenceProps extends EntityProps {
   bankId?: string | null
   cardId?: string | null
   paymentMethod?: string | null
+  /**
+   * Last day this recurrence is owed — a course paid over 8 months, a
+   * financing that ends. NULL is the ordinary case: it repeats forever.
+   *
+   * Past it the recurrence stops being posted and drops out of the month's
+   * checklist ON ITS OWN, which is the whole point: nobody should have to
+   * remember to go and pause a bill that already ended.
+   */
+  endsOn?: Date | null
   // When this recurrence is next due. Kept as state (not only as a job in
   // Redis) so a lost job can always be recovered from the row itself.
   nextRunAt?: Date
@@ -43,9 +52,10 @@ export interface RecurrenceProps extends EntityProps {
  * when it is next due, how a day the month lacks is resolved, and what advancing
  * after a run means.
  *
- * It also owns the two things the month's checklist reads off it: whether its
- * amount VARIES (so a month may be adjusted when the bill arrives) and whether
- * it settles by ITSELF (pix/direct debit, so nobody has to tick it off).
+ * It also owns the three things the month's checklist reads off it: whether its
+ * amount VARIES (so a month may be adjusted when the bill arrives), whether it
+ * settles by ITSELF (pix/direct debit, so nobody has to tick it off), and
+ * whether it has ALREADY ENDED (a course that lasted 8 months).
  */
 export class Recurrence extends Entity<Recurrence, RecurrenceProps> {
   static readonly MIN_DAY = 1
@@ -63,6 +73,7 @@ export class Recurrence extends Entity<Recurrence, RecurrenceProps> {
   bankId: string | null
   cardId: string | null
   paymentMethod: PaymentMethod | null
+  endsOn: Date | null
   nextRunAt: Date
   lastRunAt: Date | null
 
@@ -83,6 +94,7 @@ export class Recurrence extends Entity<Recurrence, RecurrenceProps> {
     this.bankId = props.bankId ?? null
     this.cardId = props.cardId ?? null
     this.paymentMethod = assertPaymentMethod(props.paymentMethod)
+    this.endsOn = props.endsOn ?? null
     // A brand-new recurrence has no schedule yet: it starts at its next
     // occurrence from today. Reconstituting a row always brings its own.
     this.nextRunAt = props.nextRunAt ?? Recurrence.nextOccurrenceFrom(this.dayOfMonth, new Date())
@@ -107,6 +119,46 @@ export class Recurrence extends Entity<Recurrence, RecurrenceProps> {
 
   belongsTo(userId: string): boolean {
     return this.ownerId === userId
+  }
+
+  /**
+   * Whether the given due date falls past the deadline. A recurrence with no
+   * deadline never ends, so it always answers false.
+   *
+   * Compared inclusively — the LAST due day is still owed — because `endsOn` is
+   * the day the last instalment is paid, not the day after it.
+   */
+  endedBy(dueOn: Date): boolean {
+    return this.endsOn !== null && dueOn.getTime() > this.endsOn.getTime()
+  }
+
+  /** Still owed at all: not paused, and not past its deadline. */
+  isDueOn(dueOn: Date): boolean {
+    return this.active && !this.endedBy(dueOn)
+  }
+
+  /**
+   * Gives the recurrence a deadline of N months counting from its NEXT
+   * occurrence — "8 months of course" means 8 charges, the first of them being
+   * the one already scheduled, so the last lands N-1 months later.
+   *
+   * The count is what the owner actually knows; turning it into a date is the
+   * entity's job precisely because the date has to obey the same clamping the
+   * schedule does (a course starting on the 31st ends on the 28th in February).
+   */
+  limitToMonths(months: number): void {
+    if (!Number.isInteger(months) || months < 1) {
+      ValidationError.throwError(Errors.INVALID_RECURRENCE_DURATION, months)
+    }
+    const first = MonthPeriod.of(this.nextRunAt)
+    let last = first
+    for (let remaining = months - 1; remaining > 0; remaining -= 1) last = last.next()
+    this.endsOn = last.dayAt(this.dayOfMonth)
+  }
+
+  /** Back to repeating forever. */
+  clearDeadline(): void {
+    this.endsOn = null
   }
 
   /**
@@ -154,6 +206,7 @@ export class Recurrence extends Entity<Recurrence, RecurrenceProps> {
     description?: string
     amount?: number
     dayOfMonth?: number
+    endsOn?: Date | null
     autoPaid?: boolean
     bankId?: string | null
     cardId?: string | null
@@ -178,6 +231,7 @@ export class Recurrence extends Entity<Recurrence, RecurrenceProps> {
     this.amount = amount
     this.paymentMethod = paymentMethod
     if (fields.autoPaid !== undefined) this.autoPaid = fields.autoPaid
+    if (fields.endsOn !== undefined) this.endsOn = fields.endsOn
     if (fields.bankId !== undefined) this.bankId = fields.bankId
     if (fields.cardId !== undefined) this.cardId = fields.cardId
     if (dayChanged) {

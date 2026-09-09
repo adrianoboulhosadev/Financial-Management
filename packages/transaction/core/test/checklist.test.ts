@@ -32,6 +32,7 @@ const recurrence = (overrides: Partial<RecurrenceDTO>): RecurrenceDTO => ({
   bankId: null,
   cardId: null,
   paymentMethod: null,
+  endsOn: null,
   nextRunAt: new Date('2026-10-05T00:00:00.000Z'),
   lastRunAt: null,
   ...overrides,
@@ -342,4 +343,45 @@ test('with no bill recorded yet, the estimate is what gets posted', async () => 
     recurrenceId: id,
   })
   expect(repository.transactionRepository.transactions[0].amount).toBe(18000)
+})
+
+test('um fixo com prazo sai da lista sozinho quando o prazo passa', () => {
+  // The course was paid over three months and September is past its deadline:
+  // the line is simply not there any more, without anyone pausing anything.
+  const ended = recurrence({
+    id: 'r1',
+    description: 'Curso',
+    amount: 30000,
+    endsOn: new Date('2026-08-10T00:00:00.000Z'),
+    dayOfMonth: 10,
+  })
+
+  const august = MonthlyChecklistCalculator.calculate(
+    '2026-08',
+    [ended],
+    [],
+    [],
+    new Date('2026-08-15T12:00:00.000Z'),
+  )
+  expect(august.items).toHaveLength(1)
+  // Its LAST month, so the screen can say so before it disappears.
+  expect(august.items[0].lastMonth).toBe(true)
+
+  const september = MonthlyChecklistCalculator.calculate(period, [ended], [], [], midMonth)
+  expect(september.items).toHaveLength(0)
+  expect(september.totalCents).toBe(0)
+})
+
+test('o dia do vencimento ainda é devido no mês em que o prazo cai', () => {
+  // The deadline IS the day the last instalment is paid, not the day after it.
+  const ending = recurrence({ endsOn: new Date('2026-09-05T00:00:00.000Z'), dayOfMonth: 5 })
+  const checklist = MonthlyChecklistCalculator.calculate(period, [ending], [], [], midMonth)
+
+  expect(checklist.items).toHaveLength(1)
+  expect(checklist.items[0].lastMonth).toBe(true)
+})
+
+test('um fixo sem prazo nunca é o último mês', () => {
+  const checklist = MonthlyChecklistCalculator.calculate(period, [recurrence({})], [], [], midMonth)
+  expect(checklist.items[0].lastMonth).toBe(false)
 })

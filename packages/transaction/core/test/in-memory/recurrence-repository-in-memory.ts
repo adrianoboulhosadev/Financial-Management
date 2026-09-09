@@ -25,6 +25,7 @@ interface RecurrenceRow {
   bankId: string | null
   cardId: string | null
   paymentMethod: PaymentMethod | null
+  endsOn: Date | null
   nextRunAt: Date
   lastRunAt: Date | null
 }
@@ -135,6 +136,7 @@ export default class RecurrenceRepositoryInMemory
       bankId: recurrence.bankId,
       cardId: recurrence.cardId,
       paymentMethod: recurrence.paymentMethod,
+      endsOn: recurrence.endsOn,
       nextRunAt: recurrence.nextRunAt,
       lastRunAt: recurrence.lastRunAt,
     }
