@@ -47,6 +47,9 @@ export const Errors = {
   // Only a recurrence declared VARIABLE at creation accepts a per-month amount
   // (the light bill). A fixed one already knows what it costs.
   RECURRENCE_NOT_VARIABLE: 'RECURRENCE_NOT_VARIABLE',
+  // A fixed movement with a deadline (a course paid over 8 months) refuses a
+  // duration that is not a whole number of months in the future.
+  INVALID_RECURRENCE_DURATION: 'INVALID_RECURRENCE_DURATION',
   INVALID_PAYMENT_METHOD: 'INVALID_PAYMENT_METHOD',
   INVALID_INSTALLMENTS: 'INVALID_INSTALLMENTS',
   // Splitting into more than one instalment is a CREDIT CARD thing; pix, debit
@@ -64,12 +67,16 @@ export const Errors = {
   CARD_ALREADY_EXISTS: 'CARD_ALREADY_EXISTS',
   CARD_IN_USE: 'CARD_IN_USE',
   INVALID_CARD_KIND: 'INVALID_CARD_KIND',
+  INVALID_CARD_BRAND: 'INVALID_CARD_BRAND',
   INVALID_CARD_LAST_DIGITS: 'INVALID_CARD_LAST_DIGITS',
 
   // investment
   INVESTMENT_NOT_FOUND: 'INVESTMENT_NOT_FOUND',
   INVESTMENT_ALREADY_EXISTS: 'INVESTMENT_ALREADY_EXISTS',
   INVALID_INVESTMENT_KIND: 'INVALID_INVESTMENT_KIND',
+  // Money can only be put into an investment that is still open — a redeemed
+  // one has to be reactivated first.
+  INVESTMENT_NOT_ACTIVE: 'INVESTMENT_NOT_ACTIVE',
 
   // budget
   BUDGET_NOT_FOUND: 'BUDGET_NOT_FOUND',
