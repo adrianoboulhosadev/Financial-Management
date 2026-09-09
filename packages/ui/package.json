@@ -8,13 +8,15 @@
   },
   "dependencies": {
     "@auth/adapters": "*",
+    "@bank/adapters": "*",
     "@budget/adapters": "*",
     "@category/adapters": "*",
     "@income/adapters": "*",
+    "@investment/adapters": "*",
     "@notification/adapters": "*",
     "@transaction/adapters": "*",
-    "shared": "*",
-    "axios": "^1.7.9"
+    "axios": "^1.7.9",
+    "shared": "*"
   },
   "peerDependencies": {
     "@tanstack/react-query": "^5.62.0",

@@ -9,6 +9,19 @@ import { clientConfig } from '../config'
 
 export const CATEGORIES_KEY = ['categories']
 
+/** "casa / contas / luz" — how a category reads everywhere in the product. A
+ * free function so the memo that builds the picker options can call it without
+ * depending on the hook's own render. */
+function pathOfIn(byId: Map<string, CategoryDTO>, id: string | null): string {
+  const names: string[] = []
+  let current = id ? byId.get(id) : undefined
+  while (current) {
+    names.unshift(current.name)
+    current = current.parentId ? byId.get(current.parentId) : undefined
+  }
+  return names.join(' / ')
+}
+
 /**
  * The user's category tree (flat list) plus the writes. Exposes helpers to walk
  * it: children of a node and the "a / b / c" path of a node — both apps render
@@ -72,17 +85,20 @@ export function useCategories() {
     loading: query.isLoading,
     childrenOf: (parentId: string | null) =>
       categories.filter((category) => category.parentId === parentId),
-    pathOf: (id: string | null): string => {
-      const names: string[] = []
-      let current = id ? byId.get(id) : undefined
-      while (current) {
-        names.unshift(current.name)
-        current = current.parentId ? byId.get(current.parentId) : undefined
-      }
-      return names.join(' / ')
-    },
-    /** Only LEAVES can receive money, so this is what every picker offers. */
-    leaves: useMemo(() => categories.filter((category) => category.isLeaf), [categories]),
+    pathOf: (id: string | null): string => pathOfIn(byId, id),
+    /**
+     * What every picker offers: the WHOLE tree, each node labelled by its full
+     * path. A branch is a perfectly good place to file money — "casa" as much
+     * as "casa / internet" — so the choice of how deep to go is the owner's,
+     * not the form's.
+     */
+    options: useMemo(
+      () =>
+        categories
+          .map((category) => ({ id: category.id, label: pathOfIn(byId, category.id) }))
+          .sort((left, right) => left.label.localeCompare(right.label, 'pt-BR')),
+      [categories, byId],
+    ),
     create: create.mutate,
     creating: create.isPending,
     rename: (id: string, name: string) => rename.mutate({ id, name }),

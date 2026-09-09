@@ -13,8 +13,17 @@ export interface MonthlyReport {
   period: string
   plannedIncomeCents: number
   realizedIncomeCents: number
+  /** Expenses that actually MOVED. */
   expenseCents: number
+  /** The month's fixed bills not posted yet — money it already owes. */
+  committedExpenseCents: number
+  /** expenses + commitments: what the dashboard shows as "saiu". */
+  totalExpenseCents: number
   leftoverCents: number
+  /** Money that moved, per category — what the ceilings are measured against. */
   byCategory: CategoryTotalDTO[]
+  /** The same split with the unpaid fixed bills folded in — what the charts
+   * rank, so the ranking adds up to `totalExpenseCents`. */
+  totalByCategory: CategoryTotalDTO[]
   budgets: BudgetUsageDTO[]
 }

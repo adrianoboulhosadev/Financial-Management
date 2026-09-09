@@ -1,12 +1,20 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { CreateRecurrenceInput, RecurrenceDTO } from '@transaction/adapters'
+import type {
+  CreateRecurrenceInput,
+  UpdateRecurrenceInput,
+  RecurrenceDTO,
+} from '@transaction/adapters'
 import { api } from '../http/api'
 import { errorMessage } from '../http/errors'
 import { clientConfig } from '../config'
 
-/** The fixed monthly movements the worker posts on their own. */
+/**
+ * The fixed monthly movements the worker posts on their own. Every write
+ * invalidates the month's checklist too: a new bill is a new line to tick off,
+ * and a paused one stops being owed.
+ */
 export function useRecurrences() {
   const queryClient = useQueryClient()
   const { notifier } = clientConfig()
@@ -17,7 +25,11 @@ export function useRecurrences() {
       (await api().get<RecurrenceDTO[]>('/recurrence')).data,
   })
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['recurrences'] })
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ['recurrences'] })
+    queryClient.invalidateQueries({ queryKey: ['checklist'] })
+    queryClient.invalidateQueries({ queryKey: ['report'] })
+  }
 
   const create = useMutation({
     mutationFn: async (input: CreateRecurrenceInput) => {
@@ -29,6 +41,18 @@ export function useRecurrences() {
     },
     onError: (error) =>
       notifier.error(errorMessage(error, 'Não foi possível criar o lançamento fixo.')),
+  })
+
+  const update = useMutation({
+    mutationFn: async ({ id, ...input }: UpdateRecurrenceInput & { id: string }) => {
+      await api().patch(`/recurrence/${id}`, input)
+    },
+    onSuccess: () => {
+      notifier.success('Lançamento fixo atualizado.')
+      invalidate()
+    },
+    onError: (error) =>
+      notifier.error(errorMessage(error, 'Não foi possível atualizar o lançamento fixo.')),
   })
 
   const setActive = useMutation({
@@ -57,6 +81,7 @@ export function useRecurrences() {
     loading: query.isLoading,
     create: create.mutate,
     creating: create.isPending,
+    update: update.mutate,
     toggleActive: (recurrence: RecurrenceDTO) =>
       setActive.mutate({ id: recurrence.id, active: !recurrence.active }),
     remove: remove.mutate,
