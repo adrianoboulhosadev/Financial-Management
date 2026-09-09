@@ -56,6 +56,8 @@ export default function RecurrencesPage() {
                         real one arrives, and saying so keeps the figure beside
                         it from being read as settled. */}
                     {recurrence.variableAmount && ' · valor variável'}
+                    {page.deadlineLabelFor(recurrence) &&
+                      ` · ${page.deadlineLabelFor(recurrence)}`}
                   </p>
                   {page.paymentLabelFor(recurrence) && (
                     <p className="mt-0.5 truncate text-xs text-ink-text-muted">
@@ -157,6 +159,26 @@ export default function RecurrencesPage() {
             checked={page.variableAmount}
             onChange={(event) => page.setVariableAmount(event.target.checked)}
           />
+
+          {/* A course that lasts 8 months: after the deadline the bill leaves
+              the month's list on its own, with nobody having to pause it. */}
+          <Checkbox
+            label="Tem prazo para acabar"
+            hint="Curso, financiamento, parcelamento. Depois do último mês ele sai sozinho de A pagar."
+            checked={page.hasDeadline}
+            onChange={(event) => page.setHasDeadline(event.target.checked)}
+          />
+
+          {page.hasDeadline && (
+            <Field
+              label="Dura quantos meses"
+              type="number"
+              min={1}
+              max={600}
+              value={page.durationMonths}
+              onChange={(event) => page.setDurationMonths(event.target.value)}
+            />
+          )}
 
           <Checkbox
             label="Já é pago automaticamente"

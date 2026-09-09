@@ -4,7 +4,7 @@ import { Button } from '@/components/button'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { EmptyState } from '@/components/empty-state'
 import { Loading } from '@/components/loading'
-import { CARD_KIND_LABELS } from 'ui'
+import { CARD_BRAND_LABELS, CARD_KIND_LABELS } from 'ui'
 import { BankForm } from './components/bank-form'
 import { CardForm } from './components/card-form'
 import { useBanksPage } from './hooks/use-banks-page'
@@ -82,7 +82,7 @@ export default function BanksPage() {
                         {page.cardsOf(bank.id).map((card) => (
                           <li key={card.id} className="flex items-center gap-3 text-sm">
                             <span className="min-w-0 flex-1 truncate">
-                              {card.name}{' '}
+                              {CARD_BRAND_LABELS[card.brand]}{' '}
                               <span className="font-mono text-ink-text-muted">
                                 ····{card.lastFourDigits}
                               </span>
@@ -93,7 +93,7 @@ export default function BanksPage() {
                             <button
                               type="button"
                               onClick={() => page.askToDeleteCard(card)}
-                              aria-label={`Excluir ${card.name}`}
+                              aria-label={`Excluir cartão final ${card.lastFourDigits}`}
                               className="rounded px-2 py-0.5 text-ink-text-muted transition-colors hover:bg-ink-surface-soft hover:text-negative"
                             >
                               ✕
@@ -134,7 +134,7 @@ export default function BanksPage() {
         }
         description={
           page.pendingDeletion?.kind === 'card'
-            ? `"${page.pendingDeletion.card.name}" sai da lista. Lançamentos que já apontam para ele impedem a exclusão.`
+            ? `O cartão ····${page.pendingDeletion.card.lastFourDigits} sai da lista. Lançamentos que já apontam para ele impedem a exclusão.`
             : page.pendingDeletion
               ? `"${page.pendingDeletion.bank.name}" sai da lista. Bancos com cartões, lançamentos ou investimentos não podem ser excluídos.`
               : undefined

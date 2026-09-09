@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { PAYMENT_METHOD_OPTIONS } from 'ui'
+import { CARD_BRAND_LABELS, PAYMENT_METHOD_OPTIONS } from 'ui'
 import { Field } from '@/components/field'
 import { Select } from '@/components/select'
 import { usePaymentFields } from './hooks/use-payment-fields'
@@ -107,7 +107,7 @@ export function PaymentFields({
           <option value="">Não informar</option>
           {fields.availableCards.map((card) => (
             <option key={card.id} value={card.id}>
-              {card.name} ····{card.lastFourDigits}
+              {CARD_BRAND_LABELS[card.brand]} ····{card.lastFourDigits}
             </option>
           ))}
         </Select>

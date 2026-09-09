@@ -22,6 +22,8 @@ export function useRecurrences() {
   const [amount, setAmount] = useState('')
   const [dayOfMonth, setDayOfMonth] = useState('5')
   const [variableAmount, setVariableAmount] = useState(false)
+  const [hasDeadline, setHasDeadline] = useState(false)
+  const [durationMonths, setDurationMonths] = useState('12')
   const [autoPaid, setAutoPaid] = useState(false)
   const [bankId, setBankId] = useState('')
   const [cardId, setCardId] = useState('')
@@ -33,6 +35,8 @@ export function useRecurrences() {
     setAmount('')
     setCategoryId('')
     setVariableAmount(false)
+    setHasDeadline(false)
+    setDurationMonths('12')
     setAutoPaid(false)
     setBankId('')
     setCardId('')
@@ -54,6 +58,10 @@ export function useRecurrences() {
     setDayOfMonth,
     variableAmount,
     setVariableAmount,
+    hasDeadline,
+    setHasDeadline,
+    durationMonths,
+    setDurationMonths,
     autoPaid,
     setAutoPaid,
     bankId,
@@ -81,6 +89,9 @@ export function useRecurrences() {
         amount: toCents(amount),
         dayOfMonth: Number(dayOfMonth),
         variableAmount,
+        // A count, not a date: months is what the owner knows, and turning it
+        // into a deadline is the domain's job.
+        durationMonths: hasDeadline ? Number(durationMonths) || null : null,
         autoPaid,
         bankId: bankId || null,
         cardId: cardId || null,
@@ -99,6 +110,16 @@ export function useRecurrences() {
       setPendingDeletion(null)
     },
     labelFor: (id: string | null) => (id ? pathOf(id) : 'Sem categoria'),
+    /** "até 04/2027" — what a bill with a deadline says next to its day, so it
+     * is clear it is not forever. Pure formatting of a field the row has. */
+    deadlineLabelFor: (recurrence: RecurrenceDTO): string =>
+      recurrence.endsOn
+        ? `até ${new Date(recurrence.endsOn).toLocaleDateString('pt-BR', {
+            month: '2-digit',
+            year: 'numeric',
+            timeZone: 'UTC',
+          })}`
+        : '',
     /** How a fixed bill's payment reads in the list — the same shape a movement
      * uses, minus the instalments a recurrence can never have. */
     paymentLabelFor: (recurrence: RecurrenceDTO): string =>

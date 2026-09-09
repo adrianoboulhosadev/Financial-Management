@@ -10,6 +10,7 @@ import { MonthPicker } from '@/components/month-picker'
 import { MonthSplitBar } from '@/components/month-split-bar'
 import { StatCard } from '@/components/stat-card'
 import { formatBRL } from 'ui'
+import { InvestLeftover } from './components/invest-leftover'
 import { useDashboard } from './hooks/use-dashboard'
 
 export default function DashboardPage() {
@@ -59,7 +60,13 @@ export default function DashboardPage() {
           label="Sobra"
           accent="accent"
           value={<Amount cents={report.leftoverCents} tone="movement" />}
-          hint={report.leftoverCents < 0 ? 'o mês fechou no vermelho' : 'o que ainda está livre'}
+          hint={
+            report.leftoverCents < 0
+              ? 'o mês fechou no vermelho'
+              : report.investedCents > 0
+                ? 'livre, já fora o que foi investido'
+                : 'o que ainda está livre'
+          }
         />
       </section>
 
@@ -83,6 +90,13 @@ export default function DashboardPage() {
             variableCents={Math.max(report.totalExpenseCents - fixedCents, 0)}
           />
         </div>
+
+        {/* Deciding what to do with the leftover is the next thought after
+            reading it, not a separate errand. */}
+        <InvestLeftover
+          leftoverCents={report.leftoverCents}
+          investedCents={report.investedCents}
+        />
       </section>
 
       <section className="rounded-card border border-ink-border bg-ink-surface p-5 shadow-card">

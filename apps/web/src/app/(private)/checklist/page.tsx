@@ -94,6 +94,9 @@ export default function ChecklistPage() {
                     vence em {formatDate(item.dueOn)} · {page.labelFor(item.categoryId)}
                     {item.autoPaid && ' · automático'}
                     {item.posted && ' · já lançado'}
+                    {/* It leaves the list next month, so say it before it just
+                        disappears. */}
+                    {item.lastMonth && ' · último mês'}
                   </p>
                   {/* The estimate stays visible next to the corrected figure:
                       the gap between the two is the surprise the owner wants to
