@@ -169,6 +169,20 @@ do próprio usuário, via `DELETE /user/deactivate`).
     março.
 - **`occurredOn` é DATE, não timestamp.** O que importa é o dia em que o dinheiro andou; uma coluna
   de data não consegue deslocar o registro pro mês vizinho dependendo do fuso de quem lê.
+- **Mês anterior à conta é recusado pelo DOMÍNIO**, não pela tela. `MonthPeriod.readableBy(value,
+  accountCreatedAt)` é um **construtor nomeado** que valida o formato e ainda recusa um mês anterior
+  ao mês em que a conta nasceu (`PERIOD_BEFORE_ACCOUNT_START` → 400). Antes daquele mês o dono
+  simplesmente não estava aqui, então todo número que a API poderia devolver é zero — e um mês
+  zerado afirma "você não gastou nada em agosto" em vez de "você não teve agosto".
+  A comparação é a **ordenação do VO** (`isBefore`/`isAfter`), feita na string: sendo `YYYY-MM`
+  zero-padded e de largura fixa, ordem lexicográfica É ordem cronológica, sem montar `Date` e sem
+  fuso pra errar.
+  ⚠️ É construtor NOMEADO e não invariante do construtor comum de propósito: o `RunRecurrence` é
+  movido pelo **calendário**, não por uma pessoa, e o worker postando o mês nunca pode ser limitado
+  pelo dono da recorrência.
+  O **backend não conhece a regra**: ele só passa dois fatos que já tem em mãos (o mês pedido e o
+  `createdAt` que o `AuthMiddleware` releu) e quem decide é o VO — mesmo padrão do `inUse` que o
+  `CategoryResolver` entrega como dado puro.
 - **Onde cada conta mora**: `MonthlyTotalsCalculator` define o que é "quanto entrou/saiu/sobra";
   `BudgetUsageCalculator` define o que é "quase estourando" (80%) e "estourado" (≥100%);
   `MonthlyIncomeCalculator` define que **só fonte ativa conta**. Domain services puros, um lugar só
@@ -701,9 +715,11 @@ telefone renderiza via `react-native-svg`, e nenhum dos dois embarca um pacote d
   que mostrar — voltar pra um mês anterior ao cadastro rendia uma tela de zeros que se lê como
   "você não gastou nada em agosto" em vez de "você não estava aqui em agosto". Por isso o
   `/user/me` devolve `createdAt`, e por isso o `useIncomeHistory` corta as barras anteriores ao
-  cadastro em vez de desenhá-las zeradas. A comparação é feita na **string `YYYY-MM`** direto:
-  como o formato é zero-padded e de largura fixa, ordem lexicográfica É ordem cronológica — sem
-  `Date`, sem fuso pra errar.
+  cadastro em vez de desenhá-las zeradas.
+  ⚠️ Isto aqui é só a **tela não oferecer** o que o domínio recusa: quem manda é o
+  `MonthPeriod.readableBy` (ver "Dinheiro, mês e cálculo"), que responde 400 pra qualquer cliente
+  que peça um mês anterior à conta. O front repete a mesma comparação de string pra não precisar
+  de um round-trip só pra descobrir que o botão não deveria estar clicável.
 - **O `MonthPicker` é seta E grade.** A seta resolve "mês passado"; chegar num mês de um ano atrás
   por seta são onze toques, então a pílula é **clicável** e abre um painel com navegação de ano e
   grade de 12 meses (web: popover; mobile: sheet). Os meses fora da janela da conta aparecem
