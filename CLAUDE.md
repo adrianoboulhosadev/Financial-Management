@@ -580,28 +580,38 @@ validação de UI simples).
 
 **`components/loading/`**: um anel girando e o rótulo. **Três tamanhos, um por contexto de uso** —
 nenhum aceita filho, então quem chama sempre escolhe um dos três: `fullScreen` (`min-h-screen`, só as
-duas guardas de auth que rodam **antes** do shell (`Sidebar`/`Header`) montar — `(private)/layout.tsx`
-e `(public)/layout.tsx` —, onde não existe header ainda pra medir contra); default sem prop
+duas guardas de auth que rodam **antes** da tab bar montar — `(private)/layout.tsx`
+e `(public)/layout.tsx` —, onde não existe cromo ainda pra medir contra); default sem prop
 (`h-full`, toda tela que faz `if (loading) return <Loading />` **antes de qualquer outro JSX**,
 porque ali ele é o único filho do `<main>` do `(private)/layout.tsx`, uma caixa `flex-1` cuja altura
-o flexbox já calculou como "tela menos o header" — inclusive quando o header quebra em duas linhas
-numa tela estreita, conta que uma altura fixa em `vh` nunca acerta); `compact` (sem altura própria,
-pra quando o loading é só uma seção dentro de uma página que já tem outra coisa renderizada em volta
-— a lista de lançamentos com o formulário do lado). **`flex flex-col items-center justify-center`,
+o flexbox já calculou como "tela menos a tab bar", conta que uma altura fixa em `vh` nunca acerta);
+`compact` (sem altura própria, pra quando o loading é só uma seção dentro de uma página que já tem
+outra coisa renderizada em volta — uma lista dentro de um pane). **`flex flex-col items-center justify-center`,
 nunca `grid place-items-center`**: grid com linhas implícitas estica cada linha pra dividir a caixa
 igualmente e centraliza cada uma dentro da própria metade, abrindo um vão errado entre o ícone e o
 texto — o `justify-content` do flex centraliza o par como um grupo só.
 
-**Tema**: sóbrio/financeiro, não o retrô-arcade do Devs-Bet. Tokens em `tailwind.config.ts`: fundo
-slate escuro (`ink-*`) e **apenas duas cores saturadas com significado** — `positive` (dinheiro
-entrando) e `negative` (saindo) —, mais `accent` pra ação e `warning` pro teto perto do limite.
-Cor nunca é decorativa aqui. Tipografia: Inter pra interface, JetBrains Mono **com números
-tabulares** pros valores, que são lidos em coluna e comparados de relance.
+**Tema**: sóbrio/financeiro, não o retrô-arcade do Devs-Bet. Os tokens moram em
+`packages/ui/src/tokens.ts` (o `tailwind.config.ts` de cada app só estende o preset): fundo
+roxo-escuro (`ink-*`, sobre a rampa `neutral-100..900`), `accent` roxo (com rampa `100..900`) pra
+ação, e **apenas três cores saturadas com significado** — `positive` (dinheiro entrando),
+`negative` (saindo) e `warning` (compromisso que o mês ainda deve, e o teto perto do limite).
+Cor nunca é decorativa aqui.
+
+**Tipografia: UMA família, Inter**, com os valores em **números tabulares** (`tabular-nums` no
+`<Amount>`; no RN, `fontVariant`), que é o que faz uma coluna de dinheiro alinhar. Não há monoespaçada:
+os dígitos já eram de largura fixa, então a segunda família não comprava nada e custava uma webfont
+a mais no web e um `useFonts` a mais no telefone.
+
+**Ícones: Phosphor**, peso regular, com o gêmeo **preenchido** só pros cinco destinos da tab bar (uma
+aba diz que é a atual preenchendo). O path data é **copiado** do `@phosphor-icons/core` pros dois
+`src/data/icons.tsx` — o mesmo dado nos dois —, e não instalado: o web renderiza SVG inline e o
+telefone renderiza via `react-native-svg`, e nenhum dos dois embarca um pacote de ícone.
 
 - **TODO componente é uma PASTA com `index.tsx`** — `components/button/index.tsx`, nunca
   `components/button.tsx`. É o que deixa cada componente carregar o que é dele sem virar um monte de
   arquivo solto na pasta de cima: `<componente>/hooks/` (o hook exclusivo dele) e `<componente>/data/`
-  (constantes/config, ex.: `sidebar/data/nav-items.ts` e `sidebar/data/icons.tsx`). O import não muda
+  (constantes/config, ex.: `button/data/button-variants.ts` e `icon-badge/data/tones.ts`). O import não muda
   (`@/components/button` resolve o `index.tsx`), então mover um componente pra pasta nunca mexe em
   quem o usa.
 - **Visual ≠ lógica**: o `index.tsx`/`page.tsx` é só JSX; states, effects, handlers e chamadas moram
@@ -661,18 +671,26 @@ tabulares** pros valores, que são lidos em coluna e comparados de relance.
   `components/<rota>.tsx` que é só o wrapper da página inteira (indireção sem ganho: um arquivo a
   mais pra abrir e nenhuma reutilização). `<rota>/components/` guarda só os **pedaços** da tela
   (`transactions/components/transaction-form/`).
-- **Não existe `AppShell`**: o cromo da área privada são dois componentes independentes,
-  `components/sidebar/` e `components/header/`, compostos direto no `(private)/layout.tsx` (que é
-  também quem abre o SSE). Um componente que só embrulha outros dois não ganha nada por existir e
-  esconde o layout de quem procura por ele.
+- **Não existe `AppShell` nem header global**: o cromo da área privada é a `components/bottom-tab-bar/`
+  composta direto no `(private)/layout.tsx` (que é também quem abre o SSE). **O cabeçalho é da TELA**
+  (`components/screen-header/`), porque é justamente no topo que elas mais divergem — uma carrega a
+  pílula do mês, outra uma fileira de chips, outra uma barra de progresso —, e uma barra global só
+  conseguiria carregar o título, que nunca foi a parte que precisava ser compartilhada.
 - **Route groups por acesso**: `app/(public)/` e `app/(private)/`. Guard no `layout.tsx` do grupo,
   nunca por página.
-- **Navegação em duas formas, um conjunto só de destinos**: `components/sidebar/` no desktop e
-  `components/bottom-tab-bar/` (`sm:hidden`) no celular, com os quatro destinos primários mais
-  "Mais" (`/more`) — exatamente as cinco abas do app. Os itens vivem em `src/data/nav-items.ts`
-  (global, porque DOIS componentes irmãos leem a lista) e o `<main>` reserva `pb-24` abaixo de `sm`
-  pra última linha não ficar embaixo da barra. ⚠️ Antes da tab bar a sidebar era `hidden sm:flex`
-  **sem substituto**: no celular o app não tinha navegação nenhuma.
+- **Uma navegação só, em toda largura**: `components/bottom-tab-bar/` com **cinco abas** —
+  Dashboard, Lançar, Notificações, Renda e Menu (`/more`) —, exatamente as mesmas do app. Os itens
+  vivem em `src/data/nav-items.ts` (`TAB_ITEMS` + `MENU_GROUPS`, global porque a tab bar e a tela de
+  menu leem a lista). Tudo que se configura uma vez em vez de se ler todo dia fica atrás do Menu.
+  A barra é **irmã em flex** da área de rolagem, não `fixed`: fixada, cada tela tinha que lembrar de
+  reservar espaço embaixo, e a que esquecia escondia a última linha.
+  ⚠️ **Não existe mais sidebar.** O produto é um app: acima de `DESKTOP_CUTOFF` (1024px) o web **não
+  monta o app** — mostra o cartão "Disponível no celular e no tablet" (`components/desktop-notice/`).
+  Esticar uma coluna feita pra um polegar num monitor de 27" seria um produto diferente, não um mais
+  largo.
+- **Formulário longo é uma `components/sheet/`** que sobe de baixo, aberta pelo `components/fab/`
+  (lançamentos) ou pelo `+` do cabeçalho. É a mesma forma que o mobile já usava, e nesta largura não
+  existe "ao lado" pra um painel lateral ocupar.
 - **Reusar os tipos dos `@ctx/adapters`** via `import type` (request e resposta). Não redeclarar
   contratos — a única exceção é o `MonthlyReport`, que não é de contexto nenhum.
 - **Auth do SPA**: `accessToken` em memória (nunca localStorage); refresh no cookie httpOnly; axios
@@ -689,13 +707,16 @@ tabulares** pros valores, que são lidos em coluna e comparados de relance.
   filtrados pelo banco escolhido **e** pelo que o cartão aceita — a mesma regra que o domínio
   aplica, feita inclicável aqui em vez de descoberta como erro. As regras moram no hook
   compartilhado (`use-payment-fields`), então os dois fronts não têm como divergir no que oferecem.
-- **Gráfico obedece o tema, não o contrário.** O produto tem **duas cores saturadas com
-  significado** e mais accent/warning — então nada de paleta categórica: a divisão do mês
-  (`MonthSplitBar`) usa os tokens **semânticos** pelo que eles significam (fixo = `warning`,
-  gasto = `negative`, sobra = `positive`) e o ranking por categoria (`CategoryBars`) usa **uma cor
-  só**, porque o comprimento da barra já codifica a grandeza e um degradê em cima só gastaria o
-  único canal livre repetindo o que a barra já diz. Cada fatia carrega **rótulo e valor**, então
-  nada é lido só pela cor. Sem lib de gráfico: três retângulos em linha é o que o flexbox já é.
+- **Gráfico obedece o tema, não o contrário.** O produto tem **três cores saturadas com
+  significado** e mais o accent — então nada de paleta categórica: a divisão do mês (`MonthPie`, a
+  pizza do dashboard) usa os tokens **semânticos** pelo que eles significam (fixo = `warning`,
+  gasto = `negative`, sobra = `positive`) e tanto o ranking por categoria (`CategoryBars`) quanto o
+  histórico (`MonthBars`) usam **uma cor só**, porque o comprimento da barra já codifica a grandeza e
+  um degradê em cima só gastaria o único canal livre repetindo o que a barra já diz. Cada fatia
+  carrega **rótulo, valor e percentual** na legenda ao lado, então nada é lido só pela cor. Sem lib
+  de gráfico: a geometria da pizza é `packages/ui/src/lib/pie.ts` (**uma** cópia, porque os dois
+  fronts desenham o mesmo mês — o web joga o `d` num `<svg>` e o telefone no `react-native-svg`), e
+  as barras são retângulos que o flexbox já sabe empilhar.
 
 ## PWA — instalar o web na tela inicial
 
@@ -743,13 +764,17 @@ do web.
   `src/screens/<nome>/` com o próprio `hooks/`, e o arquivo em `app/` é **uma linha** reexportando.
   É a única divergência consciente da regra "o arquivo de rota É a tela" — e existe por imposição do
   roteador, não por gosto.
-- **Cinco abas** (`(private)/(tabs)/`): mês, lançamentos, orçamentos, renda e "Mais"; o resto
-  (a pagar, fixos, investimentos, bancos, categorias, notificações, perfil) é empilhado por cima e
-  ganha o botão de voltar de graça. A mesma divisão do web abaixo de `sm`.
+- **Cinco abas** (`(private)/(tabs)/`): dashboard, lançamentos, notificações, renda e "Menu"; o
+  resto (a pagar, orçamentos, fixos, investimentos, bancos, categorias, perfil) é empilhado por cima.
+  A mesma divisão do web — `MENU_GROUPS` é o espelho do `src/data/nav-items.ts` de lá.
+  **Os headers nativos ficam DESLIGADOS** (`headerShown: false` no Tabs e no Stack): cada tela desenha
+  o próprio `ScreenHeader`, porque o header da plataforma só carrega título e botão, e estas telas
+  precisam de pílula de mês, fileira de chips e barra de progresso ali em cima. É também o que faz o
+  topo ficar pixel a pixel igual ao do web, coisa que um header nativo nunca seria.
 - **O phone não tem `<select>` nem checkbox**, então existem `OptionPicker` (linha que abre uma
   sheet, irmão do `CategoryPicker` mas genérico: recebe a lista que for) e `Checkbox` (caixa
-  desenhada dos mesmos tokens, com a **linha inteira** como alvo de toque — um quadrado de 16px não
-  é algo que se peça a um polegar pra acertar). O banco é **um** `OptionPicker` com "Outro" no fim,
+  desenhada dos mesmos tokens, com o mesmo tique Phosphor do web e a **linha inteira** como alvo de
+  toque — um quadrado de 19px não é algo que se peça a um polegar pra acertar). O banco é **um** `OptionPicker` com "Outro" no fim,
   igual ao `<select>` do web — o campo livre só aparece quando "Outro" é escolhido, então nunca há
   duas controles disputando o mesmo valor.
 - **Ícones**: `react-native-svg` com **o mesmo path data** do web (`src/data/icons.tsx`). A cor vem
