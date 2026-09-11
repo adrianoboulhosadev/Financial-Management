@@ -9,6 +9,7 @@ export const ERROR_MESSAGES: Record<string, string> = {
   [Errors.REQUIRED_FIELD]: 'Preencha todos os campos obrigatórios.',
   [Errors.INVALID_AMOUNT]: 'Valor inválido.',
   [Errors.INVALID_PERIOD]: 'Mês inválido.',
+  [Errors.PERIOD_BEFORE_ACCOUNT_START]: 'Esse mês é anterior à criação da sua conta.',
   // auth
   [Errors.INVALID_EMAIL]: 'E-mail inválido.',
   [Errors.WEAK_PASSWORD]: 'A senha deve ter 8+ caracteres, com maiúscula, número e símbolo.',
