@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { BankDTO, CardDTO } from '@bank/adapters'
 
-import { BANK_SUGGESTIONS, useBanks } from 'ui'
+import { BANK_SUGGESTIONS, caption, useBanks } from 'ui'
 
 /** The option that reveals the free-text field — the same escape hatch the
  * web's form has, so the two ask the question the same way. */
@@ -124,6 +124,15 @@ export function useBanksScreen() {
       resetCardForm()
     },
 
+    /** "ag. 1234 · conta 5678 · 2 cartões" — how a bank reads in the list.
+     * Agency and account are optional on purpose: what the product needs is a
+     * name to file a payment under. */
+    captionFor: (bank: BankDTO) =>
+      caption(
+        bank.agency && `ag. ${bank.agency}`,
+        bank.accountNumber && `conta ${bank.accountNumber}`,
+        bank.cardCount === 1 ? '1 cartão' : `${bank.cardCount} cartões`,
+      ),
     pendingDeletion,
     askToDeleteBank: (bank: BankDTO) => setPendingDeletion({ kind: 'bank', bank }),
     askToDeleteCard: (card: CardDTO) => setPendingDeletion({ kind: 'card', card }),

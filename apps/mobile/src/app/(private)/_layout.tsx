@@ -1,16 +1,16 @@
 import { Stack } from 'expo-router'
-import { useNotificationStream } from 'ui'
+import { COLORS, useNotificationStream } from 'ui'
 import { useProtectRoute } from '@/hooks/use-protect-route'
 import { Loading } from '@/components/loading'
-import { NotificationBell } from '@/components/notification-bell'
 
 /**
  * Private area. The guard runs here, once, and the inbox stream opens here too
  * — one connection per session, not one per screen (same rule as the web's
  * private layout).
  *
- * The tab navigator is a child route; the secondary screens are pushed on top
- * of it, which is what gives them a back button for free.
+ * Headers are off for the whole stack: every screen draws its own, so the back
+ * caret in `<ScreenHeader>` is the one the owner sees. The tab navigator is a
+ * child route and the secondary screens are pushed on top of it.
  */
 export default function PrivateLayout() {
   const { allowed } = useProtectRoute()
@@ -21,21 +21,18 @@ export default function PrivateLayout() {
   return (
     <Stack
       screenOptions={{
-        headerStyle: { backgroundColor: '#121a23' },
-        headerTintColor: '#e7eef6',
-        headerTitleStyle: { fontFamily: 'Inter-SemiBold' },
-        contentStyle: { backgroundColor: '#0b1016' },
-        headerRight: () => <NotificationBell />,
+        headerShown: false,
+        contentStyle: { backgroundColor: COLORS.ink.bg },
       }}
     >
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="checklist" options={{ title: 'A pagar' }} />
-      <Stack.Screen name="recurrences" options={{ title: 'Fixos do mês' }} />
-      <Stack.Screen name="investments" options={{ title: 'Investimentos' }} />
-      <Stack.Screen name="banks" options={{ title: 'Bancos e cartões' }} />
-      <Stack.Screen name="categories" options={{ title: 'Categorias' }} />
-      <Stack.Screen name="notifications" options={{ title: 'Notificações' }} />
-      <Stack.Screen name="profile" options={{ title: 'Perfil' }} />
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="checklist" />
+      <Stack.Screen name="budgets" />
+      <Stack.Screen name="recurrences" />
+      <Stack.Screen name="investments" />
+      <Stack.Screen name="banks" />
+      <Stack.Screen name="categories" />
+      <Stack.Screen name="profile" />
     </Stack>
   )
 }

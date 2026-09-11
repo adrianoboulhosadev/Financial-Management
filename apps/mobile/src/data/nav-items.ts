@@ -5,7 +5,6 @@ import {
   CategoriesIcon,
   ChecklistIcon,
   InvestmentsIcon,
-  NotificationsIcon,
   ProfileIcon,
   RecurrencesIcon,
 } from './icons'
@@ -17,21 +16,42 @@ export interface NavItem {
   icon: (props: IconProps) => ReactNode
 }
 
+export interface MenuGroup {
+  title: string
+  items: NavItem[]
+}
+
 /**
- * What the "Mais" tab lists — the SAME split the web makes below `sm`: the four
- * primary screens are tabs, everything else lives here. Keeping the two lists
- * in step is what makes the browser at phone width and the app feel like one
- * product.
+ * What the "Menu" tab lists — the SAME groups, in the same order, as the web's
+ * `MENU_GROUPS`. Keeping the two in step is what makes the browser at phone
+ * width and the installed app read as one product.
  *
- * The primary four are not here: they are declared by the Tabs navigator
- * itself, which is where Expo Router expects them.
+ * The five tabs are not here: they are declared by the Tabs navigator itself,
+ * which is where Expo Router expects them.
+ *
+ * The grouping is the point — an eleven-row flat list is a list nobody reads,
+ * and "planejamento" versus "cadastros" is the distinction the owner already
+ * makes between deciding and configuring.
  */
-export const SECONDARY_NAV: NavItem[] = [
-  { href: '/checklist', label: 'A pagar', icon: ChecklistIcon },
-  { href: '/recurrences', label: 'Fixos do mês', icon: RecurrencesIcon },
-  { href: '/investments', label: 'Investimentos', icon: InvestmentsIcon },
-  { href: '/banks', label: 'Bancos e cartões', icon: BanksIcon },
-  { href: '/categories', label: 'Categorias', icon: CategoriesIcon },
-  { href: '/notifications', label: 'Notificações', icon: NotificationsIcon },
-  { href: '/profile', label: 'Perfil', icon: ProfileIcon },
+export const MENU_GROUPS: MenuGroup[] = [
+  {
+    title: 'Planejamento',
+    items: [
+      { href: '/checklist', label: 'A pagar', icon: ChecklistIcon },
+      { href: '/budgets', label: 'Orçamentos', icon: BudgetsIcon },
+      { href: '/recurrences', label: 'Fixos do mês', icon: RecurrencesIcon },
+      { href: '/investments', label: 'Investimentos', icon: InvestmentsIcon },
+    ],
+  },
+  {
+    title: 'Cadastros',
+    items: [
+      { href: '/banks', label: 'Bancos e cartões', icon: BanksIcon },
+      { href: '/categories', label: 'Categorias', icon: CategoriesIcon },
+    ],
+  },
+  {
+    title: 'Conta',
+    items: [{ href: '/profile', label: 'Perfil', icon: ProfileIcon }],
+  },
 ]

@@ -15,7 +15,6 @@ import {
   Inter_500Medium,
   Inter_600SemiBold,
 } from '@expo-google-fonts/inter'
-import { JetBrainsMono_400Regular } from '@expo-google-fonts/jetbrains-mono'
 import { AuthProvider, configureClient } from 'ui'
 import { Loading } from '@/components/loading'
 import { Toaster } from '@/components/toaster'
@@ -43,12 +42,12 @@ const queryClient = new QueryClient({
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
-    // The names match the shared tokens' `sans`/`mono`, which is what makes
-    // `font-sans`/`font-mono` mean the same thing here and on the web.
+    // ONE family, matching the shared tokens' `sans`. The amounts line up
+    // because <Amount> renders them with TABULAR figures, not because they are
+    // switched to a monospace — so there is no second font to load here.
     Inter: Inter_400Regular,
     'Inter-Medium': Inter_500Medium,
     'Inter-SemiBold': Inter_600SemiBold,
-    'JetBrains Mono': JetBrainsMono_400Regular,
   })
 
   useEffect(() => {

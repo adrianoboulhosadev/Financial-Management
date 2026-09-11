@@ -9,7 +9,7 @@ interface PasswordForm {
 }
 
 export function useProfileScreen() {
-  const { user, refresh } = useAuth()
+  const { user, refresh, logout } = useAuth()
   const [nickname, setNickname] = useState(user?.nickname ?? '')
   const [saving, setSaving] = useState(false)
   const passwordForm = useForm<PasswordForm>({
@@ -39,5 +39,5 @@ export function useProfileScreen() {
     }
   })
 
-  return { user, nickname, setNickname, saveProfile, saving, passwordForm, changePassword }
+  return { user, nickname, setNickname, saveProfile, saving, passwordForm, changePassword, logout }
 }

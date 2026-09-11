@@ -21,12 +21,12 @@ export function Button({
   return (
     <Pressable
       disabled={disabled}
-      className={`flex-row items-center justify-center gap-2 rounded-lg px-4 py-3 active:opacity-80 ${
+      className={`flex-row items-center justify-center gap-2 rounded-field px-4 py-3 active:opacity-80 ${
         BUTTON_VARIANT_CLASSES[variant]
       } ${disabled ? 'opacity-50' : ''} ${className}`}
       {...props}
     >
-      <Text className={`text-sm font-medium ${BUTTON_LABEL_CLASSES[variant]}`}>{label}</Text>
+      <Text className={`text-[13.5px] ${BUTTON_LABEL_CLASSES[variant]}`}>{label}</Text>
     </Pressable>
   )
 }

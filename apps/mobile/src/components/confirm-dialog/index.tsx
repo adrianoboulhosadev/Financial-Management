@@ -24,11 +24,11 @@ export function ConfirmDialog({
     <Modal visible={open} transparent animationType="fade" onRequestClose={onCancel}>
       <Pressable className="flex-1 items-center justify-center bg-ink-bg/80 px-6" onPress={onCancel}>
         <Pressable
-          className="w-full max-w-sm gap-4 rounded-card border border-ink-border bg-ink-surface p-6"
+          className="w-full max-w-sm gap-4 rounded-card border border-ink-border-strong bg-ink-surface p-6"
           onPress={(event) => event.stopPropagation()}
         >
-          <Text className="text-base font-semibold text-ink-text">{title}</Text>
-          {description ? <Text className="text-sm text-ink-text-soft">{description}</Text> : null}
+          <Text className="text-[15px] font-medium text-ink-text">{title}</Text>
+          {description ? <Text className="text-[12.5px] leading-relaxed text-neutral-500">{description}</Text> : null}
 
           <View className="flex-row justify-end gap-2">
             <Button label="Cancelar" variant="secondary" onPress={onCancel} />

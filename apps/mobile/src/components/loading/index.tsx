@@ -1,4 +1,5 @@
 import { ActivityIndicator, Text, View } from 'react-native'
+import { ACCENT } from 'ui'
 
 interface LoadingProps {
   /** For the auth guards, which render before any chrome exists — Loading IS
@@ -20,8 +21,10 @@ export function Loading({ fullScreen = false, compact = false }: LoadingProps) {
         fullScreen ? 'flex-1 bg-ink-bg' : compact ? 'py-8' : 'flex-1 py-16'
       }`}
     >
-      <ActivityIndicator color="#4f9cf9" />
-      <Text className={`text-ink-text-muted ${compact ? 'text-xs' : 'text-sm'}`}>Carregando…</Text>
+      <ActivityIndicator color={ACCENT.DEFAULT} />
+      <Text className={`text-neutral-600 ${compact ? 'text-[10.5px]' : 'text-[11.5px]'}`}>
+        Carregando…
+      </Text>
     </View>
   )
 }

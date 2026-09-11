@@ -13,13 +13,22 @@ interface AmountProps {
 /**
  * Every amount on screen goes through here — the same rule and the same tone
  * table as the web's <Amount>, so a value is coloured identically on both.
+ *
+ * The figures are TABULAR, set in the same Inter as the rest of the interface.
+ * On React Native that is `fontVariant` and not a class: NativeWind has no
+ * `tabular-nums` utility to compile, and dropping to a monospaced family
+ * instead — which is what this used to do — would make a column of money read
+ * as a different voice from the label beside it.
  */
 export function Amount({ cents, tone = 'neutral', signed = false, className = '' }: AmountProps) {
   const resolved = tone === 'movement' ? (cents < 0 ? 'expense' : 'income') : tone
   const prefix = signed ? (resolved === 'expense' ? '−' : '+') : ''
 
   return (
-    <Text className={`font-mono ${TONE_CLASSES[resolved]} ${className}`}>
+    <Text
+      style={{ fontVariant: ['tabular-nums'] }}
+      className={`${TONE_CLASSES[resolved]} ${className}`}
+    >
       {prefix}
       {formatBRL(Math.abs(cents))}
     </Text>

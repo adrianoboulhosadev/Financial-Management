@@ -1,70 +1,110 @@
 import { Tabs } from 'expo-router'
-import { COLORS } from 'ui'
-import { BudgetsIcon, DashboardIcon, IncomeIcon, MoreIcon, TransactionsIcon } from '@/data/icons'
-import { NotificationBell } from '@/components/notification-bell'
+import { View } from 'react-native'
+import { ACCENT, COLORS, NEUTRAL, useNotifications } from 'ui'
+import {
+  DashboardFilledIcon,
+  DashboardIcon,
+  IncomeFilledIcon,
+  IncomeIcon,
+  MoreFilledIcon,
+  MoreIcon,
+  NotificationsFilledIcon,
+  NotificationsIcon,
+  TransactionsFilledIcon,
+  TransactionsIcon,
+} from '@/data/icons'
 
 /**
- * Four primary destinations plus "Mais" — five slots, which is what a thumb can
- * hit reliably. The web's bottom tab bar mirrors this exact split below `sm`,
- * so the browser on a phone and the installed app navigate the same way.
+ * The five tabs, in the order a thumb reaches them — the SAME five, in the same
+ * order, as the web's bottom bar. These are the screens opened every day; what
+ * is set up once rather than read daily lives behind "Menu".
  *
- * Colours come from the shared tokens rather than hex literals, for the same
- * reason every other surface does.
+ * A tab says it is the current one by FILLING IN, which is the one statement
+ * the outline weight cannot make on its own.
+ *
+ * Headers are off: every screen draws its own (see `<ScreenHeader>`), because
+ * the top of a screen is where they differ most — a month pill here, a row of
+ * chips there — and the native header can hold a title and a button.
  */
 export default function TabsLayout() {
+  // The dot is the only unread signal in the chrome now that there is no header
+  // to hang a bell on.
+  const { unreadCount } = useNotifications()
+
   return (
     <Tabs
       screenOptions={{
-        headerStyle: { backgroundColor: COLORS.ink.surface },
-        headerTintColor: COLORS.ink.text,
-        headerTitleStyle: { fontFamily: 'Inter-SemiBold' },
-        headerRight: () => <NotificationBell />,
+        headerShown: false,
         sceneStyle: { backgroundColor: COLORS.ink.bg },
         tabBarStyle: {
           backgroundColor: COLORS.ink.surface,
           borderTopColor: COLORS.ink.border,
         },
-        tabBarActiveTintColor: COLORS.accent,
-        tabBarInactiveTintColor: COLORS.ink['text-muted'],
-        tabBarLabelStyle: { fontFamily: 'Inter', fontSize: 11 },
+        tabBarActiveTintColor: ACCENT.DEFAULT,
+        tabBarInactiveTintColor: NEUTRAL[600],
+        tabBarLabelStyle: { fontFamily: 'Inter', fontSize: 9.5 },
       }}
     >
       <Tabs.Screen
         name="dashboard"
         options={{
-          title: 'Visão do mês',
-          tabBarLabel: 'Mês',
-          tabBarIcon: ({ color }) => <DashboardIcon color={color} />,
+          title: 'Dashboard',
+          tabBarIcon: ({ color, focused }) =>
+            focused ? (
+              <DashboardFilledIcon color={color} size={21} />
+            ) : (
+              <DashboardIcon color={color} size={21} />
+            ),
         }}
       />
       <Tabs.Screen
         name="transactions"
         options={{
-          title: 'Lançamentos',
-          tabBarLabel: 'Lançar',
-          tabBarIcon: ({ color }) => <TransactionsIcon color={color} />,
+          title: 'Lançar',
+          tabBarIcon: ({ color, focused }) =>
+            focused ? (
+              <TransactionsFilledIcon color={color} size={21} />
+            ) : (
+              <TransactionsIcon color={color} size={21} />
+            ),
         }}
       />
       <Tabs.Screen
-        name="budgets"
+        name="notifications"
         options={{
-          title: 'Orçamentos',
-          tabBarLabel: 'Teto',
-          tabBarIcon: ({ color }) => <BudgetsIcon color={color} />,
+          title: 'Notificações',
+          tabBarIcon: ({ color, focused }) => (
+            <View>
+              {focused ? (
+                <NotificationsFilledIcon color={color} size={21} />
+              ) : (
+                <NotificationsIcon color={color} size={21} />
+              )}
+              {unreadCount > 0 ? (
+                <View className="absolute -right-0.5 -top-px h-1.5 w-1.5 rounded-full bg-accent" />
+              ) : null}
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
         name="income"
         options={{
           title: 'Renda',
-          tabBarIcon: ({ color }) => <IncomeIcon color={color} />,
+          tabBarIcon: ({ color, focused }) =>
+            focused ? (
+              <IncomeFilledIcon color={color} size={21} />
+            ) : (
+              <IncomeIcon color={color} size={21} />
+            ),
         }}
       />
       <Tabs.Screen
         name="more"
         options={{
-          title: 'Mais',
-          tabBarIcon: ({ color }) => <MoreIcon color={color} />,
+          title: 'Menu',
+          tabBarIcon: ({ color, focused }) =>
+            focused ? <MoreFilledIcon color={color} size={21} /> : <MoreIcon color={color} size={21} />,
         }}
       />
     </Tabs>

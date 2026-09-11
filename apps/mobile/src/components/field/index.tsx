@@ -1,5 +1,5 @@
 import { Text, TextInput, View, type TextInputProps } from 'react-native'
-import { sanitizeMoneyInput } from 'ui'
+import { NEUTRAL, sanitizeMoneyInput } from 'ui'
 
 interface FieldProps extends TextInputProps {
   label: string
@@ -21,22 +21,21 @@ export function Field({
   ...props
 }: FieldProps) {
   return (
-    <View className="gap-1.5">
-      <Text className="text-xs font-medium uppercase tracking-wide text-ink-text-muted">
+    <View>
+      <Text className="mb-[7px] text-[9.5px] uppercase tracking-[1.5px] text-neutral-600">
         {label}
       </Text>
       <TextInput
-        placeholderTextColor="#6d8096"
+        placeholderTextColor={NEUTRAL[700]}
         keyboardType={money ? 'decimal-pad' : props.keyboardType}
         onChangeText={
           onChangeText && (money ? (text) => onChangeText(sanitizeMoneyInput(text)) : onChangeText)
         }
-        className={`rounded-lg border border-ink-border bg-ink-bg px-3 py-3 text-ink-text ${
-          money ? 'font-mono' : ''
-        } ${className}`}
+        style={money ? { fontVariant: ['tabular-nums'] } : undefined}
+        className={`rounded-field border border-ink-border-strong bg-ink-surface px-3.5 py-3 text-[13.5px] text-ink-text ${className}`}
         {...props}
       />
-      {error ? <Text className="text-sm text-negative">{error}</Text> : null}
+      {error ? <Text className="mt-1.5 text-xs text-negative">{error}</Text> : null}
     </View>
   )
 }

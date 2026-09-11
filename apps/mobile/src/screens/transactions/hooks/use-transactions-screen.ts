@@ -2,6 +2,8 @@ import { useState } from 'react'
 import type { TransactionDTO, TransactionType } from '@transaction/adapters'
 
 import {
+  caption,
+  groupByDay,
   paymentMethodLabel,
   toCents,
   toDateInputValue,
@@ -46,11 +48,16 @@ export function useTransactionsScreen() {
     setInstallments('1')
   }
 
+  /** The month as day blocks, which is how the list is read: the eye looks for
+   * a day, not for a row. */
+  const days = groupByDay(data.transactions, (transaction) => transaction.occurredOn)
+
   return {
     period,
     setPeriod,
     filter,
     setFilter,
+    days,
     transactions: data.transactions,
     loading: data.loading,
     recording: data.recording,
@@ -107,18 +114,18 @@ export function useTransactionsScreen() {
       setPendingDeletion(null)
     },
     labelFor: (categoryId: string | null) => (categoryId ? pathOf(categoryId) : 'Sem categoria'),
-    /** How a row's payment reads — the same line the web shows, built from the
-     * same pieces. Every part is optional, and the missing ones simply do not
-     * show up rather than printing "sem banco". */
-    paymentLabelFor: (transaction: TransactionDTO): string =>
-      [
-        paymentMethodLabel(transaction.paymentMethod),
-        cardLabelOf(transaction.cardId) || bankNameOf(transaction.bankId),
-        transaction.installments > 1
-          ? `${transaction.installmentNumber}/${transaction.installments}`
-          : '',
-      ]
-        .filter(Boolean)
-        .join(' · '),
+    /** The line under a row: where it is filed, how it was paid, and which
+     * instalment it is — the same caption the web builds from the same pieces.
+     * Every part is optional, and the missing ones simply do not show up rather
+     * than printing "sem banco". */
+    captionFor: (transaction: TransactionDTO): string =>
+      caption(
+        transaction.categoryId ? pathOf(transaction.categoryId) : 'Sem categoria',
+        cardLabelOf(transaction.cardId) ||
+          caption(paymentMethodLabel(transaction.paymentMethod), bankNameOf(transaction.bankId)),
+        transaction.installments > 1 &&
+          `${transaction.installmentNumber} de ${transaction.installments}`,
+        transaction.recurrenceId && 'fixo',
+      ),
   }
 }

@@ -41,29 +41,29 @@ export function OptionPicker({
   const selected = options.find((option) => option.value === value)
 
   return (
-    <View className="gap-1.5">
-      <Text className="text-xs font-medium uppercase tracking-wide text-ink-text-muted">
+    <View>
+      <Text className="mb-[7px] text-[9.5px] uppercase tracking-[1.5px] text-neutral-600">
         {label}
       </Text>
 
       <Pressable
         onPress={() => !disabled && setOpen(true)}
-        className={`rounded-lg border border-ink-border bg-ink-bg px-3 py-3 ${disabled ? 'opacity-60' : ''}`}
+        className={`rounded-field border border-ink-border-strong bg-ink-surface px-3.5 py-3 ${disabled ? 'opacity-60' : ''}`}
       >
-        <Text className={selected ? 'text-ink-text' : 'text-ink-text-muted'}>
+        <Text className={`text-[13.5px] ${selected ? 'text-ink-text' : 'text-neutral-700'}`}>
           {selected?.label ?? placeholder}
         </Text>
       </Pressable>
 
-      {hint ? <Text className="text-xs text-ink-text-muted">{hint}</Text> : null}
+      {hint ? <Text className="mt-1.5 text-[10.5px] text-neutral-600">{hint}</Text> : null}
 
       <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
         <Pressable className="flex-1 justify-end bg-ink-bg/80" onPress={() => setOpen(false)}>
           <Pressable
-            className="max-h-[70%] rounded-t-card border-t border-ink-border bg-ink-surface p-4"
+            className="max-h-[70%] rounded-t-[20px] border-t border-ink-border-strong bg-ink-surface p-5"
             onPress={(event) => event.stopPropagation()}
           >
-            <Text className="mb-3 text-base font-semibold text-ink-text">{label}</Text>
+            <Text className="mb-3 text-[15px] font-medium text-ink-text">{label}</Text>
 
             <ScrollView>
               {allowEmpty ? (
@@ -74,7 +74,7 @@ export function OptionPicker({
                   }}
                   className="border-b border-ink-border py-3.5"
                 >
-                  <Text className="text-ink-text-muted">{placeholder}</Text>
+                  <Text className="text-[13px] text-neutral-600">{placeholder}</Text>
                 </Pressable>
               ) : null}
 
@@ -87,7 +87,7 @@ export function OptionPicker({
                   }}
                   className="border-b border-ink-border py-3.5"
                 >
-                  <Text className={option.value === value ? 'text-accent' : 'text-ink-text'}>
+                  <Text className={`text-[13px] ${option.value === value ? 'text-accent' : 'text-ink-text'}`}>
                     {option.label}
                   </Text>
                 </Pressable>

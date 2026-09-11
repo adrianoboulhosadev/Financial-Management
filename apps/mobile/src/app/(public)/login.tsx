@@ -5,6 +5,11 @@ import { Button } from '@/components/button'
 import { Field } from '@/components/field'
 import { useLogin } from './hooks/use-login'
 
+/**
+ * The door. A full screen rather than a card floating in the middle of one —
+ * the same composition the web now uses, with the body vertically centred and
+ * the "criar agora" line pinned at the bottom where a thumb can reach it.
+ */
 export default function LoginScreen() {
   const { form, submit, submitting } = useLogin()
 
@@ -13,13 +18,13 @@ export default function LoginScreen() {
       className="flex-1"
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerClassName="flex-grow justify-center px-6 py-12">
-        <View className="gap-4 rounded-card border border-ink-border bg-ink-surface p-6">
-          <View>
-            <Text className="text-2xl font-semibold text-ink-text">Financial</Text>
-            <Text className="mt-1 text-sm text-ink-text-soft">Entre para ver o mês.</Text>
-          </View>
+      <ScrollView contentContainerClassName="flex-grow justify-center px-6 py-10">
+        <Text className="text-[26px] font-medium tracking-tight text-ink-text">Login</Text>
+        <Text className="mt-2 max-w-[250px] text-[12.5px] leading-relaxed text-neutral-500">
+          Entre para ver o mês, os tetos e o que ainda falta pagar.
+        </Text>
 
+        <View className="mt-8 gap-3">
           <Controller
             control={form.control}
             name="email"
@@ -52,14 +57,23 @@ export default function LoginScreen() {
               />
             )}
           />
+        </View>
 
-          <Button label={submitting ? 'Entrando…' : 'Entrar'} onPress={submit} disabled={submitting} />
-
-          <Link href="/register" className="text-center text-sm text-accent">
-            Não tem conta? Criar conta
-          </Link>
+        <View className="mt-4">
+          <Button
+            label={submitting ? 'Entrando…' : 'Entrar'}
+            onPress={submit}
+            disabled={submitting}
+          />
         </View>
       </ScrollView>
+
+      <Text className="px-6 pb-9 text-center text-[12.5px] text-neutral-600">
+        Não tem conta?{' '}
+        <Link href="/register" className="text-accent-300">
+          Criar agora
+        </Link>
+      </Text>
     </KeyboardAvoidingView>
   )
 }

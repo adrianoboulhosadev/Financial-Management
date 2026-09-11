@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { ChecklistItemDTO } from '@transaction/adapters'
 
-import { toCents, toPeriod, useCategories, useChecklist } from 'ui'
+import { caption, formatShortDay, toCents, toPeriod, useCategories, useChecklist } from 'ui'
 
 /**
  * The screen's own state — which month, and which bill is having its amount
@@ -22,10 +22,21 @@ export function useChecklistScreen() {
     setDraftAmount('')
   }
 
+  /** The list splits by whether the month still owes it: what is open is the
+   * reason the screen is opened, and what is settled is the receipt. */
+  const open = data.items.filter((item) => !item.paid)
+  const settled = data.items.filter((item) => item.paid)
+
   return {
     period,
     setPeriod,
     items: data.items,
+    open,
+    settled,
+    /** How much of the month is done, as a bar: settled money over the whole,
+     * which is a fairer picture than counting lines of wildly different size. */
+    settledPercentage:
+      data.totalCents > 0 ? Math.round((data.paidCents / data.totalCents) * 100) : 0,
     loading: data.loading,
     totalCents: data.totalCents,
     paidCents: data.paidCents,
@@ -54,5 +65,19 @@ export function useChecklistScreen() {
     },
     adjusting: data.adjusting,
     labelFor: (categoryId: string | null) => (categoryId ? pathOf(categoryId) : 'Sem categoria'),
+    /** The line under a bill's name: when it falls due (or when it was
+     * settled), and the handful of things worth saying about it. */
+    captionFor: (item: ChecklistItemDTO) =>
+      caption(
+        item.paid
+          ? item.autoPaid
+            ? `débito automático · ${formatShortDay(item.dueOn)}`
+            : `pago em ${formatShortDay(item.dueOn)}`
+          : `vence ${formatShortDay(item.dueOn)}`,
+        !item.paid && item.variableAmount && 'valor variável',
+        // It leaves the list next month, so say it before it just disappears.
+        item.lastMonth && 'último mês',
+        item.posted && 'já lançado',
+      ),
   }
 }

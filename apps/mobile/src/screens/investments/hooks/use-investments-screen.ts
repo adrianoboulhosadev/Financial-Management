@@ -1,7 +1,17 @@
 import { useState } from 'react'
 import type { InvestmentDTO } from '@investment/adapters'
 
-import { toCents, toDateInputValue, useBanks, useInvestments } from 'ui'
+import {
+  caption,
+  formatShortDay,
+  INVESTMENT_KIND_LABELS,
+  toCents,
+  toDateInputValue,
+  toPeriod,
+  useBanks,
+  useInvestments,
+  useMonthlyReport,
+} from 'ui'
 
 /**
  * The screen's own state (the form sheet, which investment is having its value
@@ -16,6 +26,9 @@ export function useInvestmentsScreen() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draftValue, setDraftValue] = useState('')
   const [pendingDeletion, setPendingDeletion] = useState<InvestmentDTO | null>(null)
+  // What the month still has free. It belongs on THIS screen because deciding
+  // where the leftover goes is the next thought after reading it.
+  const { report } = useMonthlyReport(toPeriod())
 
   const [name, setName] = useState('')
   const [kind, setKind] = useState('cdb')
@@ -46,6 +59,8 @@ export function useInvestmentsScreen() {
     investments: data.investments,
     portfolio: data.portfolio,
     loading: data.loading,
+    leftoverCents: report?.leftoverCents ?? 0,
+    investedThisMonthCents: report?.investedCents ?? 0,
     banks,
     bankNameOf,
 
@@ -120,5 +135,15 @@ export function useInvestmentsScreen() {
      * exactly what has to be visible. */
     returnOf: (investment: InvestmentDTO) =>
       (investment.currentAmount ?? investment.investedAmount) - investment.investedAmount,
+    /** The line under an investment's name: what kind it is, where it is, and
+     * the dates that matter. */
+    captionFor: (investment: InvestmentDTO) =>
+      caption(
+        INVESTMENT_KIND_LABELS[investment.kind],
+        bankNameOf(investment.bankId),
+        `desde ${formatShortDay(investment.startedOn)}`,
+        investment.maturityOn && `vence ${formatShortDay(investment.maturityOn)}`,
+        !investment.active && 'resgatado',
+      ),
   }
 }

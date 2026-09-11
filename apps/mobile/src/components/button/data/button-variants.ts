@@ -1,21 +1,25 @@
-export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost'
+export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'solid'
 
 /**
- * Same variants and same token names as the web's button. The classes differ
- * only where the web adds behaviour a touch screen does not have (hover,
- * focus-visible) — the COLOURS come from the shared preset, so the two buttons
- * are the same button.
+ * Same variants, same token names and the same OUTLINED primary as the web's
+ * button — the classes differ only where the web adds behaviour a touch screen
+ * does not have (hover, focus-visible).
+ *
+ * `solid` exists for the one control with no container to be outlined against:
+ * the floating compose button.
  */
 export const BUTTON_VARIANT_CLASSES: Record<ButtonVariant, string> = {
-  primary: 'bg-accent',
-  secondary: 'border border-ink-border bg-ink-surface-soft',
+  primary: 'border border-accent',
+  secondary: 'border border-ink-border-strong',
   danger: 'border border-negative/50',
   ghost: '',
+  solid: 'bg-accent',
 }
 
 export const BUTTON_LABEL_CLASSES: Record<ButtonVariant, string> = {
-  primary: 'text-ink-bg',
-  secondary: 'text-ink-text',
+  primary: 'text-accent-200',
+  secondary: 'text-neutral-400',
   danger: 'text-negative',
-  ghost: 'text-ink-text-soft',
+  ghost: 'text-neutral-500',
+  solid: 'text-ink-bg',
 }

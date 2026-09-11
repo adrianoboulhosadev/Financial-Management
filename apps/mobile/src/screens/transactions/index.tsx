@@ -1,162 +1,186 @@
-import { Modal, Pressable, ScrollView, Text, View } from 'react-native'
-import { formatDate, TRANSACTION_FILTERS, TRANSACTION_TYPES } from 'ui'
+import { Pressable, Text, View } from 'react-native'
+import { formatBRL, formatDayHeading, NEUTRAL, TRANSACTION_FILTERS, TRANSACTION_TYPES } from 'ui'
 import { Amount } from '@/components/amount'
 import { Button } from '@/components/button'
 import { CategoryPicker } from '@/components/category-picker'
+import { Chip } from '@/components/chip'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { EmptyState } from '@/components/empty-state'
+import { Fab } from '@/components/fab'
 import { Field } from '@/components/field'
+import { IconBadge } from '@/components/icon-badge'
+import { Kicker } from '@/components/kicker'
+import { ListRow } from '@/components/list-row'
 import { Loading } from '@/components/loading'
-import { PaymentFields } from '@/components/payment-fields'
 import { MonthPicker } from '@/components/month-picker'
+import { PaymentFields } from '@/components/payment-fields'
 import { Screen } from '@/components/screen'
-import { SegmentedControl } from '@/components/segmented-control'
+import { ScreenHeader } from '@/components/screen-header'
+import { Sheet } from '@/components/sheet'
+import { ArrowInIcon, ArrowOutIcon, TrashIcon } from '@/data/icons'
 import { useTransactionsScreen } from './hooks/use-transactions-screen'
 
 /**
- * On a phone the web's side-by-side "list + form" becomes a list with the form
- * in a sheet — same fields, same rules, in the shape the viewport allows.
+ * Everything that moved this month, newest day first — the same list the web
+ * shows, with the form in a sheet the compose button raises.
+ *
+ * The rows are grouped by DAY with the day's own net in the heading, because
+ * that is the unit the owner remembers spending in.
  */
 export function TransactionsScreen() {
   const screen = useTransactionsScreen()
 
+  const netCents = screen.transactions.reduce(
+    (sum, transaction) =>
+      sum + (transaction.type === 'income' ? transaction.amount : -transaction.amount),
+    0,
+  )
+
   return (
     <>
-      <Screen>
-        <MonthPicker period={screen.period} onChange={screen.setPeriod} />
+      <Screen
+        header={
+          <ScreenHeader
+            title="Lançamentos"
+            subtitle={`${screen.transactions.length} ${
+              screen.transactions.length === 1 ? 'registro' : 'registros'
+            } · saldo ${formatBRL(netCents)}`}
+          >
+            <MonthPicker period={screen.period} onChange={screen.setPeriod} />
 
-        <SegmentedControl
-          options={TRANSACTION_FILTERS}
-          value={screen.filter}
-          onChange={screen.setFilter}
-        />
-
-        <Button label="Novo lançamento" onPress={screen.openForm} />
-
-        {screen.loading ? (
-          <Loading compact />
-        ) : screen.transactions.length === 0 ? (
-          <EmptyState
-            title="Nenhum lançamento neste mês"
-            description="Toque em Novo lançamento para registrar o primeiro."
-          />
-        ) : (
-          <View className="overflow-hidden rounded-card border border-ink-border bg-ink-surface">
-            {screen.transactions.map((transaction, index) => (
-              <View
-                key={transaction.id}
-                className={`flex-row items-center gap-3 px-4 py-3 ${
-                  index > 0 ? 'border-t border-ink-border' : ''
-                }`}
-              >
-                <View className="flex-1">
-                  <Text className="text-sm font-medium text-ink-text" numberOfLines={1}>
-                    {transaction.description}
-                  </Text>
-                  <Text className="mt-0.5 text-xs text-ink-text-muted" numberOfLines={1}>
-                    {formatDate(transaction.occurredOn)} · {screen.labelFor(transaction.categoryId)}
-                    {/* A row the worker posted, not the user — worth saying, so
-                        nobody wonders where it came from. */}
-                    {transaction.recurrenceId ? ' · fixo' : ''}
-                  </Text>
-                  {/* Where the money went through, on its own line: a different
-                      question from "when and on what". */}
-                  {screen.paymentLabelFor(transaction) ? (
-                    <Text className="mt-0.5 text-xs text-ink-text-muted" numberOfLines={1}>
-                      {screen.paymentLabelFor(transaction)}
-                    </Text>
-                  ) : null}
-                </View>
-
-                <Amount
-                  cents={transaction.amount}
-                  tone={transaction.type === 'expense' ? 'expense' : 'income'}
-                  signed
-                  className="text-sm"
+            <View className="mt-3.5 flex-row gap-1.5">
+              {TRANSACTION_FILTERS.map((option) => (
+                <Chip
+                  key={option.value}
+                  label={option.label}
+                  active={screen.filter === option.value}
+                  onPress={() => screen.setFilter(option.value)}
                 />
+              ))}
+            </View>
+          </ScreenHeader>
+        }
+      >
+        <View className="px-5">
+          {screen.loading ? (
+            <Loading compact />
+          ) : screen.days.length === 0 ? (
+            <EmptyState
+              title="Nenhum lançamento neste mês"
+              description="Toque no + para registrar o primeiro gasto ou entrada do mês."
+            />
+          ) : (
+            screen.days.map((day, index) => {
+              const dayNetCents = day.items.reduce(
+                (sum, item) => sum + (item.type === 'income' ? item.amount : -item.amount),
+                0,
+              )
 
-                <Pressable
-                  onPress={() => screen.askToDelete(transaction)}
-                  accessibilityLabel={`Excluir ${transaction.description}`}
-                  className="px-2 py-1"
-                >
-                  <Text className="text-ink-text-muted">✕</Text>
-                </Pressable>
-              </View>
-            ))}
-          </View>
-        )}
+              return (
+                <View key={day.day}>
+                  <Kicker
+                    className={`pb-1.5 capitalize ${
+                      index === 0 ? 'border-t border-ink-border pt-3.5' : 'pt-[18px]'
+                    }`}
+                  >
+                    {`${formatDayHeading(day.date)} · ${formatBRL(dayNetCents)}`}
+                  </Kicker>
+
+                  {day.items.map((transaction) => (
+                    <ListRow key={transaction.id}>
+                      <IconBadge
+                        icon={transaction.type === 'income' ? ArrowInIcon : ArrowOutIcon}
+                        tone={transaction.type === 'income' ? 'income' : 'accent'}
+                      />
+
+                      <View className="flex-1">
+                        <Text numberOfLines={1} className="text-[13px] text-ink-text">
+                          {transaction.description}
+                        </Text>
+                        <Text numberOfLines={1} className="mt-[3px] text-[11px] text-neutral-600">
+                          {screen.captionFor(transaction)}
+                        </Text>
+                      </View>
+
+                      <Amount
+                        cents={transaction.amount}
+                        tone={transaction.type === 'income' ? 'income' : 'expense'}
+                        signed
+                        className="text-[13.5px]"
+                      />
+
+                      <Pressable
+                        onPress={() => screen.askToDelete(transaction)}
+                        accessibilityLabel={`Excluir ${transaction.description}`}
+                        hitSlop={8}
+                      >
+                        <TrashIcon color={NEUTRAL[700]} size={16} />
+                      </Pressable>
+                    </ListRow>
+                  ))}
+                </View>
+              )
+            })
+          )}
+        </View>
       </Screen>
 
-      <Modal
-        visible={screen.formOpen}
-        transparent
-        animationType="slide"
-        onRequestClose={screen.closeForm}
-      >
-        <Pressable className="flex-1 justify-end bg-ink-bg/80" onPress={screen.closeForm}>
-          <Pressable
-            className="max-h-[88%] rounded-t-card border-t border-ink-border bg-ink-surface"
-            onPress={(event) => event.stopPropagation()}
-          >
-            <ScrollView
-              contentContainerClassName="gap-4 p-4 pb-8"
-              keyboardShouldPersistTaps="handled"
-            >
-              <Text className="text-base font-semibold text-ink-text">Novo lançamento</Text>
+      <Fab onPress={screen.openForm} accessibilityLabel="Novo lançamento" />
 
-              <SegmentedControl
-                options={TRANSACTION_TYPES}
-                value={screen.type}
-                onChange={screen.setType}
-                toneByValue={{ expense: 'bg-negative/15', income: 'bg-positive/15' }}
-              />
+      <Sheet open={screen.formOpen} title="Novo lançamento" onClose={screen.closeForm}>
+        <View className="flex-row gap-1.5">
+          {TRANSACTION_TYPES.map((option) => (
+            <Chip
+              key={option.value}
+              label={option.label}
+              active={screen.type === option.value}
+              onPress={() => screen.setType(option.value)}
+            />
+          ))}
+        </View>
 
-              <Field
-                label="Descrição"
-                placeholder="Mercado, cinema, conta de luz…"
-                value={screen.description}
-                onChangeText={screen.setDescription}
-              />
-              <Field
-                label="Valor (R$)"
-                money
-                placeholder="0,00"
-                value={screen.amount}
-                onChangeText={screen.setAmount}
-              />
-              <Field
-                label="Data (AAAA-MM-DD)"
-                placeholder="2026-08-10"
-                value={screen.occurredOn}
-                onChangeText={screen.setOccurredOn}
-              />
-              <CategoryPicker
-                value={screen.categoryId}
-                onChange={screen.setCategoryId}
-                allowEmpty={!screen.categoryRequired}
-              />
+        <Field
+          label="Descrição"
+          placeholder="Mercado, cinema, conta de luz…"
+          value={screen.description}
+          onChangeText={screen.setDescription}
+        />
+        <Field
+          label="Valor (R$)"
+          money
+          placeholder="0,00"
+          value={screen.amount}
+          onChangeText={screen.setAmount}
+        />
+        <Field
+          label="Data (AAAA-MM-DD)"
+          placeholder="2026-08-10"
+          value={screen.occurredOn}
+          onChangeText={screen.setOccurredOn}
+        />
+        <CategoryPicker
+          value={screen.categoryId}
+          onChange={screen.setCategoryId}
+          allowEmpty={!screen.categoryRequired}
+        />
 
-              <PaymentFields
-                bankId={screen.bankId}
-                onBankChange={screen.setBankId}
-                paymentMethod={screen.paymentMethod}
-                onPaymentMethodChange={screen.setPaymentMethod}
-                cardId={screen.cardId}
-                onCardChange={screen.setCardId}
-                installments={screen.installments}
-                onInstallmentsChange={screen.setInstallments}
-              />
+        <PaymentFields
+          bankId={screen.bankId}
+          onBankChange={screen.setBankId}
+          paymentMethod={screen.paymentMethod}
+          onPaymentMethodChange={screen.setPaymentMethod}
+          cardId={screen.cardId}
+          onCardChange={screen.setCardId}
+          installments={screen.installments}
+          onInstallmentsChange={screen.setInstallments}
+        />
 
-              <Button
-                label={screen.recording ? 'Registrando…' : 'Registrar'}
-                onPress={screen.submit}
-                disabled={screen.recording || !screen.canSubmit}
-              />
-            </ScrollView>
-          </Pressable>
-        </Pressable>
-      </Modal>
+        <Button
+          label={screen.recording ? 'Registrando…' : 'Registrar'}
+          onPress={screen.submit}
+          disabled={screen.recording || !screen.canSubmit}
+        />
+      </Sheet>
 
       <ConfirmDialog
         open={screen.pendingDeletion !== null}

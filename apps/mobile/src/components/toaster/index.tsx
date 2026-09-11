@@ -21,11 +21,15 @@ export function Toaster() {
       {toasts.map((toast) => (
         <View
           key={toast.id}
-          className={`rounded-card border bg-ink-surface p-4 ${
+          className={`rounded-card border bg-ink-surface px-4 py-3.5 ${
             toast.tone === 'success' ? 'border-positive/50' : 'border-negative/50'
           }`}
         >
-          <Text className={toast.tone === 'success' ? 'text-positive' : 'text-negative'}>
+          <Text
+            className={`text-[13px] ${
+              toast.tone === 'success' ? 'text-positive' : 'text-negative'
+            }`}
+          >
             {toast.message}
           </Text>
         </View>

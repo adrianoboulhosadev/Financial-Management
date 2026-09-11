@@ -1,8 +1,15 @@
 import type { ReactNode } from 'react'
 import { RefreshControl, ScrollView, View } from 'react-native'
+import { ACCENT } from 'ui'
 
 interface ScreenProps {
   children: ReactNode
+  /**
+   * The screen's own header (see `<ScreenHeader>`). It renders OUTSIDE the
+   * scroll view on purpose: in this design the title, the month pill and the
+   * filter chips stay put while the list moves under them.
+   */
+  header?: ReactNode
   /** Pull-to-refresh, when the screen has something worth re-reading. */
   onRefresh?: () => void
   refreshing?: boolean
@@ -11,25 +18,44 @@ interface ScreenProps {
 }
 
 /**
- * The padding and scroll behaviour every screen shares. The safe area is
- * handled by the navigator (see the private layout), so this only owns the
- * content box — which is what keeps every screen's gutter identical.
+ * The frame every screen shares: a pinned header over a scrolling body, on the
+ * app's own background.
+ *
+ * The horizontal gutter is NOT here. It belongs to the body, and several
+ * screens need a full-bleed row inside it (a list whose dividers run edge to
+ * edge), so each screen pads its own content.
  */
-export function Screen({ children, onRefresh, refreshing = false, scroll = true }: ScreenProps) {
-  if (!scroll) return <View className="flex-1 bg-ink-bg px-4 pt-4">{children}</View>
-
+export function Screen({
+  children,
+  header,
+  onRefresh,
+  refreshing = false,
+  scroll = true,
+}: ScreenProps) {
   return (
-    <ScrollView
-      className="flex-1 bg-ink-bg"
-      contentContainerClassName="px-4 pt-4 pb-8 gap-4"
-      keyboardShouldPersistTaps="handled"
-      refreshControl={
-        onRefresh ? (
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4f9cf9" />
-        ) : undefined
-      }
-    >
-      {children}
-    </ScrollView>
+    <View className="flex-1 bg-ink-bg">
+      {header}
+
+      {scroll ? (
+        <ScrollView
+          className="flex-1"
+          contentContainerClassName="pb-8"
+          keyboardShouldPersistTaps="handled"
+          refreshControl={
+            onRefresh ? (
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={ACCENT.DEFAULT}
+              />
+            ) : undefined
+          }
+        >
+          {children}
+        </ScrollView>
+      ) : (
+        <View className="flex-1">{children}</View>
+      )}
+    </View>
   )
 }

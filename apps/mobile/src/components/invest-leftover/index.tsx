@@ -1,8 +1,9 @@
 import { Text, View } from 'react-native'
-import { formatBRL } from 'ui'
+import { ACCENT, formatBRL, formatPeriodShort, toPeriod } from 'ui'
 import { Button } from '@/components/button'
 import { Field } from '@/components/field'
 import { OptionPicker } from '@/components/option-picker'
+import { InvestmentsIcon } from '@/data/icons'
 import { useInvestLeftover } from './hooks/use-invest-leftover'
 
 interface InvestLeftoverProps {
@@ -17,37 +18,55 @@ interface InvestLeftoverProps {
  * has — the phone's copy of the web's panel, sharing its hook so the two cannot
  * drift on what they offer or on what counts as a valid contribution.
  *
- * The contribution comes OFF the leftover (see report/monthly), so the number
- * above it drops by exactly what was put away.
+ * The contribution comes OFF the leftover (see report/monthly), so the figure
+ * above drops by exactly what was put away.
+ *
+ * It is outlined in the accent rather than being another surface pane: it is
+ * the one thing on this screen that asks for a decision.
  */
 export function InvestLeftover({ leftoverCents, investedCents }: InvestLeftoverProps) {
-  const panel = useInvestLeftover()
+  const panel = useInvestLeftover(leftoverCents)
+  const monthLabel = formatPeriodShort(toPeriod()).split(' ')[0]
 
   return (
-    <View className="gap-3 border-t border-ink-border pt-4">
-      <Text className="text-sm text-ink-text-soft">
-        {investedCents > 0
-          ? `${formatBRL(investedCents)} já investidos neste mês.`
-          : 'Sobrou dinheiro no mês? Guarde parte dele.'}
-      </Text>
+    <View className="rounded-card border border-accent-800 px-[18px] py-4">
+      <View className="flex-row items-center gap-3">
+        <InvestmentsIcon color={ACCENT[400]} size={20} />
+        <View className="flex-1">
+          <Text className="text-[13px] capitalize text-ink-text">{`Sobra livre de ${monthLabel}`}</Text>
+          <Text className="mt-[3px] text-[11.5px] text-neutral-600">
+            {formatBRL(leftoverCents)}
+            {investedCents > 0 ? ` · já aportou ${formatBRL(investedCents)} neste mês` : ''}
+          </Text>
+        </View>
+      </View>
 
       {!panel.open ? (
         panel.hasInvestments ? (
-          <Button
-            label="Investir a sobra"
-            variant="secondary"
-            onPress={panel.openPanel}
-            // Nothing left to put away — the button would only lead to a number
-            // the domain refuses.
-            disabled={leftoverCents <= 0}
-          />
+          <View className="mt-3.5 flex-row gap-2">
+            <Button
+              label="Aportar tudo"
+              className="flex-1"
+              onPress={() => panel.openPanel(true)}
+              // Nothing left to put away — the button would only lead to a
+              // number the domain refuses.
+              disabled={leftoverCents <= 0}
+            />
+            <Button
+              label="Escolher valor"
+              variant="secondary"
+              className="flex-1"
+              onPress={() => panel.openPanel()}
+              disabled={leftoverCents <= 0}
+            />
+          </View>
         ) : (
-          <Text className="text-xs text-ink-text-muted">
-            Cadastre um investimento em Mais › Investimentos para poder aportar aqui.
+          <Text className="mt-3.5 text-[11.5px] text-neutral-600">
+            Cadastre um investimento abaixo para poder aportar a sobra.
           </Text>
         )
       ) : (
-        <View className="gap-4 rounded-lg border border-ink-border bg-ink-bg p-4">
+        <View className="mt-3.5 gap-3.5 border-t border-ink-border pt-3.5">
           <OptionPicker
             label="Investimento"
             value={panel.investmentId}
@@ -70,9 +89,8 @@ export function InvestLeftover({ leftoverCents, investedCents }: InvestLeftoverP
             onChangeText={panel.setOccurredOn}
           />
 
-          <Text className="text-xs text-ink-text-muted">
-            Sobram {formatBRL(leftoverCents)} neste mês. O valor aportado sai da sobra e entra no
-            investimento escolhido.
+          <Text className="text-[10.5px] leading-relaxed text-neutral-600">
+            O valor aportado sai da sobra e entra no investimento escolhido.
           </Text>
 
           <Button

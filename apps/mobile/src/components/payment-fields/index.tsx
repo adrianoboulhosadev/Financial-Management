@@ -40,7 +40,7 @@ export function PaymentFields({
   return (
     <View className="gap-4 border-t border-ink-border pt-4">
       {!fields.loading && !fields.hasBanks ? (
-        <Text className="text-xs text-ink-text-muted">
+        <Text className="text-[10.5px] leading-relaxed text-neutral-600">
           Cadastre seus bancos em Mais › Bancos e cartões para registrar por onde o dinheiro passou.
         </Text>
       ) : null}
@@ -108,7 +108,7 @@ export function PaymentFields({
       ) : null}
 
       {fields.installmentsApply && Number(installments) > 1 ? (
-        <Text className="text-xs text-ink-text-muted">
+        <Text className="text-[10.5px] leading-relaxed text-neutral-600">
           O valor informado é o total da compra. Cada parcela entra em um mês, a partir da data do
           lançamento.
         </Text>

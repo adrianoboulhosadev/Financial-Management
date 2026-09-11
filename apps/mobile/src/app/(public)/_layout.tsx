@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router'
 import { View } from 'react-native'
+import { COLORS } from 'ui'
 import { useRedirectAuthenticated } from '@/hooks/use-redirect-authenticated'
 import { Loading } from '@/components/loading'
 
@@ -8,7 +9,7 @@ import { Loading } from '@/components/loading'
  * the dashboard.
  *
  * The header is off: both screens are their own full-page composition, exactly
- * like the web's centred card.
+ * like the web's.
  */
 export default function PublicLayout() {
   const { allowed } = useRedirectAuthenticated()
@@ -17,7 +18,9 @@ export default function PublicLayout() {
 
   return (
     <View className="flex-1 bg-ink-bg">
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#0b1016' } }} />
+      <Stack
+        screenOptions={{ headerShown: false, contentStyle: { backgroundColor: COLORS.ink.bg } }}
+      />
     </View>
   )
 }
