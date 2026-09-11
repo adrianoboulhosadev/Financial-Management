@@ -5,9 +5,13 @@ import type { LoginUserInput, RegisterUserInput, UserDTO } from '@auth/adapters'
 import { api, applyTokens, clearTokens, refreshAccessToken, type AuthTokens } from '../http/api'
 import { clientConfig } from '../config'
 
-// Reuses the DTO from adapters: both apps need the identity and the display
-// fields the navigation shows.
-export type AuthenticatedUser = Pick<UserDTO, 'id' | 'email' | 'nickname' | 'avatarUrl'>
+// Reuses the DTO from adapters: both apps need the identity, the display fields
+// the navigation shows, and `createdAt` — the month the account starts, which is
+// what bounds every month picker in the product.
+export type AuthenticatedUser = Pick<
+  UserDTO,
+  'id' | 'email' | 'nickname' | 'avatarUrl' | 'createdAt'
+>
 
 interface Auth {
   user: AuthenticatedUser | null
