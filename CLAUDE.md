@@ -696,6 +696,20 @@ telefone renderiza via `react-native-svg`, e nenhum dos dois embarca um pacote d
 - **Auth do SPA**: `accessToken` em memória (nunca localStorage); refresh no cookie httpOnly; axios
   com `withCredentials`; interceptor de 401 chama `/auth/refresh` (dedup) e repete; silent refresh
   no boot.
+- **O mês navegável é o intervalo DA CONTA**, e isso vale nos dois fronts: piso = mês do
+  `createdAt` do usuário, teto = mês atual (`useMonthRange`, no `ui`). Fora dessa janela não há o
+  que mostrar — voltar pra um mês anterior ao cadastro rendia uma tela de zeros que se lê como
+  "você não gastou nada em agosto" em vez de "você não estava aqui em agosto". Por isso o
+  `/user/me` devolve `createdAt`, e por isso o `useIncomeHistory` corta as barras anteriores ao
+  cadastro em vez de desenhá-las zeradas. A comparação é feita na **string `YYYY-MM`** direto:
+  como o formato é zero-padded e de largura fixa, ordem lexicográfica É ordem cronológica — sem
+  `Date`, sem fuso pra errar.
+- **O `MonthPicker` é seta E grade.** A seta resolve "mês passado"; chegar num mês de um ano atrás
+  por seta são onze toques, então a pílula é **clicável** e abre um painel com navegação de ano e
+  grade de 12 meses (web: popover; mobile: sheet). Os meses fora da janela da conta aparecem
+  **desabilitados**, não escondidos — some a dúvida de por que não dá pra clicar. O ano que o painel
+  mostra é estado DELE, não da seleção: passear até 2025 e fechar sem escolher não pode mexer no mês
+  selecionado.
 - **Todo valor na tela passa pelo `<Amount>`**: números tabulares e a cor decidida em UM lugar, em
   vez de re-derivada em cada call site.
 - **O `CategoryPicker` oferece a árvore INTEIRA**, cada nó rotulado pelo caminho completo
