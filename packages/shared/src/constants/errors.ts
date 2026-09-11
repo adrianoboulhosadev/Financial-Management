@@ -9,6 +9,10 @@ export const Errors = {
   // shared / money / period
   INVALID_AMOUNT: 'INVALID_AMOUNT',
   INVALID_PERIOD: 'INVALID_PERIOD',
+  // A month EARLIER than the account itself. There is nothing to read there —
+  // the owner was not here — and answering with a month of zeros would state
+  // "you spent nothing" instead of "you did not exist yet".
+  PERIOD_BEFORE_ACCOUNT_START: 'PERIOD_BEFORE_ACCOUNT_START',
 
   // auth
   INVALID_EMAIL: 'INVALID_EMAIL',

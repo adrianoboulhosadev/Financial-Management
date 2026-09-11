@@ -61,3 +61,55 @@ test('equals compares the month itself', () => {
   expect(new MonthPeriod('2026-08').equals(new MonthPeriod('2026-09')).valueOf()).toBe(false)
   expect(new MonthPeriod('2026-08').equals(undefined)).toBe(false)
 })
+
+test('orders months lexicographically, which is also chronologically', () => {
+  expect(new MonthPeriod('2025-09').isBefore(new MonthPeriod('2025-10'))).toBe(true)
+  // The year boundary is the case a naive numeric comparison gets wrong.
+  expect(new MonthPeriod('2025-12').isBefore(new MonthPeriod('2026-01'))).toBe(true)
+  expect(new MonthPeriod('2026-01').isAfter(new MonthPeriod('2025-12'))).toBe(true)
+  // A month is neither before nor after itself.
+  expect(new MonthPeriod('2026-09').isBefore(new MonthPeriod('2026-09'))).toBe(false)
+  expect(new MonthPeriod('2026-09').isAfter(new MonthPeriod('2026-09'))).toBe(false)
+})
+
+test('readableBy accepts the month the account was created in, and later ones', () => {
+  const createdAt = new Date('2026-09-11T10:00:00.000Z')
+
+  expect(MonthPeriod.readableBy('2026-09', createdAt).value).toBe('2026-09')
+  expect(MonthPeriod.readableBy('2026-11', createdAt).value).toBe('2026-11')
+})
+
+test('readableBy refuses a month earlier than the account', () => {
+  const createdAt = new Date('2026-09-11T10:00:00.000Z')
+
+  expect(() => MonthPeriod.readableBy('2026-08', createdAt)).toThrow(ValidationError)
+  // Crossing back over a year boundary is the same refusal.
+  expect(() => MonthPeriod.readableBy('2025-12', createdAt)).toThrow(ValidationError)
+})
+
+test('the refusal carries the PERIOD_BEFORE_ACCOUNT_START code', () => {
+  try {
+    MonthPeriod.readableBy('2020-01', new Date('2026-09-11T10:00:00.000Z'))
+  } catch (error) {
+    expect((error as ValidationError).code).toBe(Errors.PERIOD_BEFORE_ACCOUNT_START)
+  }
+})
+
+test('readableBy defaults to the current month when none is given', () => {
+  // An account created long ago: whatever "now" is, the default is readable.
+  const period = MonthPeriod.readableBy(undefined, new Date('2020-01-05T00:00:00.000Z'))
+  expect(period.value).toBe(MonthPeriod.of().value)
+})
+
+test('readableBy compares by MONTH, not by day — the account start is readable from its 1st', () => {
+  // Created on the 11th; the 1st..10th of that same month are still "the month
+  // the account exists in", and the month's own figures include them.
+  const createdAt = new Date('2026-09-11T10:00:00.000Z')
+  expect(MonthPeriod.readableBy('2026-09', createdAt).value).toBe('2026-09')
+})
+
+test('readableBy still enforces the format', () => {
+  expect(() => MonthPeriod.readableBy('2026-13', new Date('2020-01-01T00:00:00.000Z'))).toThrow(
+    ValidationError,
+  )
+})

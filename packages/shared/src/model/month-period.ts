@@ -82,6 +82,44 @@ export class MonthPeriod {
     return !!other && this.value === other.value
   }
 
+  /**
+   * Ordering. The comparison is on the STRING, which works precisely because
+   * the format is zero-padded and fixed-width: "2025-09" < "2025-10" < "2026-01"
+   * lexicographically AND chronologically. No Date is built, so there is no
+   * timezone left to get wrong.
+   */
+  isBefore(other: MonthPeriod): boolean {
+    return this.value < other.value
+  }
+
+  isAfter(other: MonthPeriod): boolean {
+    return this.value > other.value
+  }
+
+  /**
+   * The month a USER asked to read, refused when it precedes the month their
+   * account began.
+   *
+   * This is a domain rule, not a screen's manners: before that month the owner
+   * simply was not here, so every figure the API could return is zero — and a
+   * month of zeros asserts "you spent nothing in August" rather than "you had no
+   * August". Refusing is the honest answer, and it is the same answer however
+   * the question arrives (a screen, a curl, a future client).
+   *
+   * It is a NAMED CONSTRUCTOR and not an invariant of the plain one on purpose:
+   * `RunRecurrence` is driven by the calendar, not by a person, and the worker
+   * posting a month must never be bounded by whoever owns the recurrence.
+   */
+  static readableBy(value: string | undefined, accountCreatedAt: Date): MonthPeriod {
+    const period = new MonthPeriod(value ?? MonthPeriod.of().value)
+    const first = MonthPeriod.of(accountCreatedAt)
+
+    if (period.isBefore(first)) {
+      ValidationError.throwError(Errors.PERIOD_BEFORE_ACCOUNT_START, period.value)
+    }
+    return period
+  }
+
   toString(): string {
     return this.value
   }
