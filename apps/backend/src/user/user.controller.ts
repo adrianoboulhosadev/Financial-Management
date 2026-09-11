@@ -29,13 +29,21 @@ export class UserController {
 
   // Has the full UserDTO available (the middleware already read it fresh), so
   // the presenter just returns what the front needs.
+  //
+  // `createdAt` is in there because the front navigates BY MONTH and has to know
+  // where the account starts: there is nothing to show before the first month,
+  // and letting someone page back into 2019 to read a row of zeros is a worse
+  // answer than not offering the month at all.
   @Get('me')
-  me(@authenticatedUser() user: UserDTO): Pick<UserDTO, 'id' | 'email' | 'nickname' | 'avatarUrl'> {
+  me(
+    @authenticatedUser() user: UserDTO,
+  ): Pick<UserDTO, 'id' | 'email' | 'nickname' | 'avatarUrl' | 'createdAt'> {
     return {
       id: user.id,
       email: user.email,
       nickname: user.nickname,
       avatarUrl: user.avatarUrl,
+      createdAt: user.createdAt,
     }
   }
 
