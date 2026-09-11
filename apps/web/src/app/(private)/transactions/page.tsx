@@ -1,110 +1,150 @@
 'use client'
 
+import { formatBRL, formatDayHeading, TRANSACTION_FILTERS } from 'ui'
 import { Amount } from '@/components/amount'
+import { Chip } from '@/components/chip'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { EmptyState } from '@/components/empty-state'
+import { Fab } from '@/components/fab'
+import { IconBadge } from '@/components/icon-badge'
+import { Kicker } from '@/components/kicker'
+import { ListRow } from '@/components/list-row'
 import { Loading } from '@/components/loading'
 import { MonthPicker } from '@/components/month-picker'
-import { formatDate } from 'ui'
-import { TRANSACTION_FILTERS } from 'ui'
+import { ScreenHeader } from '@/components/screen-header'
+import { Sheet } from '@/components/sheet'
+import { ArrowInIcon, ArrowOutIcon, TrashIcon } from '@/data/icons'
 import { TransactionForm } from './components/transaction-form'
 import { useTransactions } from './hooks/use-transactions'
 
+/**
+ * Everything that moved this month, newest day first.
+ *
+ * The rows are grouped by DAY with the day's own net in the heading, because
+ * that is the unit the owner remembers spending in — "what did Tuesday cost"
+ * is a question this list can answer at a glance, and a flat list of twenty
+ * dated rows cannot.
+ */
 export default function TransactionsPage() {
   const {
     period,
     setPeriod,
+    days,
     filter,
     setFilter,
     transactions,
     loading,
+    composing,
+    openComposer,
+    closeComposer,
     record,
     recording,
     pendingDeletion,
     askToDelete,
     cancelDeletion,
     confirmDeletion,
-    labelFor,
-    paymentLabelFor,
+    captionFor,
   } = useTransactions()
 
+  const netCents = transactions.reduce(
+    (sum, transaction) =>
+      sum + (transaction.type === 'income' ? transaction.amount : -transaction.amount),
+    0,
+  )
+
   return (
-    <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[1fr_340px]">
-      <section className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <MonthPicker period={period} onChange={setPeriod} />
+    <>
+      <ScreenHeader title="Lançamentos">
+        <MonthPicker period={period} onChange={setPeriod} />
 
-          <div className="inline-flex rounded-lg border border-ink-border p-1">
-            {TRANSACTION_FILTERS.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => setFilter(option.value)}
-                className={`rounded px-3 py-1.5 text-sm transition-colors ${
-                  filter === option.value
-                    ? 'bg-ink-surface-soft text-ink-text'
-                    : 'text-ink-text-muted hover:text-ink-text'
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
+        <p className="mt-2.5 text-[11.5px] text-neutral-600">
+          {transactions.length} {transactions.length === 1 ? 'registro' : 'registros'} · saldo{' '}
+          {formatBRL(netCents)}
+        </p>
+
+        <div className="mt-3.5 flex gap-1.5 overflow-x-auto pb-3.5">
+          {TRANSACTION_FILTERS.map((option) => (
+            <Chip
+              key={option.value}
+              active={filter === option.value}
+              onClick={() => setFilter(option.value)}
+            >
+              {option.label}
+            </Chip>
+          ))}
         </div>
+      </ScreenHeader>
 
+      <div className="px-5 pb-8">
         {loading ? (
           <Loading compact />
-        ) : transactions.length === 0 ? (
+        ) : days.length === 0 ? (
           <EmptyState
             title="Nenhum lançamento neste mês"
-            description="Use o formulário ao lado para registrar o primeiro."
+            description="Toque no + para registrar o primeiro gasto ou entrada do mês."
           />
         ) : (
-          <ul className="divide-y divide-ink-border overflow-hidden rounded-card border border-ink-border bg-ink-surface">
-            {transactions.map((transaction) => (
-              <li key={transaction.id} className="flex items-center gap-3 px-4 py-3">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{transaction.description}</p>
-                  <p className="mt-0.5 text-xs text-ink-text-muted">
-                    {formatDate(transaction.occurredOn)} · {labelFor(transaction.categoryId)}
-                    {/* A row the worker posted, not the user — worth saying, so
-                        nobody wonders where it came from. */}
-                    {transaction.recurrenceId && ' · fixo'}
-                  </p>
-                  {/* Where the money went through, on its own line: it is the
-                      answer to "what did I pay this with", which is a different
-                      question from "when and on what". */}
-                  {paymentLabelFor(transaction) && (
-                    <p className="mt-0.5 truncate text-xs text-ink-text-muted">
-                      {paymentLabelFor(transaction)}
-                    </p>
-                  )}
-                </div>
+          days.map((day, index) => {
+            const dayNetCents = day.items.reduce(
+              (sum, item) => sum + (item.type === 'income' ? item.amount : -item.amount),
+              0,
+            )
 
-                <Amount
-                  cents={transaction.amount}
-                  tone={transaction.type === 'expense' ? 'expense' : 'income'}
-                  signed
-                  className="text-sm"
-                />
-
-                <button
-                  type="button"
-                  onClick={() => askToDelete(transaction)}
-                  aria-label={`Excluir ${transaction.description}`}
-                  className="rounded px-2 py-1 text-ink-text-muted transition-colors hover:bg-ink-surface-soft hover:text-negative"
+            return (
+              <section key={day.day}>
+                <Kicker
+                  className={`pb-1.5 capitalize ${
+                    index === 0 ? 'border-t border-ink-border pt-3.5' : 'pt-[18px]'
+                  }`}
                 >
-                  ✕
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+                  {formatDayHeading(day.date)} · {formatBRL(dayNetCents)}
+                </Kicker>
 
-      <aside className="lg:sticky lg:top-24 lg:self-start">
+                {day.items.map((transaction) => (
+                  <ListRow key={transaction.id}>
+                    <IconBadge tone={transaction.type === 'income' ? 'income' : 'accent'}>
+                      {transaction.type === 'income' ? (
+                        <ArrowInIcon size={17} />
+                      ) : (
+                        <ArrowOutIcon size={17} />
+                      )}
+                    </IconBadge>
+
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13px]">{transaction.description}</p>
+                      <p className="mt-[3px] truncate text-[11px] text-neutral-600">
+                        {captionFor(transaction)}
+                      </p>
+                    </div>
+
+                    <Amount
+                      cents={transaction.amount}
+                      tone={transaction.type === 'income' ? 'income' : 'expense'}
+                      signed
+                      className="flex-none text-[13.5px]"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => askToDelete(transaction)}
+                      aria-label={`Excluir ${transaction.description}`}
+                      className="flex-none text-neutral-700 transition-colors hover:text-negative"
+                    >
+                      <TrashIcon size={16} />
+                    </button>
+                  </ListRow>
+                ))}
+              </section>
+            )
+          })
+        )}
+      </div>
+
+      <Fab onClick={openComposer} aria-label="Novo lançamento" />
+
+      <Sheet open={composing} title="Novo lançamento" onClose={closeComposer}>
         <TransactionForm onSubmit={record} submitting={recording} />
-      </aside>
+      </Sheet>
 
       <ConfirmDialog
         open={pendingDeletion !== null}
@@ -117,6 +157,6 @@ export default function TransactionsPage() {
         onConfirm={confirmDeletion}
         onCancel={cancelDeletion}
       />
-    </div>
+    </>
   )
 }

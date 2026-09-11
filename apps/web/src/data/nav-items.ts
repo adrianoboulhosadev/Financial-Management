@@ -5,55 +5,106 @@ import {
   CategoriesIcon,
   ChecklistIcon,
   DashboardIcon,
+  DashboardFilledIcon,
   IncomeIcon,
+  IncomeFilledIcon,
   InvestmentsIcon,
+  MoreIcon,
+  MoreFilledIcon,
   NotificationsIcon,
+  NotificationsFilledIcon,
   ProfileIcon,
   RecurrencesIcon,
   TransactionsIcon,
+  TransactionsFilledIcon,
+  type IconProps,
 } from './icons'
 
 export interface NavItem {
   href: string
   label: string
-  /** Shorter label for the bottom tab bar, where the space is a phone's. */
-  shortLabel?: string
-  icon: (props: { className?: string }) => ReactNode
-  /** Earns a slot in the bottom tab bar. Everything else lives behind "Mais". */
-  primary?: boolean
+  icon: (props: IconProps) => ReactNode
+}
+
+export interface TabItem extends NavItem {
+  /** The same glyph, filled. A tab says it is the current one by filling in —
+   * the one statement the outline weight cannot make on its own. */
+  activeIcon: (props: IconProps) => ReactNode
 }
 
 /**
- * Lives in `src/data/` and not inside the sidebar because TWO independent
- * components read it — the sidebar (desktop) and the bottom tab bar (phone) —
- * and the layout composes both without either owning the other.
+ * The five tabs, in the order a thumb reaches them. These are the screens
+ * opened every day: what the month looks like, recording something, what the
+ * app has to say, what comes in — and the way to everything else.
  *
- * Ordered by how often the screen is opened, not alphabetically: the month's
- * numbers first, then what feeds them, then what is only set up once.
+ * Five is the ceiling, not a coincidence: past it the targets stop being
+ * tappable, which is why everything that is set up once rather than read daily
+ * lives behind "Menu".
  */
-export const NAV_ITEMS: NavItem[] = [
-  { href: '/dashboard', label: 'Visão do mês', shortLabel: 'Mês', icon: DashboardIcon, primary: true },
+export const TAB_ITEMS: TabItem[] = [
+  { href: '/dashboard', label: 'Dashboard', icon: DashboardIcon, activeIcon: DashboardFilledIcon },
   {
     href: '/transactions',
-    label: 'Lançamentos',
-    shortLabel: 'Lançar',
+    label: 'Lançar',
     icon: TransactionsIcon,
-    primary: true,
+    activeIcon: TransactionsFilledIcon,
   },
-  { href: '/budgets', label: 'Orçamentos', shortLabel: 'Teto', icon: BudgetsIcon, primary: true },
-  { href: '/income', label: 'Renda', icon: IncomeIcon, primary: true },
-  { href: '/checklist', label: 'A pagar', icon: ChecklistIcon },
-  { href: '/recurrences', label: 'Fixos do mês', icon: RecurrencesIcon },
-  { href: '/investments', label: 'Investimentos', icon: InvestmentsIcon },
-  { href: '/banks', label: 'Bancos e cartões', icon: BanksIcon },
-  { href: '/categories', label: 'Categorias', icon: CategoriesIcon },
-  { href: '/notifications', label: 'Notificações', icon: NotificationsIcon },
-  { href: '/profile', label: 'Perfil', icon: ProfileIcon },
+  {
+    href: '/notifications',
+    label: 'Notificações',
+    icon: NotificationsIcon,
+    activeIcon: NotificationsFilledIcon,
+  },
+  { href: '/income', label: 'Renda', icon: IncomeIcon, activeIcon: IncomeFilledIcon },
+  { href: '/more', label: 'Menu', icon: MoreIcon, activeIcon: MoreFilledIcon },
 ]
 
-/**
- * A phone's tab bar holds five targets before they stop being tappable, so the
- * four primary screens get a slot and everything else is reached through
- * "Mais" — the same split the app uses, which is the point.
- */
 export const MORE_ROUTE = '/more'
+
+/** Which tab owns a screen that is NOT itself a tab: opening "a pagar" from the
+ * menu has to leave "Menu" lit, or the bar would claim you had left it. */
+export const TAB_FOR_SECTION: Record<string, string> = {
+  '/checklist': MORE_ROUTE,
+  '/recurrences': MORE_ROUTE,
+  '/investments': MORE_ROUTE,
+  '/banks': MORE_ROUTE,
+  '/categories': MORE_ROUTE,
+  '/budgets': MORE_ROUTE,
+  '/profile': MORE_ROUTE,
+}
+
+export interface MenuGroup {
+  title: string
+  items: NavItem[]
+}
+
+/**
+ * What the menu lists, grouped by WHEN the screen is used: the three you look
+ * at during the month, then the two you set up once and rarely reopen.
+ *
+ * The grouping is the point — an eleven-row flat list is a list nobody reads,
+ * and "planejamento" versus "cadastros" is the distinction the owner already
+ * makes between deciding and configuring.
+ */
+export const MENU_GROUPS: MenuGroup[] = [
+  {
+    title: 'Planejamento',
+    items: [
+      { href: '/checklist', label: 'A pagar', icon: ChecklistIcon },
+      { href: '/budgets', label: 'Orçamentos', icon: BudgetsIcon },
+      { href: '/recurrences', label: 'Fixos do mês', icon: RecurrencesIcon },
+      { href: '/investments', label: 'Investimentos', icon: InvestmentsIcon },
+    ],
+  },
+  {
+    title: 'Cadastros',
+    items: [
+      { href: '/banks', label: 'Bancos e cartões', icon: BanksIcon },
+      { href: '/categories', label: 'Categorias', icon: CategoriesIcon },
+    ],
+  },
+  {
+    title: 'Conta',
+    items: [{ href: '/profile', label: 'Perfil', icon: ProfileIcon }],
+  },
+]

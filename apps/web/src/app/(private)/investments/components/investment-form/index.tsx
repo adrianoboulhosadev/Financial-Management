@@ -24,10 +24,8 @@ export function InvestmentForm({ onSubmit, submitting }: InvestmentFormProps) {
         event.preventDefault()
         if (form.canSubmit) form.submit()
       }}
-      className="space-y-4 rounded-card border border-ink-border bg-ink-surface p-5 shadow-card"
+      className="flex flex-col gap-4"
     >
-      <h2 className="text-sm font-semibold">Novo investimento</h2>
-
       <Field
         label="Nome"
         placeholder="CDB Itaú 110%, Tesouro Selic 2029…"
@@ -61,7 +59,7 @@ export function InvestmentForm({ onSubmit, submitting }: InvestmentFormProps) {
         ))}
       </Select>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="flex flex-col gap-4">
         <Field
           label="Valor aplicado (R$)"
           money
@@ -78,7 +76,7 @@ export function InvestmentForm({ onSubmit, submitting }: InvestmentFormProps) {
         />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="flex flex-col gap-4">
         <Field
           label="Início"
           type="date"

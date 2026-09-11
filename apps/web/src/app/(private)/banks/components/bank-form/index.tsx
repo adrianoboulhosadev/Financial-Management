@@ -30,10 +30,8 @@ export function BankForm({ onSubmit, submitting }: BankFormProps) {
         event.preventDefault()
         if (form.canSubmit) form.submit()
       }}
-      className="space-y-4 rounded-card border border-ink-border bg-ink-surface p-5 shadow-card"
+      className="flex flex-col gap-4"
     >
-      <h2 className="text-sm font-semibold">Novo banco</h2>
-
       <Select
         label="Banco"
         value={form.selected}
@@ -58,7 +56,7 @@ export function BankForm({ onSubmit, submitting }: BankFormProps) {
         />
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="flex flex-col gap-4">
         <Field
           label="Agência (opcional)"
           placeholder="0001"

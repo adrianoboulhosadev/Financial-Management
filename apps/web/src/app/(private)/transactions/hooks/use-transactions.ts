@@ -4,6 +4,8 @@ import { useState } from 'react'
 import type { TransactionDTO } from '@transaction/adapters'
 
 import {
+  caption,
+  groupByDay,
   paymentMethodLabel,
   toPeriod,
   type TransactionFilterValue,
@@ -22,6 +24,7 @@ export function useTransactions() {
   const [period, setPeriod] = useState(() => toPeriod())
   const [filter, setFilter] = useState<TransactionFilterValue>('all')
   const [pendingDeletion, setPendingDeletion] = useState<TransactionDTO | null>(null)
+  const [composing, setComposing] = useState(false)
   const { pathOf } = useCategories()
   const { bankNameOf, cardLabelOf } = useBanks()
 
@@ -30,14 +33,27 @@ export function useTransactions() {
     type: filter === 'all' ? undefined : filter,
   })
 
+  /** The month as day blocks, which is how the list is read: the eye looks for
+   * a day, not for a row. */
+  const days = groupByDay(data.transactions, (transaction) => transaction.occurredOn)
+
   return {
     period,
     setPeriod,
+    days,
+    /** Whether the compose sheet is up. Screen state, so it stays here and out
+     * of the shared data hook. */
+    composing,
+    openComposer: () => setComposing(true),
+    closeComposer: () => setComposing(false),
     filter,
     setFilter,
     transactions: data.transactions,
     loading: data.loading,
-    record: data.record,
+    record: (input: Parameters<typeof data.record>[0]) => {
+      data.record(input)
+      setComposing(false)
+    },
     recording: data.recording,
     pendingDeletion,
     askToDelete: setPendingDeletion,
@@ -49,20 +65,19 @@ export function useTransactions() {
     },
     labelFor: (categoryId: string | null) => (categoryId ? pathOf(categoryId) : 'Sem categoria'),
     /**
-     * The second line of a row: how it was paid, through what, and which
+     * The second line of a row: where it is filed, how it was paid, and which
      * instalment it is. Pure presentation, so it may live in the hook next to
      * the state it reads — every part is optional, and the parts that are
      * missing simply do not show up rather than printing "sem banco".
      */
-    paymentLabelFor: (transaction: TransactionDTO): string =>
-      [
-        paymentMethodLabel(transaction.paymentMethod),
-        cardLabelOf(transaction.cardId) || bankNameOf(transaction.bankId),
-        transaction.installments > 1
-          ? `${transaction.installmentNumber}/${transaction.installments}`
-          : '',
-      ]
-        .filter(Boolean)
-        .join(' · '),
+    captionFor: (transaction: TransactionDTO): string =>
+      caption(
+        transaction.categoryId ? pathOf(transaction.categoryId) : 'Sem categoria',
+        cardLabelOf(transaction.cardId) ||
+          caption(paymentMethodLabel(transaction.paymentMethod), bankNameOf(transaction.bankId)),
+        transaction.installments > 1 &&
+          `${transaction.installmentNumber} de ${transaction.installments}`,
+        transaction.recurrenceId && 'fixo',
+      ),
   }
 }

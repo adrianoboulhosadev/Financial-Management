@@ -13,7 +13,7 @@ import { toCents, toDateInputValue, useInvestments } from 'ui'
  * point of the panel is deciding how much of it to put away, and a pre-filled
  * total is a number people accept without deciding.
  */
-export function useInvestLeftover() {
+export function useInvestLeftover(leftoverCents: number) {
   const { investments, contribute, contributing } = useInvestments()
   const [open, setOpen] = useState(false)
   const [investmentId, setInvestmentId] = useState('')
@@ -33,10 +33,16 @@ export function useInvestLeftover() {
     open,
     options,
     hasInvestments: options.length > 0,
-    openPanel: () => {
+    /**
+     * `all` fills in the whole leftover. It is still a DECISION — the owner
+     * pressed a button that says "tudo" — which is the difference between this
+     * and a field that arrives pre-filled with a number nobody chose.
+     */
+    openPanel: (all = false) => {
       setOpen(true)
+      setAmount(all && leftoverCents > 0 ? (leftoverCents / 100).toFixed(2).replace('.', ',') : '')
       // One investment is not a choice — pre-select it and let the owner just
-      // type the amount.
+      // confirm the amount.
       if (!investmentId && options.length === 1) setInvestmentId(options[0].id)
     },
     close,

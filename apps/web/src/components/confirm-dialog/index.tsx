@@ -46,10 +46,10 @@ export function ConfirmDialog({
         aria-modal="true"
         aria-label={title}
         onClick={(event) => event.stopPropagation()}
-        className="w-full max-w-sm space-y-4 rounded-card border border-ink-border bg-ink-surface p-6 shadow-card"
+        className="w-full max-w-sm space-y-4 rounded-card border border-ink-border-strong bg-ink-surface p-6 shadow-card"
       >
-        <h2 className="text-base font-semibold text-ink-text">{title}</h2>
-        {description && <p className="text-sm text-ink-text-soft">{description}</p>}
+        <h2 className="text-[15px] font-medium text-ink-text">{title}</h2>
+        {description && <p className="text-[12.5px] leading-relaxed text-neutral-500">{description}</p>}
 
         {children}
 

@@ -1,16 +1,17 @@
 import type { Metadata, Viewport } from 'next'
 import type { ReactNode } from 'react'
-import { Inter, JetBrains_Mono } from 'next/font/google'
+import { Inter } from 'next/font/google'
 import { COLORS } from 'ui'
 import './globals.css'
 import { Providers } from '@/providers'
 import { Toaster } from '@/components/toaster'
 import { PwaRegister } from '@/components/pwa-register'
 
-// Amounts are read in columns and compared at a glance, so they get a
-// monospace with tabular figures; everything else is the UI sans.
+// ONE family for the whole product. Amounts are read in columns and compared at
+// a glance, and what makes that work is TABULAR FIGURES (`tabular-nums` on
+// <Amount>), not a second, monospaced typeface — the digits were already
+// fixed-width, so the extra webfont bought nothing.
 const sansFont = Inter({ subsets: ['latin'], variable: '--font-sans' })
-const monoFont = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' })
 
 export const metadata: Metadata = {
   title: 'Financial Management',
@@ -38,7 +39,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="pt-BR" className={`${sansFont.variable} ${monoFont.variable}`}>
+    <html lang="pt-BR" className={sansFont.variable}>
       <body className="font-sans">
         <Providers>{children}</Providers>
         <Toaster />

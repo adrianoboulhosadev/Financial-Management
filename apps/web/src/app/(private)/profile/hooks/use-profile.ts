@@ -11,7 +11,7 @@ interface PasswordForm {
 }
 
 export function useProfile() {
-  const { user, refresh } = useAuth()
+  const { user, refresh, logout } = useAuth()
   const [nickname, setNickname] = useState(user?.nickname ?? '')
   const [savingProfile, setSavingProfile] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -68,5 +68,6 @@ export function useProfile() {
     uploading,
     passwordForm,
     changePassword,
+    logout,
   }
 }

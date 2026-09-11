@@ -29,16 +29,16 @@ interface CategoryBarsProps {
  */
 export function CategoryBars({ bars, totalCents }: CategoryBarsProps) {
   return (
-    <ul className="space-y-2.5">
+    <ul className="flex flex-col gap-4">
       {bars.map((bar) => (
-        <li key={bar.id} className="space-y-1.5">
-          <div className="flex items-baseline justify-between gap-3 text-sm">
-            <span className="truncate text-ink-text-soft">{bar.label}</span>
-            <Amount cents={bar.cents} />
+        <li key={bar.id} className="flex flex-col gap-[7px]">
+          <div className="flex items-baseline gap-2">
+            <span className="min-w-0 flex-1 truncate text-[13px]">{bar.label}</span>
+            <Amount cents={bar.cents} className="text-[11.5px] text-neutral-500" />
           </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-ink-surface-soft">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-ink-border">
             <div
-              className="h-full rounded-full bg-accent/70"
+              className="h-full rounded-full bg-accent"
               style={{
                 width: `${totalCents === 0 ? 0 : Math.round((bar.cents / totalCents) * 100)}%`,
               }}

@@ -1,45 +1,46 @@
 'use client'
 
 import Link from 'next/link'
-import { MoreIcon } from '@/data/icons'
-import { MORE_ROUTE } from '@/data/nav-items'
 import { useBottomTabBar } from './hooks/use-bottom-tab-bar'
 
 /**
- * Navigation on a phone. It exists because the sidebar is desktop-only, and
- * without it the app had NO way to change screens on a narrow viewport.
+ * The app's navigation, full stop. There is no second shape of it: the product
+ * is a phone app that happens to open in a browser, so the same five tabs sit
+ * at the bottom at every width the app renders at (past 1024px the app is not
+ * rendered at all — see the private layout).
  *
- * Four primary destinations plus "Mais" — the same five slots the mobile app
- * uses, which is what makes the browser at phone width and the installed app
- * read as the same product.
+ * The unread dot rides the bell instead of a counted badge. The count is on the
+ * notifications screen itself, one tap away; here the only question the bar has
+ * to answer is whether there is anything to look at.
  */
 export function BottomTabBar() {
-  const { items, isActive, moreActive } = useBottomTabBar()
+  const { items, activeHref, hasUnread } = useBottomTabBar()
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-[60] flex border-t border-ink-border bg-ink-surface pb-[env(safe-area-inset-bottom)] sm:hidden">
-      {items.map((item) => (
-        <Link
-          key={item.href}
-          href={item.href}
-          className={`flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] transition-colors ${
-            isActive(item.href) ? 'text-accent' : 'text-ink-text-muted'
-          }`}
-        >
-          <item.icon />
-          {item.shortLabel ?? item.label}
-        </Link>
-      ))}
+    <nav className="flex flex-none border-t border-ink-border bg-ink-surface px-1.5 pb-[max(env(safe-area-inset-bottom),12px)] pt-2.5">
+      {items.map((item) => {
+        const active = item.href === activeHref
+        const Glyph = active ? item.activeIcon : item.icon
 
-      <Link
-        href={MORE_ROUTE}
-        className={`flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] transition-colors ${
-          moreActive ? 'text-accent' : 'text-ink-text-muted'
-        }`}
-      >
-        <MoreIcon />
-        Mais
-      </Link>
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            aria-current={active ? 'page' : undefined}
+            className={`flex flex-1 flex-col items-center gap-1 text-[9.5px] transition-colors ${
+              active ? 'text-accent' : 'text-neutral-600'
+            }`}
+          >
+            <span className="relative flex">
+              <Glyph size={21} />
+              {item.href === '/notifications' && hasUnread && (
+                <span className="absolute -right-0.5 -top-px h-1.5 w-1.5 rounded-full bg-accent" />
+              )}
+            </span>
+            {item.label}
+          </Link>
+        )
+      })}
     </nav>
   )
 }

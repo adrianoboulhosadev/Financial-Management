@@ -25,8 +25,8 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
     : onChange
 
   return (
-    <label className="block space-y-1.5">
-      <span className="block text-xs font-medium uppercase tracking-wide text-ink-text-muted">
+    <label className="block">
+      <span className="mb-[7px] block text-[9.5px] uppercase tracking-[0.16em] text-neutral-600">
         {label}
       </span>
       <input
@@ -34,12 +34,12 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
         type={money ? 'text' : type}
         inputMode={money ? 'decimal' : inputMode}
         onChange={handleChange}
-        className={`w-full rounded-lg border border-ink-border bg-ink-bg px-3 py-2.5 text-ink-text outline-none transition-colors placeholder:text-ink-text-muted focus:border-accent ${
-          money ? 'font-mono tabular-nums' : ''
+        className={`w-full rounded-field border border-ink-border-strong bg-ink-surface px-3.5 py-3 text-[13.5px] text-ink-text outline-none transition-colors placeholder:text-neutral-700 focus:border-accent-800 ${
+          money ? 'tabular-nums' : ''
         } ${className}`}
         {...props}
       />
-      {error && <span className="block text-sm text-negative">{error}</span>}
+      {error && <span className="mt-1.5 block text-xs text-negative">{error}</span>}
     </label>
   )
 })

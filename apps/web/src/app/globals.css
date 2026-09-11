@@ -11,21 +11,26 @@ body {
 }
 
 a {
-  @apply text-accent;
+  @apply text-accent-300;
 }
 
-/* Scrollbars in the app's own palette, everywhere. */
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+/**
+ * No scrollbars anywhere in the app.
+ *
+ * This is a phone app that happens to render in a browser: every screen scrolls
+ * under a fixed tab bar, and a desktop scrollbar gutter down the side of it
+ * would be the one piece of chrome the design does not have. The content still
+ * scrolls — wheel, trackpad, touch and keyboard all work exactly as before —
+ * the bar itself is simply not painted.
+ */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
-::-webkit-scrollbar-track {
-  background: #0b1016;
-}
-::-webkit-scrollbar-thumb {
-  background: #243141;
-  border: 2px solid #0b1016;
-  border-radius: 999px;
+*::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 /* No native spinner arrows on a number input, anywhere — they clash with the

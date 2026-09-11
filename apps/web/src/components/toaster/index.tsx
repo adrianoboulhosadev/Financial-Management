@@ -20,13 +20,13 @@ export function Toaster() {
         classNames: {
           toast:
             'group flex w-full items-center gap-3 rounded-card border p-4 text-sm shadow-card backdrop-blur',
-          default: 'border-ink-border bg-ink-surface text-ink-text',
+          default: 'border-ink-border-strong bg-ink-surface text-ink-text',
           success: '!border-positive/50 !bg-ink-surface !text-positive',
           error: '!border-negative/50 !bg-ink-surface !text-negative',
           info: '!border-accent/50 !bg-ink-surface !text-accent',
           warning: '!border-warning/50 !bg-ink-surface !text-warning',
-          description: 'text-ink-text-soft',
-          closeButton: 'border-ink-border bg-ink-surface text-ink-text-muted hover:text-ink-text',
+          description: 'text-neutral-500',
+          closeButton: 'border-ink-border-strong bg-ink-surface text-neutral-600 hover:text-ink-text',
         },
       }}
     />

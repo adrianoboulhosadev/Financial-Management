@@ -41,18 +41,18 @@ export function PaymentFields({
   const fields = usePaymentFields(bankId, paymentMethod)
 
   return (
-    <div className="space-y-4 border-t border-ink-border pt-4">
+    <div className="flex flex-col gap-4 border-t border-ink-border pt-4">
       {!fields.loading && !fields.hasBanks ? (
-        <p className="text-xs text-ink-text-muted">
+        <p className="text-[10.5px] leading-relaxed text-neutral-600">
           Cadastre seus bancos em{' '}
-          <Link href="/banks" className="text-accent hover:underline">
+          <Link href="/banks" className="text-accent-300 hover:underline">
             Bancos e cartões
           </Link>{' '}
           para registrar por onde o dinheiro passou.
         </p>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="flex flex-col gap-4">
         <Select
           label="Banco"
           value={bankId}
@@ -128,7 +128,7 @@ export function PaymentFields({
       )}
 
       {fields.installmentsApply && Number(installments) > 1 && (
-        <p className="text-xs text-ink-text-muted">
+        <p className="text-[10.5px] leading-relaxed text-neutral-600">
           O valor informado é o total da compra. Cada parcela entra em um mês, a partir da data do
           lançamento.
         </p>

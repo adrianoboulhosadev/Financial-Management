@@ -2,6 +2,7 @@
 
 import type { RecordTransactionInput } from '@transaction/adapters'
 import { Button } from '@/components/button'
+import { Chip } from '@/components/chip'
 import { Field } from '@/components/field'
 import { CategoryPicker } from '@/components/category-picker'
 import { PaymentFields } from '@/components/payment-fields'
@@ -29,28 +30,16 @@ export function TransactionForm({ onSubmit, submitting }: TransactionFormProps) 
   } = useTransactionForm(onSubmit)
 
   return (
-    <form
-      onSubmit={submit}
-      className="space-y-4 rounded-card border border-ink-border bg-ink-surface p-5 shadow-card"
-    >
-      <h2 className="text-sm font-semibold">Novo lançamento</h2>
-
-      <div className="inline-flex rounded-lg border border-ink-border p-1">
+    <form onSubmit={submit} className="flex flex-col gap-4">
+      <div className="flex gap-1.5">
         {TRANSACTION_TYPES.map((option) => (
-          <button
+          <Chip
             key={option.value}
-            type="button"
+            active={type === option.value}
             onClick={() => form.setValue('type', option.value)}
-            className={`rounded px-4 py-1.5 text-sm transition-colors ${
-              type === option.value
-                ? option.value === 'expense'
-                  ? 'bg-negative/15 text-negative'
-                  : 'bg-positive/15 text-positive'
-                : 'text-ink-text-muted hover:text-ink-text'
-            }`}
           >
             {option.label}
-          </button>
+          </Chip>
         ))}
       </div>
 
@@ -61,7 +50,7 @@ export function TransactionForm({ onSubmit, submitting }: TransactionFormProps) 
         error={form.formState.errors.description?.message}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="flex flex-col gap-4">
         <Field
           label="Valor (R$)"
           money

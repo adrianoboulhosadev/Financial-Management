@@ -1,23 +1,39 @@
 'use client'
 
+import { mediaUrl } from 'ui'
 import { Button } from '@/components/button'
 import { Field } from '@/components/field'
+import { Kicker } from '@/components/kicker'
+import { ListRow } from '@/components/list-row'
 import { Loading } from '@/components/loading'
-import { mediaUrl } from 'ui'
+import { Pane } from '@/components/pane'
+import { ScreenHeader } from '@/components/screen-header'
+import { LogoutIcon } from '@/data/icons'
 import { useProfile } from './hooks/use-profile'
 
+/**
+ * The account. The e-mail is shown but never editable — it is the identity the
+ * session is issued against, and changing it is a different operation from
+ * editing a display name.
+ *
+ * The nickname and the avatar are display-only: neither ever authenticates
+ * anything, which is why they can be changed here with nothing more than a
+ * logged-in session.
+ */
 export default function ProfilePage() {
   const page = useProfile()
 
   if (!page.user) return <Loading />
 
-  return (
-    <div className="mx-auto max-w-xl space-y-6">
-      <section className="space-y-4 rounded-card border border-ink-border bg-ink-surface p-5 shadow-card">
-        <h2 className="text-sm font-semibold">Perfil</h2>
+  const initials = (page.user.nickname || page.user.email).slice(0, 2).toUpperCase()
 
-        <div className="flex items-center gap-4">
-          <span className="grid h-16 w-16 flex-none place-items-center overflow-hidden rounded-full bg-ink-surface-soft text-lg font-medium text-ink-text-soft">
+  return (
+    <>
+      <ScreenHeader title="Perfil" backHref="/more" />
+
+      <div className="flex flex-col gap-4 px-5 pb-8 pt-2">
+        <div className="flex flex-col items-center gap-2.5 pb-1 pt-2.5">
+          <span className="grid h-[76px] w-[76px] flex-none place-items-center overflow-hidden rounded-full bg-accent-900 text-[25px] font-medium text-accent-200">
             {page.user.avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -26,11 +42,15 @@ export default function ProfilePage() {
                 className="h-full w-full object-cover"
               />
             ) : (
-              (page.user.nickname || page.user.email).slice(0, 2).toUpperCase()
+              initials
             )}
           </span>
 
-          <label className="cursor-pointer text-sm text-accent hover:underline">
+          <p className="text-center text-[15px] font-medium">
+            {page.user.nickname || page.user.email.split('@')[0]}
+          </p>
+
+          <label className="cursor-pointer rounded-field border border-accent-800 px-4 py-1.5 text-[11.5px] text-accent-200">
             {page.uploading ? 'Enviando…' : 'Trocar foto'}
             <input
               type="file"
@@ -47,45 +67,81 @@ export default function ProfilePage() {
           </label>
         </div>
 
-        <Field label="E-mail" value={page.user.email} readOnly disabled />
-        <Field
-          label="Apelido"
-          placeholder="Como você quer ser chamado"
-          value={page.nickname}
-          onChange={(event) => page.setNickname(event.target.value)}
-        />
+        <section>
+          <Kicker className="pb-1.5">Dados</Kicker>
+          <Pane className="px-4">
+            <ListRow>
+              <span className="flex-1 text-[13px]">E-mail</span>
+              <span className="min-w-0 truncate text-[12.5px] text-neutral-500">
+                {page.user.email}
+              </span>
+            </ListRow>
+            <ListRow last>
+              <div className="w-full">
+                <Field
+                  label="Apelido"
+                  placeholder="Como você quer ser chamado"
+                  value={page.nickname}
+                  onChange={(event) => page.setNickname(event.target.value)}
+                />
+                <Button
+                  className="mt-3 w-full"
+                  onClick={page.saveProfile}
+                  disabled={page.savingProfile}
+                >
+                  {page.savingProfile ? 'Salvando…' : 'Salvar'}
+                </Button>
+              </div>
+            </ListRow>
+          </Pane>
+        </section>
 
-        <Button onClick={page.saveProfile} disabled={page.savingProfile}>
-          {page.savingProfile ? 'Salvando…' : 'Salvar'}
-        </Button>
-      </section>
+        <section>
+          <Kicker className="pb-1.5">Segurança</Kicker>
+          <Pane className="px-4 py-4">
+            <form onSubmit={page.changePassword} className="flex flex-col gap-4">
+              <Field
+                label="Senha atual"
+                type="password"
+                autoComplete="current-password"
+                {...page.passwordForm.register('oldPassword', {
+                  required: 'Informe a senha atual.',
+                })}
+                error={page.passwordForm.formState.errors.oldPassword?.message}
+              />
+              <Field
+                label="Nova senha"
+                type="password"
+                autoComplete="new-password"
+                placeholder="8+ caracteres, maiúscula, número e símbolo"
+                {...page.passwordForm.register('newPassword', {
+                  required: 'Informe a nova senha.',
+                })}
+                error={page.passwordForm.formState.errors.newPassword?.message}
+              />
 
-      <form
-        onSubmit={page.changePassword}
-        className="space-y-4 rounded-card border border-ink-border bg-ink-surface p-5 shadow-card"
-      >
-        <h2 className="text-sm font-semibold">Alterar senha</h2>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={page.passwordForm.formState.isSubmitting}
+              >
+                Alterar senha
+              </Button>
+            </form>
+          </Pane>
+        </section>
 
-        <Field
-          label="Senha atual"
-          type="password"
-          autoComplete="current-password"
-          {...page.passwordForm.register('oldPassword', { required: 'Informe a senha atual.' })}
-          error={page.passwordForm.formState.errors.oldPassword?.message}
-        />
-        <Field
-          label="Nova senha"
-          type="password"
-          autoComplete="new-password"
-          placeholder="8+ caracteres, maiúscula, número e símbolo"
-          {...page.passwordForm.register('newPassword', { required: 'Informe a nova senha.' })}
-          error={page.passwordForm.formState.errors.newPassword?.message}
-        />
-
-        <Button type="submit" disabled={page.passwordForm.formState.isSubmitting}>
-          Alterar senha
-        </Button>
-      </form>
-    </div>
+        <Pane>
+          <button
+            type="button"
+            onClick={() => page.logout()}
+            className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
+          >
+            <LogoutIcon size={18} className="text-negative" />
+            <span className="flex-1 text-[13px] text-negative">Sair da conta</span>
+          </button>
+        </Pane>
+      </div>
+    </>
   )
 }

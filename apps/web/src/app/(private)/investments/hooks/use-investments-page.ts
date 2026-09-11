@@ -3,7 +3,16 @@
 import { useState } from 'react'
 import type { InvestmentDTO } from '@investment/adapters'
 
-import { toCents, useBanks, useInvestments } from 'ui'
+import {
+  caption,
+  formatShortDay,
+  INVESTMENT_KIND_LABELS,
+  toCents,
+  toPeriod,
+  useBanks,
+  useInvestments,
+  useMonthlyReport,
+} from 'ui'
 
 /**
  * The screen's own state (which investment is having its current value typed,
@@ -19,6 +28,11 @@ export function useInvestmentsPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draftValue, setDraftValue] = useState('')
   const [pendingDeletion, setPendingDeletion] = useState<InvestmentDTO | null>(null)
+  const [composing, setComposing] = useState(false)
+  // What the month still has free. It belongs on THIS screen because deciding
+  // where the leftover goes is the next thought after reading it, and the
+  // answer is one of the rows below.
+  const { report } = useMonthlyReport(toPeriod())
 
   const closeEditor = () => {
     setEditingId(null)
@@ -29,7 +43,15 @@ export function useInvestmentsPage() {
     investments: data.investments,
     portfolio: data.portfolio,
     loading: data.loading,
-    create: data.create,
+    leftoverCents: report?.leftoverCents ?? 0,
+    investedThisMonthCents: report?.investedCents ?? 0,
+    composing,
+    openComposer: () => setComposing(true),
+    closeComposer: () => setComposing(false),
+    create: (input: Parameters<typeof data.create>[0]) => {
+      data.create(input)
+      setComposing(false)
+    },
     creating: data.creating,
     toggleActive: data.toggleActive,
     editingId,
@@ -65,5 +87,15 @@ export function useInvestmentsPage() {
      * already has. */
     returnOf: (investment: InvestmentDTO) =>
       (investment.currentAmount ?? investment.investedAmount) - investment.investedAmount,
+    /** The line under an investment's name: what kind it is, where it is, and
+     * the dates that matter. */
+    captionFor: (investment: InvestmentDTO) =>
+      caption(
+        INVESTMENT_KIND_LABELS[investment.kind],
+        bankNameOf(investment.bankId),
+        `desde ${formatShortDay(investment.startedOn)}`,
+        investment.maturityOn && `vence ${formatShortDay(investment.maturityOn)}`,
+        !investment.active && 'resgatado',
+      ),
   }
 }

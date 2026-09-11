@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import type { BankDTO, CardDTO, CreateBankInput, CreateCardInput } from '@bank/adapters'
 
-import { useBanks } from 'ui'
+import { caption, useBanks } from 'ui'
 
 /** What the screen is currently about to delete. A bank and a card ask
  * different questions when they go, so the dialog needs to know which one it is
@@ -23,6 +23,7 @@ export function useBanksPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [addingCardTo, setAddingCardTo] = useState<string | null>(null)
   const [pendingDeletion, setPendingDeletion] = useState<PendingDeletion>(null)
+  const [composing, setComposing] = useState(false)
 
   return {
     banks: data.banks,
@@ -39,7 +40,13 @@ export function useBanksPage() {
       setAddingCardTo(bankId)
     },
     closeCardForm: () => setAddingCardTo(null),
-    createBank: (input: CreateBankInput) => data.createBank(input),
+    composing,
+    openComposer: () => setComposing(true),
+    closeComposer: () => setComposing(false),
+    createBank: (input: CreateBankInput) => {
+      data.createBank(input)
+      setComposing(false)
+    },
     creatingBank: data.creatingBank,
     createCard: (input: CreateCardInput) => {
       data.createCard(input)
@@ -56,5 +63,15 @@ export function useBanksPage() {
       else data.removeCard(pendingDeletion.card.id)
       setPendingDeletion(null)
     },
+    /** "ag. 1234 · conta 5678 · 2 cartões" — how a bank reads in the list.
+     * Agency and account are optional on purpose: what the product needs is a
+     * name to file a payment under, and almost nobody wants to type an account
+     * number into a budgeting app. */
+    captionFor: (bank: BankDTO) =>
+      caption(
+        bank.agency && `ag. ${bank.agency}`,
+        bank.accountNumber && `conta ${bank.accountNumber}`,
+        bank.cardCount === 1 ? '1 cartão' : `${bank.cardCount} cartões`,
+      ),
   }
 }

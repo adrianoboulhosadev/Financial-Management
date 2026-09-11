@@ -17,19 +17,19 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
   ref,
 ) {
   return (
-    <label className="block space-y-1.5">
-      <span className="block text-xs font-medium uppercase tracking-wide text-ink-text-muted">
+    <label className="block">
+      <span className="mb-[7px] block text-[9.5px] uppercase tracking-[0.16em] text-neutral-600">
         {label}
       </span>
       <select
         ref={ref}
-        className={`w-full rounded-lg border border-ink-border bg-ink-bg px-3 py-2.5 text-ink-text outline-none transition-colors focus:border-accent disabled:opacity-60 ${className}`}
+        className={`w-full rounded-field border border-ink-border-strong bg-ink-surface px-3.5 py-3 text-[13.5px] text-ink-text outline-none transition-colors focus:border-accent-800 disabled:opacity-60 ${className}`}
         {...props}
       >
         {children}
       </select>
-      {hint && !error && <span className="block text-xs text-ink-text-muted">{hint}</span>}
-      {error && <span className="block text-sm text-negative">{error}</span>}
+      {hint && !error && <span className="mt-1.5 block text-[10.5px] text-neutral-600">{hint}</span>}
+      {error && <span className="mt-1.5 block text-xs text-negative">{error}</span>}
     </label>
   )
 })

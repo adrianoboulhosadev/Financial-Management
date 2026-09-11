@@ -1,5 +1,5 @@
 import { ImageResponse } from 'next/og'
-import { COLORS } from 'ui'
+import { ACCENT, COLORS } from 'ui'
 
 interface IconMarkOptions {
   size: number
@@ -27,7 +27,7 @@ export function iconMarkResponse({ size, maskable = false }: IconMarkOptions) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: COLORS.accent,
+        background: ACCENT.DEFAULT,
       }}
     >
       <div style={{ fontSize: glyphSize, fontWeight: 700, color: COLORS.ink.bg }}>F</div>

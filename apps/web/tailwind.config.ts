@@ -31,10 +31,12 @@ const config: Config = {
           to: { opacity: '1', transform: 'none' },
         },
         spinSlow: { to: { transform: 'rotate(360deg)' } },
+        slideUp: { from: { transform: 'translateY(100%)' }, to: { transform: 'none' } },
       },
       animation: {
         fadeIn: 'fadeIn .25s ease-out',
         spinSlow: 'spinSlow 1.1s linear infinite',
+        slideUp: 'slideUp .22s ease-out',
       },
     },
   },

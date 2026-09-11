@@ -28,9 +28,9 @@ export function CardForm({ bankId, onSubmit, onCancel, submitting }: CardFormPro
         event.preventDefault()
         if (form.canSubmit) form.submit()
       }}
-      className="space-y-4 rounded-lg border border-ink-border bg-ink-bg p-4"
+      className="flex flex-col gap-4"
     >
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="flex flex-col gap-4">
         <Select
           label="Bandeira"
           value={form.brand}

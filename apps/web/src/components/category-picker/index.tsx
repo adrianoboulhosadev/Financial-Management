@@ -23,15 +23,15 @@ export function CategoryPicker({
   const { options, loading, hasCategories } = useCategoryPicker()
 
   return (
-    <label className="block space-y-1.5">
-      <span className="block text-xs font-medium uppercase tracking-wide text-ink-text-muted">
+    <label className="block">
+      <span className="mb-[7px] block text-[9.5px] uppercase tracking-[0.16em] text-neutral-600">
         {label}
       </span>
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
         disabled={loading || !hasCategories}
-        className="w-full rounded-lg border border-ink-border bg-ink-bg px-3 py-2.5 text-ink-text outline-none transition-colors focus:border-accent disabled:opacity-60"
+        className="w-full rounded-field border border-ink-border-strong bg-ink-surface px-3.5 py-3 text-[13.5px] text-ink-text outline-none transition-colors focus:border-accent-800 disabled:opacity-60"
       >
         <option value="">{allowEmpty ? 'Sem categoria' : 'Selecione…'}</option>
         {options.map((option) => (
@@ -43,14 +43,14 @@ export function CategoryPicker({
 
       {/* An empty dropdown explains nothing — point at where to fix it. */}
       {!loading && options.length === 0 && (
-        <span className="block text-sm text-ink-text-muted">
+        <span className="mt-1.5 block text-[10.5px] text-neutral-600">
           Você ainda não tem categorias.{' '}
-          <Link href="/categories" className="text-accent hover:underline">
+          <Link href="/categories" className="text-accent-300 hover:underline">
             Criar categoria
           </Link>
         </span>
       )}
-      {error && <span className="block text-sm text-negative">{error}</span>}
+      {error && <span className="mt-1.5 block text-xs text-negative">{error}</span>}
     </label>
   )
 }
