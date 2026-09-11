@@ -67,7 +67,10 @@ export class RecurrenceController {
     @authenticatedUser() user: UserDTO,
     @Query('period') period?: string,
   ): Promise<MonthlyChecklistDTO> {
-    return this.facade().getMonthlyChecklist(user.id, period ?? MonthPeriod.of().value)
+    return this.facade().getMonthlyChecklist(
+      user.id,
+      MonthPeriod.readableBy(period, user.createdAt).value,
+    )
   }
 
   @Post()

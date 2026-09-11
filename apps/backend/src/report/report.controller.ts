@@ -68,7 +68,7 @@ export class ReportController {
   ): Promise<MonthlyReportDTO> {
     // Validated here so a bad ?period answers 400 from the value object rather
     // than silently reporting on the wrong month.
-    const month = new MonthPeriod(period ?? MonthPeriod.of().value)
+    const month = MonthPeriod.readableBy(period, user.createdAt)
 
     const [totals, income, investedCents] = await Promise.all([
       // The recurrence port is what makes the totals carry the month's unpaid

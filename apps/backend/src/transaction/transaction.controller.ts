@@ -56,7 +56,7 @@ export class TransactionController {
   ): Promise<TransactionDTO[]> {
     // `period` is the convenient form the screens actually use (a whole month);
     // from/to stay available for anything wider or narrower.
-    const month = period ? new MonthPeriod(period) : null
+    const month = period ? MonthPeriod.readableBy(period, user.createdAt) : null
     return this.facade().listMyTransactions(user.id, {
       from: month ? month.start : from ? new Date(from) : undefined,
       to: month ? month.end : to ? new Date(to) : undefined,
@@ -71,7 +71,10 @@ export class TransactionController {
     @authenticatedUser() user: UserDTO,
     @Query('period') period?: string,
   ): Promise<MonthlyTotalsDTO> {
-    return this.facade().getMyMonthlyTotals(user.id, period ?? MonthPeriod.of().value)
+    return this.facade().getMyMonthlyTotals(
+      user.id,
+      MonthPeriod.readableBy(period, user.createdAt).value,
+    )
   }
 
   @Post()

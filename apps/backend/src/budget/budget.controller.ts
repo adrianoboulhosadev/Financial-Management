@@ -39,7 +39,7 @@ export class BudgetController {
     @authenticatedUser() user: UserDTO,
     @Query('period') period?: string,
   ): Promise<BudgetUsageDTO[]> {
-    const month = period ?? MonthPeriod.of().value
+    const month = MonthPeriod.readableBy(period, user.createdAt).value
     const totals = await new TransactionFacade(
       undefined,
       this.transactionRepository,
