@@ -53,3 +53,43 @@ export function shiftPeriod(period: string, months: number): string {
   const [year, month] = period.split('-').map(Number)
   return toPeriod(new Date(Date.UTC(year, month - 1 + months, 1)))
 }
+
+/** "setembro 2026" — the month as the picker pill spells it, without the "de".
+ * The pill is read as a label, not as a sentence, and the preposition is the
+ * one word in it that carries nothing. */
+export function formatPeriodShort(period: string): string {
+  const [year, month] = period.split('-').map(Number)
+  return new Date(Date.UTC(year, month - 1, 1)).toLocaleDateString('pt-BR', {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).replace(' de ', ' ')
+}
+
+/** "09 set" — a day inside a month the screen has already named, so the year
+ * and the month's full name would only be restating the header. */
+export function formatShortDay(value: Date | string): string {
+  return new Date(value)
+    .toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', timeZone: 'UTC' })
+    .replace('.', '')
+}
+
+/**
+ * How a day heads its group in a listing: "Hoje · 09 set", "Ontem · 08 set",
+ * or just "05 set" beyond that.
+ *
+ * The two recent days are named because that is how the owner thinks about the
+ * money that just moved; past those, the date IS the name. Both sides are
+ * compared in UTC, matching the day the backend recorded — comparing a
+ * UTC-midnight `occurredOn` against a local "today" would label a transaction
+ * as yesterday's for anyone west of Greenwich.
+ */
+export function formatDayHeading(value: Date | string): string {
+  const day = toDateInputValue(value)
+  const today = toDateInputValue()
+  const yesterday = toDateInputValue(new Date(Date.now() - 86_400_000))
+
+  if (day === today) return `Hoje · ${formatShortDay(value)}`
+  if (day === yesterday) return `Ontem · ${formatShortDay(value)}`
+  return formatShortDay(value)
+}

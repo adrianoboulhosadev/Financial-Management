@@ -11,6 +11,6 @@ export type TransactionFilterValue = TransactionType | 'all'
 
 export const TRANSACTION_FILTERS: { value: TransactionFilterValue; label: string }[] = [
   { value: 'all', label: 'Tudo' },
-  { value: 'expense', label: 'Despesas' },
-  { value: 'income', label: 'Receitas' },
+  { value: 'expense', label: 'Saídas' },
+  { value: 'income', label: 'Entradas' },
 ]

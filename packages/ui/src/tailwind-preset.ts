@@ -17,10 +17,12 @@ const preset: Omit<Config, 'content'> = {
   theme: {
     extend: {
       colors: COLORS,
-      borderRadius: { card: `${RADIUS.card}px` },
+      borderRadius: {
+        card: `${RADIUS.card}px`,
+        field: `${RADIUS.field}px`,
+      },
       fontFamily: {
         sans: [FONT_FAMILY.sans, 'ui-sans-serif', 'system-ui'],
-        mono: [FONT_FAMILY.mono, 'ui-monospace', 'monospace'],
       },
     },
   },

@@ -1,5 +1,5 @@
 import type { NotificationType } from '@notification/adapters'
-import { SEMANTIC } from './tokens'
+import { ACCENT, NEUTRAL, SEMANTIC } from './tokens'
 
 /**
  * The colour that says what KIND of news a notification is, before anyone reads
@@ -12,9 +12,9 @@ import { SEMANTIC } from './tokens'
 const ACCENTS: Record<NotificationType, string> = {
   budget_warning: SEMANTIC.warning,
   budget_exceeded: SEMANTIC.negative,
-  recurrence_posted: SEMANTIC.accent,
+  recurrence_posted: ACCENT.DEFAULT,
 }
 
 export function accentFor(type: NotificationType): string {
-  return ACCENTS[type] ?? '#6d8096'
+  return ACCENTS[type] ?? NEUTRAL[600]
 }
