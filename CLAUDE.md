@@ -401,23 +401,45 @@ Use-case/domínio **nunca** lança erro interno/500. Códigos ficam em `Errors` 
   28 em fevereiro, e a compra do dia 28 está DENTRO dela). O vencimento cai no mesmo mês quando
   `dueDay > closingDay` e no seguinte caso contrário — inclusive quando são **iguais**, porque
   fatura que fechou hoje nunca vence hoje.
-  `InvoiceCalculator` (puro/estático) dobra os gastos na fatura **aberta** e nas que ainda vêm.
-  Fatura já **fechada fica de fora de propósito**: o produto não registra se ela foi paga, então
-  mostrá-la ou cobraria uma conta já quitada ou afirmaria um saldo que ele não tem como saber. Por
-  isso `usedCents` é o que segura o limite AGORA (aberta + parcelas futuras) e não o valor da
-  próxima conta — uma parcela que vence em março já é dinheiro gasto, e contar só a aberta ofereceria
-  o resto do limite pra ser gasto de novo. `limitStatus` classifica em `ok`/`warning` (≥80%)/
-  `exceeded` (≥100%), com o limiar **do próprio contexto** mesmo coincidindo com o do orçamento:
-  são decisões diferentes sobre coisas diferentes, e amarrá-las moveria uma toda vez que alguém
-  ajustasse a outra.
-  Quem junta é o **backend** (`CardChargeResolver` + `GET /bank/card/invoice`), passando os gastos
-  como **dado puro** `{ cardId, occurredOn, amountCents }` — o contexto `bank` nunca importa
-  `transaction`. Só entra despesa com `paymentMethod === 'credit'`: débito no mesmo cartão já saiu
-  da conta. **Fixo não entra**: assinatura no cartão vira lançamento quando o worker posta, e é aí
-  que ela existe na fatura — a mesma linha que o resto do produto traça entre dinheiro que andou e
-  compromisso do mês. A janela de leitura começa no **primeiro dia do mês passado** (qualquer dia de
-  fechamento cabe) e **não tem topo**, senão a parcela de março sumiria e o cartão apareceria mais
-  livre do que está.
+  `InvoiceCalculator` responde **duas perguntas diferentes**, e a separação é o ponto:
+  - `calculate` é a pergunta do CARTÃO — o que vem — e para na fatura **aberta**. Fatura já fechada
+    fica de fora ali de propósito: na tela do cartão ela ou cobraria uma conta já quitada ou
+    afirmaria um saldo que ele não tem como saber. `usedCents` é o que segura o limite AGORA
+    (aberta + parcelas futuras) e não o valor da próxima conta — uma parcela que vence em março já
+    é dinheiro gasto, e contar só a aberta ofereceria o resto do limite pra ser gasto de novo.
+    `limitStatus` classifica em `ok`/`warning` (≥80%)/`exceeded` (≥100%), com o limiar **do próprio
+    contexto** mesmo coincidindo com o do orçamento: são decisões diferentes sobre coisas
+    diferentes, e amarrá-las moveria uma toda vez que alguém ajustasse a outra.
+  - `payableIn` é a pergunta do MÊS — o que tem que ser quitado — e ali a fechada é justamente o
+    ponto, porque o tique do dono passou a dizer se ela ainda é devida. Devolve `null` pra fatura
+    que deu zero: cartão que ninguém usou não tem conta, e uma linha de R$ 0,00 pediria um tique em
+    nada.
+  **`CardInvoicePayment`** (`(cardId, period)` único) é o tique, e grava **só o DESVIO** — fatura
+  que ninguém tocou não tem linha e lê como "a pagar", então um ano de faturas custa zero escrita.
+  Destiquar apaga a linha em vez de deixar registro de nada. **Não há coluna de valor**: quanto a
+  fatura vale já está decidido pelas compras, e gravar de novo só criaria um segundo número pra
+  discordar do primeiro. O `period` é o mês de **FECHAMENTO** e nunca o de vencimento — cartão cujo
+  vencimento precede o fechamento paga no mês seguinte, então chavear pelo vencimento daria dois
+  nomes à mesma fatura. `InvoiceSchedule.closingPeriodDueIn` é quem responde qual fatura um mês
+  paga.
+  ⚠️ **Fatura NUNCA é despesa, e isso é travado.** Toda compra no crédito já virou lançamento no dia
+  em que foi feita (`occurredOn`), então somar a fatura no mês contaria o mesmo dinheiro duas vezes.
+  Por isso ela entra na tela **A pagar** como **seção própria**, com vencimento e caixa de marcar,
+  e **fora** do `totalCents`/`pendingCents` dos fixos — e por isso `usePayableInvoices` é hook
+  separado do `useChecklist`, e marcar uma fatura como paga não invalida `report` nem `budgets`:
+  pagar não move dinheiro que o produto ainda não tivesse contado. É a mesma linha que o resto do
+  produto traça entre dinheiro que andou e compromisso do mês, aplicada do outro lado.
+  Quem junta é o **backend** (`CardChargeResolver` + `GET /bank/card/invoice` e
+  `GET /bank/card/invoice/payable`), passando os gastos como **dado puro**
+  `{ cardId, occurredOn, amountCents }` — o contexto `bank` nunca importa `transaction`. Só entra
+  despesa com `paymentMethod === 'credit'`: débito no mesmo cartão já saiu da conta. **Fixo não
+  entra**: assinatura no cartão vira lançamento quando o worker posta, e é aí que ela existe na
+  fatura.
+  A **janela de leitura muda com a pergunta**: a do cartão começa no primeiro dia do mês passado
+  (qualquer dia de fechamento cabe) e **não tem topo**, senão a parcela de março sumiria e o cartão
+  apareceria mais livre do que está; a do mês (`listByOwnerForPeriod`) começa **dois meses antes**,
+  porque cartão cujo vencimento precede o fechamento paga a fatura que fechou no mês anterior, e
+  essa começou a juntar no mês anterior a ESSE.
   Apagar um banco exige **sem cartões** e **sem uso** (`BANK_IN_USE`) — quem resolve "está em uso" é
   o backend (`BankUsageResolver`), consultando `transaction`, `recurrence` e `investment` e passando
   `inUse` como dado puro; o contexto `bank` nunca importa os outros. A lista de bancos brasileiros do
@@ -514,16 +536,18 @@ diferente** e ainda avisa — que é o ponto, já que é notícia pior.
 - `income` (`/` [GET, POST], `/monthly` [GET, renda do mês], `/:id` [PATCH, DELETE],
   `/:id/active` [POST])
 - `bank` (`/card/invoice` [GET, as faturas dos cartões de crédito — **rota composta**, cruza bank +
-  transaction], `/card` [GET, POST], `/card/:id` [PATCH, DELETE], `/` [GET, POST], `/:id`
-  [PATCH, DELETE]) — ⚠️ as rotas de **cartão vêm primeiro** no controller, senão `/:id` engole
-  `/card`
+  transaction], `/card/invoice/payable` [GET com `?period=`, as faturas que o mês tem que quitar],
+  `/card` [GET, POST], `/card/:id` [PATCH, DELETE], `/card/:id/invoice/paid` [POST, marca/desmarca
+  a fatura; `period` é o mês de FECHAMENTO], `/` [GET, POST], `/:id` [PATCH, DELETE]) — ⚠️ as rotas
+  de **cartão vêm primeiro** no controller, senão `/:id` engole `/card`
 - `investment` (`/` [GET, POST], `/portfolio` [GET, a carteira], `/:id` [PATCH, DELETE],
   `/:id/active` [POST, resgata/reativa], `/:id/contribution` [POST, aporte])
 - `report/monthly` (GET com `?period=` — **rota composta**, cruza income + transaction + budget)
 - `notification` (`GET /` [`?limit=`; devolve `{ unreadCount, items }`], `POST /read-all`,
   `POST /:id/read`, `DELETE /all`, `DELETE /:id`, `GET /stream` [**SSE**, ver abaixo — é a ÚNICA
   rota autenticada por token na **query string**, porque `EventSource` não manda header])
-- `upload/{receipts,avatars}` — os dois self-service (o próprio usuário autenticado envia o seu)
+- `upload/{receipts,avatars}` — os dois self-service (o próprio usuário autenticado envia o seu),
+  com `DELETE /upload/{receipts,avatars}/:filename` pro arquivo órfão (ver a seção de uploads)
 
 **O `report/monthly` é a única rota composta cujo SHAPE não é de contexto nenhum**:
 `MonthlyReportDTO` é local ao controller, e o front **espelha o tipo à mão** (em
@@ -545,11 +569,12 @@ puro — então não há tipo pra espelhar.
   `@@unique([ownerId, name])`), `Card`(cards; `@@unique([ownerId, bankId, lastFourDigits])`, relation
   intra-contexto com `onDelete: Restrict`), `Investment`(investments; `@@unique([ownerId, name])`),
   `InvestmentContribution`(investment_contributions; relation intra-contexto com
-  `onDelete: Cascade`).
+  `onDelete: Cascade`), `CardInvoicePayment`(card_invoice_payments;
+  `@@unique([cardId, period])`, relation intra-contexto com `onDelete: Cascade`).
 - **FKs entre contextos são LÓGICAS** (sem relation Prisma cruzando contexto — `owner_id`,
   `category_id`, `user_id`, `bank_id`, `card_id`). A self-relation da `Category`, a
-  `Recurrence → Transaction`, a `Recurrence → RecurrencePayment` e a `Bank → Card` são
-  intra-contexto, então têm relation Prisma de verdade.
+  `Recurrence → Transaction`, a `Recurrence → RecurrencePayment`, a `Bank → Card` e a
+  `Card → CardInvoicePayment` são intra-contexto, então têm relation Prisma de verdade.
 - **Toda coluna nova em tabela existente é nullable ou tem default**: `bank_id`, `card_id`,
   `payment_method`, `installments`, `variable_amount`, `auto_paid`, `ends_on`, `brand`,
   `closing_day`, `due_day`, `limit_cents`. É o que faz cada linha já
@@ -619,6 +644,17 @@ puro — então não há tipo pra espelhar.
   gitignored e, no docker, é **volume nomeado**.
 - Os dois uploads são **self-service** (só `AuthMiddleware`): o usuário autenticado manda o que é
   dele.
+- **Só arquivo SEM REFERÊNCIA é apagável** (`OrphanUploadResolver`), e essa única regra faz dois
+  trabalhos: impede o dono de apagar a prova debaixo do próprio registro (desanexar é pelo
+  lançamento, o que é justamente o que torna o arquivo órfão) e é a resposta anti-IDOR, já que
+  arquivo apontado por linha de outro responde **`NOT_FOUND`**. O nome do arquivo é validado contra
+  o formato que o multer escreve (`uuid[.ext]`) **antes** de tocar em `join`, e o caminho resolvido
+  é conferido contra a pasta — `..` e barra nunca chegam no disco. `rm` usa `force`, então apagar
+  duas vezes é no-op.
+  ⚠️ O que ele **não** faz é provar que quem chama foi quem subiu: nada registra o remetente, então
+  um órfão poderia em tese ser apagado por outro usuário que adivinhasse um uuid v4 — e o prêmio é
+  um arquivo que já não era de ninguém. Gravar o remetente seria a correção à prova de bala e custa
+  uma tabela; a troca foi feita de olhos abertos.
   - `POST /upload/receipts` — comprovante/nota de um lançamento. Aceita `image/*` **ou**
     `application/pdf`, 10 MB. **Nunca recortado nem reencodado**: é documento, e alterá-lo seria
     alterar a prova. A URL vai pra `Transaction.attachmentUrl`.
@@ -790,8 +826,14 @@ telefone renderiza via `react-native-svg`, e nenhum dos dois embarca um pacote d
   responde 400 numa requisição que parecia certa.
   No telefone o comprovante é **câmera ou galeria** (`expo-image-picker`), sem seletor de documento:
   ali um comprovante é uma FOTO da nota em praticamente todo caso. PDF é caminho do **web**, que é
-  onde o banco entrega PDF. ⚠️ O arquivo enviado e depois descartado (fechar a sheet sem salvar,
-  remover o anexo) **fica órfão no disco** — não há rota de exclusão de upload nem coleta.
+  onde o banco entrega PDF.
+  O arquivo enviado e depois descartado é **apagado pelo front** via `discardReceipt`/`discardAvatar`
+  do `ui`: o formulário guarda num **ref** a URL que ELE subiu e ainda não salvou, e joga fora ao
+  trocar de anexo, ao remover, ao fechar a sheet e ao trocar de lançamento. O ref é limpo **no
+  submit**, mesmo que a gravação falhe depois — quem vai tentar de novo é o dono, e apagar o
+  comprovante embaixo dele seria pior que deixar arquivo no disco. O avatar é o caso espelhado:
+  sobra exatamente um dos dois arquivos, o **antigo** quando o novo é salvo e o **novo** quando o
+  save falha, e é esse que cai.
 - **`PaymentFields` é um bloco só, usado pelo formulário de lançamento E pelo de fixo**, porque os
   dois respondem exatamente a mesma pergunta (por onde o dinheiro passou e como). O que aparece
   **segue o método**: cartão só quando se está usando um, parcelas só no crédito, e os cartões
