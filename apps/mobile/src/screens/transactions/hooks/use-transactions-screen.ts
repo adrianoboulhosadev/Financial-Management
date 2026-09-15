@@ -23,6 +23,8 @@ export function useTransactionsScreen() {
   const [filter, setFilter] = useState<TransactionFilterValue>('all')
   const [pendingDeletion, setPendingDeletion] = useState<TransactionDTO | null>(null)
   const [formOpen, setFormOpen] = useState(false)
+  const [editing, setEditing] = useState<TransactionDTO | null>(null)
+  const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null)
   const [type, setType] = useState<TransactionType>('expense')
   const [categoryId, setCategoryId] = useState('')
   const [description, setDescription] = useState('')
@@ -46,6 +48,22 @@ export function useTransactionsScreen() {
     setCardId('')
     setPaymentMethod('')
     setInstallments('1')
+    setAttachmentUrl(null)
+  }
+
+  /** Fills the form with a movement so it can be corrected instead of retyped.
+   * In reais, because that is the shape the money field edits. */
+  const fillFrom = (transaction: TransactionDTO) => {
+    setType(transaction.type)
+    setDescription(transaction.description)
+    setAmount((transaction.amount / 100).toFixed(2).replace('.', ','))
+    setCategoryId(transaction.categoryId ?? '')
+    setOccurredOn(toDateInputValue(transaction.occurredOn))
+    setBankId(transaction.bankId ?? '')
+    setCardId(transaction.cardId ?? '')
+    setPaymentMethod(transaction.paymentMethod ?? '')
+    setInstallments(String(transaction.installments))
+    setAttachmentUrl(transaction.attachmentUrl)
   }
 
   /** The month as day blocks, which is how the list is read: the eye looks for
@@ -62,11 +80,27 @@ export function useTransactionsScreen() {
     loading: data.loading,
     recording: data.recording,
     formOpen,
-    openForm: () => setFormOpen(true),
+    /** One sheet serves both: recording a new movement is editing nothing,
+     * which is why `editing` is null rather than a second flag. */
+    editing,
+    isEditing: editing !== null,
+    openForm: () => {
+      setEditing(null)
+      resetForm()
+      setFormOpen(true)
+    },
+    openEditor: (transaction: TransactionDTO) => {
+      setEditing(transaction)
+      fillFrom(transaction)
+      setFormOpen(true)
+    },
     closeForm: () => {
       setFormOpen(false)
+      setEditing(null)
       resetForm()
     },
+    attachmentUrl,
+    setAttachmentUrl,
     type,
     setType,
     categoryId,
@@ -88,21 +122,41 @@ export function useTransactionsScreen() {
     // Only an expense must land on a category — that is the tree's whole point.
     categoryRequired: type === 'expense',
     canSubmit: Boolean(description.trim() && amount && (type !== 'expense' || categoryId)),
+    saving: data.recording || data.updating,
     submit: () => {
-      data.record({
-        type,
-        categoryId: categoryId || null,
-        description,
-        amount: toCents(amount),
-        occurredOn,
-        // Empty means "not informed", which the domain stores as null — an
-        // empty string would be an unknown payment method.
-        bankId: bankId || null,
-        cardId: cardId || null,
-        paymentMethod: paymentMethod || null,
-        installments: paymentMethod === 'credit' ? Number(installments) || 1 : 1,
-      })
+      // The TYPE and the SPLIT are not editable — the domain's UpdateTransaction
+      // takes neither, so the edit path simply does not send them.
+      if (editing) {
+        data.update({
+          id: editing.id,
+          categoryId: categoryId || null,
+          description,
+          amount: toCents(amount),
+          occurredOn,
+          attachmentUrl,
+          bankId: bankId || null,
+          cardId: cardId || null,
+          paymentMethod: paymentMethod || null,
+        })
+      } else {
+        data.record({
+          type,
+          categoryId: categoryId || null,
+          description,
+          amount: toCents(amount),
+          occurredOn,
+          attachmentUrl,
+          // Empty means "not informed", which the domain stores as null — an
+          // empty string would be an unknown payment method.
+          bankId: bankId || null,
+          cardId: cardId || null,
+          paymentMethod: paymentMethod || null,
+          installments: paymentMethod === 'credit' ? Number(installments) || 1 : 1,
+        })
+      }
+
       setFormOpen(false)
+      setEditing(null)
       resetForm()
     },
     pendingDeletion,

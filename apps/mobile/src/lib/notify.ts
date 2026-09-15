@@ -1,4 +1,4 @@
-import type { Notifier } from 'ui'
+import { errorMessage, type Notifier } from 'ui'
 import { showToast } from '@/components/toaster/toast-bus'
 
 /**
@@ -15,7 +15,17 @@ export const notifier: Notifier = {
   },
 }
 
+/**
+ * What the screens call directly. `failure` exists here for the same reason it
+ * exists on the web: a rejected request has to read as its friendly DOMAIN
+ * message on both, and leaving it out on one of them is how the same error ends
+ * up phrased two different ways.
+ */
 export const notify = {
   success: notifier.success,
   error: notifier.error,
+  /** Turns a request rejection into its friendly domain message. */
+  failure(error: unknown, fallback?: string): void {
+    notifier.error(errorMessage(error, fallback))
+  },
 }

@@ -16,8 +16,9 @@ import { MonthPicker } from '@/components/month-picker'
 import { PaymentFields } from '@/components/payment-fields'
 import { Screen } from '@/components/screen'
 import { ScreenHeader } from '@/components/screen-header'
+import { ReceiptField } from '@/components/receipt-field'
 import { Sheet } from '@/components/sheet'
-import { ArrowInIcon, ArrowOutIcon, TrashIcon } from '@/data/icons'
+import { ArrowInIcon, ArrowOutIcon, PencilIcon, ReceiptIcon, TrashIcon } from '@/data/icons'
 import { useTransactionsScreen } from './hooks/use-transactions-screen'
 
 /**
@@ -94,9 +95,16 @@ export function TransactionsScreen() {
                       />
 
                       <View className="flex-1">
-                        <Text numberOfLines={1} className="text-[13px] text-ink-text">
-                          {transaction.description}
-                        </Text>
+                        <View className="flex-row items-center gap-1.5">
+                          <Text numberOfLines={1} className="shrink text-[13px] text-ink-text">
+                            {transaction.description}
+                          </Text>
+                          {/* A movement with proof attached says so here — the
+                              only way to tell without opening it. */}
+                          {transaction.attachmentUrl ? (
+                            <ReceiptIcon color={NEUTRAL[600]} size={13} />
+                          ) : null}
+                        </View>
                         <Text numberOfLines={1} className="mt-[3px] text-[11px] text-neutral-600">
                           {screen.captionFor(transaction)}
                         </Text>
@@ -109,6 +117,13 @@ export function TransactionsScreen() {
                         className="text-[13.5px]"
                       />
 
+                      <Pressable
+                        onPress={() => screen.openEditor(transaction)}
+                        accessibilityLabel={`Editar ${transaction.description}`}
+                        hitSlop={8}
+                      >
+                        <PencilIcon color={NEUTRAL[700]} size={16} />
+                      </Pressable>
                       <Pressable
                         onPress={() => screen.askToDelete(transaction)}
                         accessibilityLabel={`Excluir ${transaction.description}`}
@@ -127,13 +142,21 @@ export function TransactionsScreen() {
 
       <Fab onPress={screen.openForm} accessibilityLabel="Novo lançamento" />
 
-      <Sheet open={screen.formOpen} title="Novo lançamento" onClose={screen.closeForm}>
+      <Sheet
+        open={screen.formOpen}
+        title={screen.isEditing ? 'Editar lançamento' : 'Novo lançamento'}
+        onClose={screen.closeForm}
+      >
+        {/* The direction is fixed once recorded: UpdateTransaction takes no
+            `type`, so editing states which one it is instead of offering a
+            switch the domain would refuse. */}
         <View className="flex-row gap-1.5">
           {TRANSACTION_TYPES.map((option) => (
             <Chip
               key={option.value}
               label={option.label}
               active={screen.type === option.value}
+              disabled={screen.isEditing}
               onPress={() => screen.setType(option.value)}
             />
           ))}
@@ -164,6 +187,12 @@ export function TransactionsScreen() {
           allowEmpty={!screen.categoryRequired}
         />
 
+        <ReceiptField
+          url={screen.attachmentUrl}
+          onUploaded={screen.setAttachmentUrl}
+          onRemove={() => screen.setAttachmentUrl(null)}
+        />
+
         <PaymentFields
           bankId={screen.bankId}
           onBankChange={screen.setBankId}
@@ -171,14 +200,18 @@ export function TransactionsScreen() {
           onPaymentMethodChange={screen.setPaymentMethod}
           cardId={screen.cardId}
           onCardChange={screen.setCardId}
-          installments={screen.installments}
-          onInstallmentsChange={screen.setInstallments}
+          // The split is fixed at creation — turning a 6x into a 3x is a
+          // different set of rows, not a different value on one of them.
+          installments={screen.isEditing ? undefined : screen.installments}
+          onInstallmentsChange={screen.isEditing ? undefined : screen.setInstallments}
         />
 
         <Button
-          label={screen.recording ? 'Registrando…' : 'Registrar'}
+          label={
+            screen.saving ? 'Salvando…' : screen.isEditing ? 'Salvar alterações' : 'Registrar'
+          }
           onPress={screen.submit}
-          disabled={screen.recording || !screen.canSubmit}
+          disabled={screen.saving || !screen.canSubmit}
         />
       </Sheet>
 
