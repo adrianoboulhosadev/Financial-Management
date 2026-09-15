@@ -19,7 +19,8 @@ import { Pane } from '@/components/pane'
 import { Screen } from '@/components/screen'
 import { ScreenHeader } from '@/components/screen-header'
 import { Sheet } from '@/components/sheet'
-import { BanksIcon, CardIcon, PlusIcon, TrashIcon } from '@/data/icons'
+import { BanksIcon, CardIcon, PencilIcon, PlusIcon, TrashIcon } from '@/data/icons'
+import { CardInvoice } from './components/card-invoice'
 import { useBanksScreen } from './hooks/use-banks-screen'
 
 /**
@@ -100,25 +101,56 @@ export function BanksScreen() {
                           Nenhum cartão neste banco ainda.
                         </Text>
                       ) : (
-                        cards.map((card, index) => (
-                          <ListRow key={card.id} last={index === cards.length - 1}>
-                            <IconBadge icon={CardIcon} tone="muted" />
-                            <Text numberOfLines={1} className="flex-1 text-[13px] text-ink-text">
-                              {CARD_BRAND_LABELS[card.brand]}{' '}
-                              <Text className="text-neutral-500">····{card.lastFourDigits}</Text>
-                            </Text>
-                            <Text className="text-[11px] text-neutral-600">
-                              {CARD_KIND_LABELS[card.kind]}
-                            </Text>
-                            <Pressable
-                              onPress={() => screen.askToDeleteCard(card)}
-                              accessibilityLabel={`Excluir cartão final ${card.lastFourDigits}`}
-                              hitSlop={8}
-                            >
-                              <TrashIcon color={NEUTRAL[700]} size={16} />
-                            </Pressable>
-                          </ListRow>
-                        ))
+                        cards.map((card, index) => {
+                          const invoices = screen.invoicesOf(card.id)
+
+                          return (
+                            <ListRow key={card.id} last={index === cards.length - 1}>
+                              <View className="flex-1">
+                                <View className="flex-row items-center gap-3">
+                                  <IconBadge icon={CardIcon} tone="muted" />
+                                  <Text
+                                    numberOfLines={1}
+                                    className="flex-1 text-[13px] text-ink-text"
+                                  >
+                                    {CARD_BRAND_LABELS[card.brand]}{' '}
+                                    <Text className="text-neutral-500">
+                                      ····{card.lastFourDigits}
+                                    </Text>
+                                  </Text>
+                                  <Text className="text-[11px] text-neutral-600">
+                                    {CARD_KIND_LABELS[card.kind]}
+                                  </Text>
+                                  <Pressable
+                                    onPress={() => screen.openCardEditor(card)}
+                                    accessibilityLabel={`Editar cartão final ${card.lastFourDigits}`}
+                                    hitSlop={8}
+                                  >
+                                    <PencilIcon color={NEUTRAL[700]} size={16} />
+                                  </Pressable>
+                                  <Pressable
+                                    onPress={() => screen.askToDeleteCard(card)}
+                                    accessibilityLabel={`Excluir cartão final ${card.lastFourDigits}`}
+                                    hitSlop={8}
+                                  >
+                                    <TrashIcon color={NEUTRAL[700]} size={16} />
+                                  </Pressable>
+                                </View>
+
+                                {/* Only a card that knows when it closes has an
+                                    invoice to show. The rest are just cards. */}
+                                {invoices ? (
+                                  <CardInvoice
+                                    invoices={invoices}
+                                    open={screen.openInvoiceOf(card.id)}
+                                    upcoming={screen.upcomingOf(card.id)}
+                                    captionOf={screen.invoiceCaptionOf}
+                                  />
+                                ) : null}
+                              </View>
+                            </ListRow>
+                          )
+                        })
                       )}
 
                       <View className="pt-3.5">
@@ -177,7 +209,7 @@ export function BanksScreen() {
 
       <Sheet
         open={screen.cardFormBankId !== null}
-        title="Novo cartão"
+        title={screen.editingCard ? 'Editar cartão' : 'Novo cartão'}
         onClose={screen.closeCardForm}
       >
         <OptionPicker
@@ -206,10 +238,49 @@ export function BanksScreen() {
           onChangeText={screen.setLastFourDigits}
         />
 
+        {/* Only a card that settles on CREDIT closes an invoice or holds a
+            limit — the same rule the entity applies, so the fields are not
+            offered just to be refused. */}
+        {screen.onCredit ? (
+          <>
+            <View className="flex-row gap-3">
+              <View className="flex-1">
+                <Field
+                  label="Fecha dia"
+                  keyboardType="number-pad"
+                  placeholder="11"
+                  value={screen.closingDay}
+                  onChangeText={screen.setClosingDay}
+                />
+              </View>
+              <View className="flex-1">
+                <Field
+                  label="Vence dia"
+                  keyboardType="number-pad"
+                  placeholder="18"
+                  value={screen.dueDay}
+                  onChangeText={screen.setDueDay}
+                />
+              </View>
+            </View>
+            <Field
+              label="Limite (opcional)"
+              money
+              placeholder="0,00"
+              value={screen.cardLimit}
+              onChangeText={screen.setCardLimit}
+            />
+            <Text className="text-[11px] leading-[17px] text-neutral-600">
+              Com os dois dias preenchidos, a fatura do cartão aparece aqui na lista. O limite é
+              opcional — sem ele a fatura continua sendo mostrada, só não vira barra.
+            </Text>
+          </>
+        ) : null}
+
         <Button
-          label={screen.creatingCard ? 'Salvando…' : 'Salvar cartão'}
+          label={screen.savingCard ? 'Salvando…' : screen.editingCard ? 'Salvar alterações' : 'Salvar cartão'}
           onPress={screen.submitCard}
-          disabled={screen.creatingCard || !screen.canSubmitCard}
+          disabled={screen.savingCard || !screen.canSubmitCard}
         />
       </Sheet>
 

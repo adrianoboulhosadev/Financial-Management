@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { BankDTO, CardDTO } from '@bank/adapters'
 
-import { BANK_SUGGESTIONS, caption, useBanks } from 'ui'
+import { BANK_SUGGESTIONS, caption, kindAllowsCredit, toCents, useBanks, useCardInvoices } from 'ui'
 
 /** The option that reveals the free-text field — the same escape hatch the
  * web's form has, so the two ask the question the same way. */
@@ -18,6 +18,7 @@ type PendingDeletion = { kind: 'bank'; bank: BankDTO } | { kind: 'card'; card: C
  */
 export function useBanksScreen() {
   const data = useBanks()
+  const invoices = useCardInvoices()
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [bankFormOpen, setBankFormOpen] = useState(false)
   const [cardFormBankId, setCardFormBankId] = useState<string | null>(null)
@@ -31,6 +32,12 @@ export function useBanksScreen() {
   const [cardBrand, setCardBrand] = useState('visa')
   const [cardKind, setCardKind] = useState('credit')
   const [lastFourDigits, setLastFourDigits] = useState('')
+  const [closingDay, setClosingDay] = useState('')
+  const [dueDay, setDueDay] = useState('')
+  const [cardLimit, setCardLimit] = useState('')
+  // The card the sheet is EDITING, or null while it registers a new one. It is
+  // the only way a card registered before invoices existed gets its calendar.
+  const [editingCard, setEditingCard] = useState<CardDTO | null>(null)
 
   const resetBankForm = () => {
     setSelected('')
@@ -48,7 +55,26 @@ export function useBanksScreen() {
     setCardBrand('visa')
     setCardKind('credit')
     setLastFourDigits('')
+    setClosingDay('')
+    setDueDay('')
+    setCardLimit('')
+    setEditingCard(null)
   }
+
+  const onCredit = kindAllowsCredit(cardKind)
+  // Both days or neither: half a calendar is no calendar, and the domain
+  // refuses it — so the button goes quiet instead of the request coming back
+  // with a 400.
+  const calendarComplete = (closingDay === '') === (dueDay === '')
+
+  /** A card that no longer settles on credit has its calendar and limit CLEARED
+   * in the same request: the entity refuses to keep them, and sending them
+   * anyway would turn a valid edit into an error. */
+  const creditFields = () => ({
+    closingDay: onCredit && closingDay ? Number(closingDay) : null,
+    dueDay: onCredit && dueDay ? Number(dueDay) : null,
+    limitCents: onCredit && cardLimit ? toCents(cardLimit) : null,
+  })
 
   return {
     banks: data.banks,
@@ -94,9 +120,22 @@ export function useBanksScreen() {
     },
 
     cardFormBankId,
+    editingCard,
     openCardForm: (bankId: string) => {
       setExpandedId(bankId)
+      resetCardForm()
       setCardFormBankId(bankId)
+    },
+    openCardEditor: (card: CardDTO) => {
+      setExpandedId(card.bankId)
+      setEditingCard(card)
+      setCardBrand(card.brand)
+      setCardKind(card.kind)
+      setLastFourDigits(card.lastFourDigits)
+      setClosingDay(card.closingDay === null ? '' : String(card.closingDay))
+      setDueDay(card.dueDay === null ? '' : String(card.dueDay))
+      setCardLimit(card.limitCents === null ? '' : String(card.limitCents / 100).replace('.', ','))
+      setCardFormBankId(card.bankId)
     },
     closeCardForm: () => {
       setCardFormBankId(null)
@@ -110,16 +149,22 @@ export function useBanksScreen() {
     // The full number never belongs in this product, so the field cannot accept
     // one even by accident.
     setLastFourDigits: (value: string) => setLastFourDigits(value.replace(/\D/g, '').slice(0, 4)),
-    canSubmitCard: lastFourDigits.length === 4,
-    creatingCard: data.creatingCard,
+    onCredit,
+    closingDay,
+    setClosingDay: (value: string) => setClosingDay(dayOfMonth(value)),
+    dueDay,
+    setDueDay: (value: string) => setDueDay(dayOfMonth(value)),
+    cardLimit,
+    setCardLimit,
+    canSubmitCard: lastFourDigits.length === 4 && calendarComplete,
+    savingCard: data.creatingCard || data.updatingCard,
     submitCard: () => {
       if (!cardFormBankId) return
-      data.createCard({
-        bankId: cardFormBankId,
-        brand: cardBrand,
-        kind: cardKind,
-        lastFourDigits,
-      })
+      const fields = { brand: cardBrand, kind: cardKind, lastFourDigits, ...creditFields() }
+
+      if (editingCard) data.updateCard({ id: editingCard.id, ...fields })
+      else data.createCard({ bankId: cardFormBankId, ...fields })
+
       setCardFormBankId(null)
       resetCardForm()
     },
@@ -143,5 +188,18 @@ export function useBanksScreen() {
       else data.removeCard(pendingDeletion.card.id)
       setPendingDeletion(null)
     },
+    // The invoice side of a card, straight from the shared hook — a card with
+    // no calendar simply has none of these, and the screen renders nothing.
+    invoicesOf: invoices.invoicesOf,
+    openInvoiceOf: invoices.openInvoiceOf,
+    upcomingOf: invoices.upcomingOf,
+    invoiceCaptionOf: invoices.captionOf,
   }
+}
+
+/** 1-31, as the owner types it — the same window the domain accepts. */
+function dayOfMonth(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 2)
+  if (digits === '' || Number(digits) <= 31) return digits
+  return '31'
 }
