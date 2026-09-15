@@ -1,5 +1,5 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common'
-import { rm } from 'fs/promises'
+import { readdir, rm, stat } from 'fs/promises'
 import { join, resolve, sep } from 'path'
 import { PrismaService } from '../db/prisma.service'
 import { UPLOADS_SUBDIRS, UPLOADS_DIR } from './uploads.config'
@@ -34,6 +34,11 @@ const FILENAME_REGEX =
  */
 @Injectable()
 export class OrphanUploadResolver {
+  /** How old an unreferenced file has to be before the boot sweep takes it.
+   * Generous on purpose: the only thing it protects against is deleting a file
+   * whose form is still open, and a day covers any session anyone has. */
+  static readonly GRACE_PERIOD_MS = 24 * 60 * 60 * 1000
+
   constructor(private readonly prisma: PrismaService) {}
 
   /** Removes `<directory>/<filename>` once nothing references `publicUrl`.
@@ -88,6 +93,71 @@ export class OrphanUploadResolver {
       // Still referenced, or a name we did not write. Either way there is
       // nothing to clean up and nothing to report.
     }
+  }
+
+  /**
+   * Deletes every upload nothing points at, at BOOT.
+   *
+   * It exists for the one leak the rest of the machinery cannot reach: the file
+   * goes up the moment it is picked, so a tab that dies (or an app the phone
+   * kills) between the upload and the save leaves a file no code path will ever
+   * name again. Neither the form nor the write path is around to notice.
+   *
+   * The GRACE PERIOD is the whole safety of it: a file uploaded minutes ago may
+   * well belong to a form still open on somebody's screen, and deleting it
+   * would break a save that had not happened yet. A day old and still unnamed
+   * means nobody is coming back for it.
+   *
+   * Every referenced URL is read ONCE into a set rather than asked per file:
+   * a folder of a thousand receipts would otherwise be two thousand queries.
+   *
+   * Running it at boot rather than on a schedule is deliberate — it needs no
+   * cron and no queue, which is the same reason the recurrences do not sweep
+   * tables either. Two instances booting together is safe: `rm` with `force`
+   * makes the second delete a no-op.
+   */
+  async sweep(): Promise<number> {
+    const cutoff = Date.now() - OrphanUploadResolver.GRACE_PERIOD_MS
+    const referenced = await this.referencedUrls()
+    let removed = 0
+
+    for (const theme of UPLOADS_SUBDIRS) {
+      const directory = join(UPLOADS_DIR, theme)
+      // A folder that is not there yet (a fresh volume) simply has nothing to
+      // sweep.
+      const filenames = await readdir(directory).catch(() => [] as string[])
+
+      for (const filename of filenames) {
+        const info = await stat(join(directory, filename)).catch(() => null)
+        if (!info?.isFile()) continue
+        if (info.mtimeMs > cutoff) continue
+        if (referenced.has(`/uploads/${theme}/${filename}`)) continue
+
+        await rm(join(directory, filename), { force: true })
+        removed++
+      }
+    }
+
+    return removed
+  }
+
+  /** Every file path a record currently names. */
+  private async referencedUrls(): Promise<Set<string>> {
+    const [attachments, avatars] = await Promise.all([
+      this.prisma.transaction.findMany({
+        where: { attachmentUrl: { not: null } },
+        select: { attachmentUrl: true },
+      }),
+      this.prisma.user.findMany({
+        where: { avatarUrl: { not: null } },
+        select: { avatarUrl: true },
+      }),
+    ])
+
+    return new Set([
+      ...attachments.map((row) => row.attachmentUrl as string),
+      ...avatars.map((row) => row.avatarUrl as string),
+    ])
   }
 
   private async isReferenced(publicUrl: string): Promise<boolean> {

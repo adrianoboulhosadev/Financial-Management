@@ -9,6 +9,7 @@ import { NestExpressApplication } from '@nestjs/platform-express'
 import { AppModule } from './app.module'
 import { DomainExceptionFilter } from './shared/domain-exception.filter'
 import { UPLOADS_DIR, UPLOADS_SUBDIRS } from './upload/uploads.config'
+import { OrphanUploadResolver } from './upload/orphan-upload.resolver'
 
 async function bootstrap() {
   // Local (no cloud) file storage: ensure the uploads root and its per-theme
@@ -27,5 +28,17 @@ async function bootstrap() {
   // Serve the uploaded files statically at /uploads/** (e.g. /uploads/receipts/x.pdf).
   app.useStaticAssets(UPLOADS_DIR, { prefix: '/uploads/' })
   await app.listen(process.env.PORT ?? 5000)
+
+  // Sweep the uploads nobody ever named. It runs AFTER listen and is never
+  // awaited: it is housekeeping, and a server that refused to serve traffic
+  // because a stale file would not delete would be trading a real problem for
+  // an imaginary one. Same reason the failure is only logged.
+  app
+    .get(OrphanUploadResolver)
+    .sweep()
+    .then((removed) => {
+      if (removed > 0) console.log(`[uploads] ${removed} orphaned file(s) swept`)
+    })
+    .catch((error) => console.error('[uploads] sweep failed', error))
 }
 bootstrap()
