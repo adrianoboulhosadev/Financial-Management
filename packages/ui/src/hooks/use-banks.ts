@@ -8,6 +8,7 @@ import type {
   CreateBankInput,
   UpdateBankInput,
   CreateCardInput,
+  UpdateCardInput,
 } from '@bank/adapters'
 import { CARD_BRAND_LABELS } from '../data/card-brands'
 import { api } from '../http/api'
@@ -45,6 +46,9 @@ export function useBanks() {
     queryClient.invalidateQueries({ queryKey: BANKS_KEY })
     queryClient.invalidateQueries({ queryKey: ['cards'] })
     queryClient.invalidateQueries({ queryKey: ['transactions'] })
+    // A card's calendar and limit decide what its invoice says, so touching
+    // either has to re-read it.
+    queryClient.invalidateQueries({ queryKey: ['card-invoices'] })
   }
 
   const createBank = useMutation({
@@ -91,6 +95,17 @@ export function useBanks() {
     onError: (error) => notifier.error(errorMessage(error, 'Não foi possível cadastrar o cartão.')),
   })
 
+  const updateCard = useMutation({
+    mutationFn: async ({ id, ...input }: UpdateCardInput & { id: string }) => {
+      await api().patch(`/bank/card/${id}`, input)
+    },
+    onSuccess: () => {
+      notifier.success('Cartão atualizado.')
+      invalidate()
+    },
+    onError: (error) => notifier.error(errorMessage(error, 'Não foi possível atualizar o cartão.')),
+  })
+
   const removeCard = useMutation({
     mutationFn: async (cardId: string) => {
       await api().delete(`/bank/card/${cardId}`)
@@ -126,6 +141,8 @@ export function useBanks() {
     removeBank: removeBank.mutate,
     createCard: createCard.mutate,
     creatingCard: createCard.isPending,
+    updateCard: updateCard.mutate,
+    updatingCard: updateCard.isPending,
     removeCard: removeCard.mutate,
   }
 }

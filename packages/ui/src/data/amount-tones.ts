@@ -16,8 +16,10 @@ export const TONE_CLASSES: Record<Exclude<AmountTone, 'movement'>, string> = {
   committed: 'text-warning',
 }
 
-/** Which side of a budget bar the user is on — the union itself belongs to the
- * domain (`BudgetStatus`), this only paints it. */
+/** Which side of a bar the user is on — how much of a ceiling is gone
+ * (`BudgetStatus`), or how much of a card's limit is (`CardLimitStatus`). Both
+ * unions belong to their own domain; this only paints them, and they share the
+ * table precisely so the same state never gets two colours. */
 export const BUDGET_STATUS_CLASSES = {
   ok: 'bg-positive',
   warning: 'bg-warning',
