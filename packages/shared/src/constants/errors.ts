@@ -73,6 +73,12 @@ export const Errors = {
   INVALID_CARD_KIND: 'INVALID_CARD_KIND',
   INVALID_CARD_BRAND: 'INVALID_CARD_BRAND',
   INVALID_CARD_LAST_DIGITS: 'INVALID_CARD_LAST_DIGITS',
+  // Closing/due day outside 1-31, or only one of the pair given: an invoice
+  // needs both dates to exist at all.
+  INVALID_INVOICE_DAY: 'INVALID_INVOICE_DAY',
+  // An invoice calendar and a limit only make sense on a card that settles on
+  // credit — a debit card is paid the moment it is used.
+  CARD_NOT_CREDIT: 'CARD_NOT_CREDIT',
 
   // investment
   INVESTMENT_NOT_FOUND: 'INVESTMENT_NOT_FOUND',
