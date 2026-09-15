@@ -117,8 +117,8 @@ O `model/` NÃO é anêmico. Regras vivem no modelo:
 - **Domain services**: regras puras que cruzam entidades/linhas → classe em `core/src/domain-services/`
   com métodos **estáticos**, sem portas e sem efeito. Hoje: `MonthlyTotalsCalculator`,
   `MonthlyChecklistCalculator` e `InstallmentPlanner` (transaction), `BudgetUsageCalculator`
-  (budget), `MonthlyIncomeCalculator` (income) e `PortfolioCalculator` (investment). Reexportados
-  como **valor** pelo `@ctx/adapters`.
+  (budget), `MonthlyIncomeCalculator` (income), `PortfolioCalculator` (investment) e
+  `InvoiceCalculator` (bank). Reexportados como **valor** pelo `@ctx/adapters`.
 - **Eventos de domínio**: a base continua no `shared` (`DomainEvent`, `AggregateRoot` com `record`/
   `pullDomainEvents`, porta `EventPublisher`), mas **nenhum contexto emite evento hoje** — os dois
   que existiam (`UserRegistered`, `UserApproved`) eram da portaria e saíram com ela. Se um dia
@@ -386,12 +386,48 @@ Use-case/domínio **nunca** lança erro interno/500. Códigos ficam em `Errors` 
   alguém invente um apelido pro próprio cartão é um campo sem resposta — daí a chave natural ser
   `(dono, banco, 4 dígitos)`, já que dois cartões diferentes do mesmo banco não repetem os últimos
   dígitos. Banco tem nome único por dono.
+  **Fatura**: um cartão de crédito guarda também `closingDay`/`dueDay` (o VO `InvoiceSchedule`) e
+  `limitCents`. Os três são **opcionais** — todo cartão gravado antes da fatura existir tem `null`,
+  e a entidade tem que conseguir reconstituí-lo — e **só valem no crédito** (`CARD_NOT_CREDIT`):
+  cartão de débito não fecha nada nem tem limite pra gastar. Os dois dias andam **em par**: meia
+  agenda não é meia fatura, é fatura nenhuma, então `InvoiceSchedule.optional` devolve `null` só
+  quando **nenhum** dos dois veio. O `edit` valida antes de atribuir, como manda a modelagem rica —
+  virar débito-só é recusado enquanto o cartão ainda carrega crédito, e a mesma edição pode limpar
+  os três campos e passar.
+  A fatura é identificada pelo **mês em que FECHA** (`MonthPeriod`): fechamento acontece uma vez por
+  mês, então o mês é chave limpa, e é a janela a que as compras pertencem — o vencimento é
+  consequência dela. Compra no dia `D` cai na fatura que fecha em `D <= closingDay ? este mês :
+  o próximo`, comparando com o dia de fechamento **já clampado** (cartão que fecha dia 31 fecha dia
+  28 em fevereiro, e a compra do dia 28 está DENTRO dela). O vencimento cai no mesmo mês quando
+  `dueDay > closingDay` e no seguinte caso contrário — inclusive quando são **iguais**, porque
+  fatura que fechou hoje nunca vence hoje.
+  `InvoiceCalculator` (puro/estático) dobra os gastos na fatura **aberta** e nas que ainda vêm.
+  Fatura já **fechada fica de fora de propósito**: o produto não registra se ela foi paga, então
+  mostrá-la ou cobraria uma conta já quitada ou afirmaria um saldo que ele não tem como saber. Por
+  isso `usedCents` é o que segura o limite AGORA (aberta + parcelas futuras) e não o valor da
+  próxima conta — uma parcela que vence em março já é dinheiro gasto, e contar só a aberta ofereceria
+  o resto do limite pra ser gasto de novo. `limitStatus` classifica em `ok`/`warning` (≥80%)/
+  `exceeded` (≥100%), com o limiar **do próprio contexto** mesmo coincidindo com o do orçamento:
+  são decisões diferentes sobre coisas diferentes, e amarrá-las moveria uma toda vez que alguém
+  ajustasse a outra.
+  Quem junta é o **backend** (`CardChargeResolver` + `GET /bank/card/invoice`), passando os gastos
+  como **dado puro** `{ cardId, occurredOn, amountCents }` — o contexto `bank` nunca importa
+  `transaction`. Só entra despesa com `paymentMethod === 'credit'`: débito no mesmo cartão já saiu
+  da conta. **Fixo não entra**: assinatura no cartão vira lançamento quando o worker posta, e é aí
+  que ela existe na fatura — a mesma linha que o resto do produto traça entre dinheiro que andou e
+  compromisso do mês. A janela de leitura começa no **primeiro dia do mês passado** (qualquer dia de
+  fechamento cabe) e **não tem topo**, senão a parcela de março sumiria e o cartão apareceria mais
+  livre do que está.
   Apagar um banco exige **sem cartões** e **sem uso** (`BANK_IN_USE`) — quem resolve "está em uso" é
   o backend (`BankUsageResolver`), consultando `transaction`, `recurrence` e `investment` e passando
   `inUse` como dado puro; o contexto `bank` nunca importa os outros. A lista de bancos brasileiros do
   formulário é **estática** (`packages/ui/src/data/banks.ts`) e só um atalho: o domínio guarda texto
   livre, a opção **"Outro"** revela um campo pra digitar, e não há serviço externo que precise estar
   no ar pro formulário funcionar.
+  O formulário de cartão serve **criar E editar**, e não por simetria: é a única forma de um cartão
+  já cadastrado ganhar a agenda da fatura. Os campos de crédito só aparecem quando o tipo aceita
+  crédito, e o botão fica inclicável com meia agenda — a mesma regra do domínio, feita impossível
+  aqui em vez de descoberta como erro.
   ⚠️ O formulário usa um **`<select>` de verdade**, nunca `<input list>` + `<datalist>`: datalist é
   typeahead, não dropdown — fica invisível até o usuário digitar, e se clicar chega a abrir depende
   do navegador. Um campo com cara de seletor que não mostra nada ao ser clicado é lido como
@@ -477,7 +513,8 @@ diferente** e ainda avisa — que é o ponto, já que é notícia pior.
 - `budget` (`/` [GET, POST define/ajusta], `/usage` [GET com `?period=`, teto × gasto], `/:id` [DELETE])
 - `income` (`/` [GET, POST], `/monthly` [GET, renda do mês], `/:id` [PATCH, DELETE],
   `/:id/active` [POST])
-- `bank` (`/card` [GET, POST], `/card/:id` [PATCH, DELETE], `/` [GET, POST], `/:id`
+- `bank` (`/card/invoice` [GET, as faturas dos cartões de crédito — **rota composta**, cruza bank +
+  transaction], `/card` [GET, POST], `/card/:id` [PATCH, DELETE], `/` [GET, POST], `/:id`
   [PATCH, DELETE]) — ⚠️ as rotas de **cartão vêm primeiro** no controller, senão `/:id` engole
   `/card`
 - `investment` (`/` [GET, POST], `/portfolio` [GET, a carteira], `/:id` [PATCH, DELETE],
@@ -488,9 +525,11 @@ diferente** e ainda avisa — que é o ponto, já que é notícia pior.
   rota autenticada por token na **query string**, porque `EventSource` não manda header])
 - `upload/{receipts,avatars}` — os dois self-service (o próprio usuário autenticado envia o seu)
 
-**O `report/monthly` é a única rota composta**: o shape (`MonthlyReportDTO`) não pertence a nenhum
-`@ctx/adapters` — é local ao controller, e o front **espelha o tipo à mão** (em
-`app/(private)/dashboard/types/`), que é o custo honesto de um shape que não é de contexto nenhum.
+**O `report/monthly` é a única rota composta cujo SHAPE não é de contexto nenhum**:
+`MonthlyReportDTO` é local ao controller, e o front **espelha o tipo à mão** (em
+`app/(private)/dashboard/types/`), que é o custo honesto disso. O `bank/card/invoice` também cruza
+contextos, mas ali o shape é do `bank` (`CardInvoicesDTO`) e só os **gastos** vêm de fora, como dado
+puro — então não há tipo pra espelhar.
 
 ## Banco de dados
 
@@ -512,7 +551,8 @@ diferente** e ainda avisa — que é o ponto, já que é notícia pior.
   `Recurrence → Transaction`, a `Recurrence → RecurrencePayment` e a `Bank → Card` são
   intra-contexto, então têm relation Prisma de verdade.
 - **Toda coluna nova em tabela existente é nullable ou tem default**: `bank_id`, `card_id`,
-  `payment_method`, `installments`, `variable_amount`, `auto_paid`, `ends_on`, `brand`. É o que faz cada linha já
+  `payment_method`, `installments`, `variable_amount`, `auto_paid`, `ends_on`, `brand`,
+  `closing_day`, `due_day`, `limit_cents`. É o que faz cada linha já
   gravada continuar válida exatamente como está — e a entidade tem que conseguir **reconstituí-la**,
   senão o produto para de conseguir ler o próprio histórico.
 - **A unicidade de `(dono, pai, nome)` da categoria é do USE-CASE, não um `@@unique`**: `parentId` é
