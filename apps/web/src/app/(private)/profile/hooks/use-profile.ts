@@ -40,24 +40,20 @@ export function useProfile() {
    * The file is uploaded FIRST and only its URL is saved on the user — the same
    * two-step the receipt upload uses.
    *
-   * Exactly one of the two files is left over afterwards, and it gets dropped:
-   * the OLD photo once the new one is stored (nothing points at it any more,
-   * and before this it stayed on disk for the life of the volume), or the NEW
-   * one if the save failed, since the profile still names the old.
+   * Only the FAILED case is cleaned up here: a photo that went up while the
+   * profile kept naming the old one is a file nothing will ever point at, and
+   * this is the only place that knows it happened. The OLD photo is swept up by
+   * the backend when the profile releases it, because the moment a record stops
+   * pointing at a file is a server fact, not a client one.
    */
   const uploadAvatar = async (file: File) => {
-    const previous = user?.avatarUrl ?? null
     setUploading(true)
     try {
       const body = new FormData()
       body.append('file', file)
       const url = await sendAvatar(body)
 
-      if (await saveProfile(url)) {
-        if (previous && previous !== url) void discardAvatar(previous)
-      } else {
-        void discardAvatar(url)
-      }
+      if (!(await saveProfile(url))) void discardAvatar(url)
     } catch (error) {
       notify.failure(error, 'Não foi possível enviar a imagem.')
     } finally {
