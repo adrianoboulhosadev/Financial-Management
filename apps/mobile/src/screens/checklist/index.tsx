@@ -126,16 +126,73 @@ export function ChecklistScreen() {
       <View className="px-5 pt-4">
         {screen.loading ? (
           <Loading compact />
-        ) : screen.items.length === 0 ? (
+        ) : screen.empty ? (
           <EmptyState
-            title="Nenhum fixo neste mês"
-            description="Cadastre o que se repete todo mês em Menu › Fixos do mês e ele aparece aqui."
+            title="Nada a pagar neste mês"
+            description="Cadastre o que se repete todo mês em Menu › Fixos do mês — e os cartões de crédito com dia de fechamento — e tudo aparece aqui."
           />
         ) : (
           <>
+            {/* The invoices come FIRST: they are usually the biggest bill of
+                the month and the one with the hardest deadline. They are a
+                section of their own, and out of the totals above, because an
+                invoice is a bill to settle and not a cost — every charge on it
+                was already counted on the day it was made. */}
+            {screen.invoices.length > 0 ? (
+              <View>
+                <Kicker className="pb-1">Faturas</Kicker>
+                {screen.invoices.map((invoice, index) => (
+                  <ListRow
+                    key={`${invoice.cardId}-${invoice.period}`}
+                    last={index === screen.invoices.length - 1}
+                  >
+                    <Checkbox
+                      checked={invoice.paid}
+                      onChange={(checked) =>
+                        screen.setInvoicePaid(invoice.cardId, invoice.period, checked)
+                      }
+                      accessibilityLabel={`Marcar ${screen.invoiceLabelOf(invoice.cardId)} como paga`}
+                    />
+
+                    <View className="flex-1">
+                      <Text
+                        numberOfLines={1}
+                        className={`text-[13px] ${
+                          invoice.paid ? 'text-neutral-400 line-through' : 'text-ink-text'
+                        }`}
+                      >
+                        {screen.invoiceLabelOf(invoice.cardId)}
+                      </Text>
+                      <Text
+                        numberOfLines={1}
+                        className={`mt-0.5 text-[11px] ${
+                          invoice.closed ? 'text-neutral-600' : 'text-warning'
+                        }`}
+                      >
+                        {screen.invoiceCaptionOf(invoice)}
+                      </Text>
+                    </View>
+
+                    <Amount
+                      cents={invoice.amountCents}
+                      tone={invoice.paid ? 'muted' : 'neutral'}
+                      className="text-[13px]"
+                    />
+                  </ListRow>
+                ))}
+
+                <Text className="pt-2 text-[10.5px] leading-[16px] text-neutral-700">
+                  As compras destas faturas já entraram no gasto do mês em que foram feitas, então
+                  elas não somam no total dos fixos acima.
+                </Text>
+              </View>
+            ) : null}
+
             {screen.open.length > 0 ? (
               <View>
-                <Kicker className="pb-1">Em aberto</Kicker>
+                <Kicker className={`pb-1 ${screen.invoices.length > 0 ? 'pt-[18px]' : ''}`}>
+                  Em aberto
+                </Kicker>
                 {screen.open.map((item, index) => row(item, index === screen.open.length - 1))}
               </View>
             ) : null}

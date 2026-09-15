@@ -189,8 +189,8 @@ export function TransactionsScreen() {
 
         <ReceiptField
           url={screen.attachmentUrl}
-          onUploaded={screen.setAttachmentUrl}
-          onRemove={() => screen.setAttachmentUrl(null)}
+          onUploaded={screen.attachReceipt}
+          onRemove={screen.removeReceipt}
         />
 
         <PaymentFields

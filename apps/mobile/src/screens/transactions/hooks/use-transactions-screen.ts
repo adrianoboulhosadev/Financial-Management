@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { TransactionDTO, TransactionType } from '@transaction/adapters'
 
 import {
   caption,
+  discardReceipt,
   groupByDay,
   paymentMethodLabel,
   toCents,
@@ -39,7 +40,22 @@ export function useTransactionsScreen() {
 
   const data = useTransactions({ period, type: filter === 'all' ? undefined : filter })
 
+  /**
+   * A receipt uploaded in THIS session that no row points at yet. It is the
+   * only file the form may throw away — the one already stored on the movement
+   * being edited belongs to the record, not to the form.
+   *
+   * A ref and not state: nothing renders from it.
+   */
+  const pendingUpload = useRef<string | null>(null)
+
+  const discardPending = () => {
+    if (pendingUpload.current) void discardReceipt(pendingUpload.current)
+    pendingUpload.current = null
+  }
+
   const resetForm = () => {
+    discardPending()
     setDescription('')
     setAmount('')
     setCategoryId('')
@@ -54,6 +70,9 @@ export function useTransactionsScreen() {
   /** Fills the form with a movement so it can be corrected instead of retyped.
    * In reais, because that is the shape the money field edits. */
   const fillFrom = (transaction: TransactionDTO) => {
+    // Switching to another movement abandons whatever was uploaded for the
+    // one being left behind.
+    discardPending()
     setType(transaction.type)
     setDescription(transaction.description)
     setAmount((transaction.amount / 100).toFixed(2).replace('.', ','))
@@ -97,10 +116,22 @@ export function useTransactionsScreen() {
     closeForm: () => {
       setFormOpen(false)
       setEditing(null)
+      // resetForm throws away whatever was uploaded and never saved: closing
+      // the sheet is exactly how a file is orphaned.
       resetForm()
     },
     attachmentUrl,
-    setAttachmentUrl,
+    /** Swapping one receipt for another orphans the first — it goes now, while
+     * its URL is still in hand. */
+    attachReceipt: (url: string) => {
+      discardPending()
+      pendingUpload.current = url
+      setAttachmentUrl(url)
+    },
+    removeReceipt: () => {
+      discardPending()
+      setAttachmentUrl(null)
+    },
     type,
     setType,
     categoryId,
@@ -124,6 +155,12 @@ export function useTransactionsScreen() {
     canSubmit: Boolean(description.trim() && amount && (type !== 'expense' || categoryId)),
     saving: data.recording || data.updating,
     submit: () => {
+      // Saved from here on: the row points at the file, so it is no longer the
+      // form's to throw away. Cleared even if the save then fails — the owner
+      // is about to retry, and deleting the receipt under them would be worse
+      // than leaving a file behind.
+      pendingUpload.current = null
+
       // The TYPE and the SPLIT are not editable — the domain's UpdateTransaction
       // takes neither, so the edit path simply does not send them.
       if (editing) {
