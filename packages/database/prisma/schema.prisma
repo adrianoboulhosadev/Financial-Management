@@ -134,31 +134,31 @@ model Category {
 // with `occurredOn` is what makes the worker's job IDEMPOTENT: a retried run for
 // the same month hits the constraint instead of double-charging the month.
 model Transaction {
-  id            String      @id @default(uuid())
-  ownerId       String      @map("owner_id")
-  type          String
-  categoryId    String?     @map("category_id")
-  description   String
-  amount        Int
-  occurredOn    DateTime    @map("occurred_on") @db.Date
-  attachmentUrl String?     @map("attachment_url")
-  recurrenceId  String?     @map("recurrence_id")
+  id                 String      @id @default(uuid())
+  ownerId            String      @map("owner_id")
+  type               String
+  categoryId         String?     @map("category_id")
+  description        String
+  amount             Int
+  occurredOn         DateTime    @map("occurred_on") @db.Date
+  attachmentUrl      String?     @map("attachment_url")
+  recurrenceId       String?     @map("recurrence_id")
   // Where the money came from / went to, and how. All LOGICAL FKs to the
   // `bank` context (cross-context), and all nullable: rows recorded before
   // banks existed carry none, and the entity has to be able to reconstitute
   // them unchanged.
-  bankId        String?     @map("bank_id")
-  cardId        String?     @map("card_id")
-  paymentMethod String?     @map("payment_method")
+  bankId             String?     @map("bank_id")
+  cardId             String?     @map("card_id")
+  paymentMethod      String?     @map("payment_method")
   // A credit purchase split over N months materializes N rows sharing an
   // `installmentGroupId`, one per month, so the future ones are already
   // visible as "what I owe" instead of appearing only when they are charged.
-  installments      Int     @default(1)
-  installmentNumber Int     @default(1) @map("installment_number")
-  installmentGroupId String? @map("installment_group_id")
-  createdAt     DateTime    @default(now()) @map("created_at")
-  updatedAt     DateTime    @updatedAt @map("updated_at")
-  recurrence    Recurrence? @relation(fields: [recurrenceId], references: [id], onDelete: SetNull)
+  installments       Int         @default(1)
+  installmentNumber  Int         @default(1) @map("installment_number")
+  installmentGroupId String?     @map("installment_group_id")
+  createdAt          DateTime    @default(now()) @map("created_at")
+  updatedAt          DateTime    @updatedAt @map("updated_at")
+  recurrence         Recurrence? @relation(fields: [recurrenceId], references: [id], onDelete: SetNull)
 
   @@unique([recurrenceId, occurredOn])
   @@index([ownerId, occurredOn])
@@ -177,36 +177,36 @@ model Transaction {
 // column (not only in Redis) is what lets a lost job be recovered — the row
 // still says when this recurrence was due.
 model Recurrence {
-  id           String        @id @default(uuid())
-  ownerId      String        @map("owner_id")
-  type         String
-  categoryId   String?       @map("category_id")
-  description  String
-  amount       Int
-  dayOfMonth   Int           @map("day_of_month")
-  active       Boolean       @default(true)
+  id             String              @id @default(uuid())
+  ownerId        String              @map("owner_id")
+  type           String
+  categoryId     String?             @map("category_id")
+  description    String
+  amount         Int
+  dayOfMonth     Int                 @map("day_of_month")
+  active         Boolean             @default(true)
   // A bill whose amount changes every month (the electricity one). `amount` is
   // then only the ESTIMATE the owner typed; the month's real figure lands in a
   // RecurrencePayment when the bill arrives. Declared at creation, because it
   // is what decides whether adjusting a month is allowed at all.
-  variableAmount Boolean     @default(false) @map("variable_amount")
+  variableAmount Boolean             @default(false) @map("variable_amount")
   // Already on pix/direct debit: the month is settled on its due date without
   // anyone ticking it off in the checklist.
-  autoPaid     Boolean       @default(false) @map("auto_paid")
-  bankId       String?       @map("bank_id")
-  cardId       String?       @map("card_id")
-  paymentMethod String?      @map("payment_method")
+  autoPaid       Boolean             @default(false) @map("auto_paid")
+  bankId         String?             @map("bank_id")
+  cardId         String?             @map("card_id")
+  paymentMethod  String?             @map("payment_method")
   // Last day this recurrence is owed — a course paid over 8 months, a
   // financing that ends. NULL is the ordinary case: it repeats forever. After
   // this date it stops being posted and leaves the month's checklist on its
   // own, with nobody having to remember to pause it.
-  endsOn       DateTime?     @map("ends_on") @db.Date
-  nextRunAt    DateTime      @map("next_run_at")
-  lastRunAt    DateTime?     @map("last_run_at")
-  createdAt    DateTime      @default(now()) @map("created_at")
-  updatedAt    DateTime      @updatedAt @map("updated_at")
-  transactions Transaction[]
-  payments     RecurrencePayment[]
+  endsOn         DateTime?           @map("ends_on") @db.Date
+  nextRunAt      DateTime            @map("next_run_at")
+  lastRunAt      DateTime?           @map("last_run_at")
+  createdAt      DateTime            @default(now()) @map("created_at")
+  updatedAt      DateTime            @updatedAt @map("updated_at")
+  transactions   Transaction[]
+  payments       RecurrencePayment[]
 
   @@index([ownerId])
   @@index([active, nextRunAt])
@@ -316,26 +316,45 @@ model Bank {
 // answer. That also makes the natural key (bank + last four digits) the real
 // one — two different cards of the same bank do not share their last digits.
 model Card {
-  id             String   @id @default(uuid())
-  ownerId        String   @map("owner_id")
-  bankId         String   @map("bank_id")
-  brand          String
-  kind           String
-  lastFourDigits String   @map("last_four_digits")
+  id              String               @id @default(uuid())
+  ownerId         String               @map("owner_id")
+  bankId          String               @map("bank_id")
+  brand           String
+  kind            String
+  lastFourDigits  String               @map("last_four_digits")
   // The invoice calendar and the limit. Nullable, like every column added to a
   // table that already has rows: a debit card never has them, and the cards
   // registered before invoices existed stay valid exactly as they are.
-  closingDay     Int?     @map("closing_day")
-  dueDay         Int?     @map("due_day")
-  limitCents     Int?     @map("limit_cents")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
-  bank           Bank     @relation(fields: [bankId], references: [id], onDelete: Restrict)
+  closingDay      Int?                 @map("closing_day")
+  dueDay          Int?                 @map("due_day")
+  limitCents      Int?                 @map("limit_cents")
+  createdAt       DateTime             @default(now()) @map("created_at")
+  updatedAt       DateTime             @updatedAt @map("updated_at")
+  bank            Bank                 @relation(fields: [bankId], references: [id], onDelete: Restrict)
+  invoicePayments CardInvoicePayment[]
 
   @@unique([ownerId, bankId, lastFourDigits])
   @@index([ownerId])
   @@index([bankId])
   @@map("cards")
+}
+
+model CardInvoicePayment {
+  id        String    @id @default(uuid())
+  ownerId   String    @map("owner_id")
+  cardId    String    @map("card_id")
+  // YYYY-MM, the month the invoice CLOSES in — the invoice's identity. Never
+  // the due month: a card whose due day precedes its closing day pays in the
+  // following month, so keying on it would give one invoice two names.
+  period    String
+  paidAt    DateTime? @map("paid_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  card      Card      @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@unique([cardId, period])
+  @@index([ownerId, period])
+  @@map("card_invoice_payments")
 }
 
 // --- investment ----------------------------------------------------------------
@@ -346,20 +365,20 @@ model Card {
 // `bankId` is an OPTIONAL logical FK to the `bank` context: an investment at a
 // broker the user did not register still belongs on the list.
 model Investment {
-  id             String    @id @default(uuid())
-  ownerId        String    @map("owner_id")
-  bankId         String?   @map("bank_id")
+  id             String                   @id @default(uuid())
+  ownerId        String                   @map("owner_id")
+  bankId         String?                  @map("bank_id")
   name           String
   kind           String
-  investedAmount Int       @map("invested_amount")
-  currentAmount  Int?      @map("current_amount")
+  investedAmount Int                      @map("invested_amount")
+  currentAmount  Int?                     @map("current_amount")
   // DATE, not a timestamp: what matters is the day the money was applied.
-  startedOn      DateTime  @map("started_on") @db.Date
-  maturityOn     DateTime? @map("maturity_on") @db.Date
+  startedOn      DateTime                 @map("started_on") @db.Date
+  maturityOn     DateTime?                @map("maturity_on") @db.Date
   notes          String?
-  active         Boolean   @default(true)
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
+  active         Boolean                  @default(true)
+  createdAt      DateTime                 @default(now()) @map("created_at")
+  updatedAt      DateTime                 @updatedAt @map("updated_at")
   contributions  InvestmentContribution[]
 
   @@unique([ownerId, name])
