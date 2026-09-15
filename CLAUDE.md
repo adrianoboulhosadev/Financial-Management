@@ -655,6 +655,21 @@ puro — então não há tipo pra espelhar.
   um órfão poderia em tese ser apagado por outro usuário que adivinhasse um uuid v4 — e o prêmio é
   um arquivo que já não era de ninguém. Gravar o remetente seria a correção à prova de bala e custa
   uma tabela; a troca foi feita de olhos abertos.
+- **Varredura no BOOT** (`OrphanUploadResolver.sweep`, chamada no `main.ts`), pro único vazamento que
+  o resto não alcança: o arquivo sobe no instante em que é escolhido, então uma aba que morre entre
+  o upload e o salvamento deixa um arquivo que nenhum caminho de código volta a nomear — não há
+  formulário nem escrita por perto pra notar.
+  - **O período de graça é toda a segurança dela**: só cai arquivo sem referência com mais de
+    **24h**. Arquivo de minutos atrás pode ser de um formulário ABERTO na tela de alguém, e apagá-lo
+    quebraria um salvamento que ainda não aconteceu.
+  - As URLs referenciadas são lidas **de uma vez** num `Set`, não uma pergunta por arquivo — mil
+    comprovantes seriam duas mil consultas.
+  - Roda **depois do `listen`** e **sem `await`**: é faxina, e um servidor que recusasse tráfego
+    porque um arquivo velho não apagou trocaria um problema real por um imaginário. Falha só é
+    logada.
+  - **No boot e não num cron**: não precisa de fila nem agendador, mesma razão pela qual as
+    recorrências também não varrem tabela. Duas instâncias subindo juntas é seguro — `rm` com
+    `force` faz o segundo delete virar no-op.
   - `POST /upload/receipts` — comprovante/nota de um lançamento. Aceita `image/*` **ou**
     `application/pdf`, 10 MB. **Nunca recortado nem reencodado**: é documento, e alterá-lo seria
     alterar a prova. A URL vai pra `Transaction.attachmentUrl`.
@@ -839,8 +854,9 @@ telefone renderiza via `react-native-svg`, e nenhum dos dois embarca um pacote d
     (depois a linha já não a nomeia) e a varredura roda **depois** — o resolver recusa arquivo que
     alguém ainda aponta, então rodar antes não faria nada. É best-effort e engole erro: a escrita já
     deu certo, e falhar a requisição por causa de um arquivo sobrando não desfaria nada.
-  ⚠️ **Ainda sobra o caso que ninguém consegue pegar**: subir o comprovante e a aba morrer antes do
-  descarte. Não há varredura periódica — se um dia incomodar, é aí que ela entra.
+  - E o caso que nenhum dos dois alcança — subir o comprovante e a aba morrer antes do descarte —
+    cai na **varredura de boot** (ver a seção de uploads): ali não há formulário nem escrita pra
+    notar que o arquivo ficou pra trás.
 - **`PaymentFields` é um bloco só, usado pelo formulário de lançamento E pelo de fixo**, porque os
   dois respondem exatamente a mesma pergunta (por onde o dinheiro passou e como). O que aparece
   **segue o método**: cartão só quando se está usando um, parcelas só no crédito, e os cartões
