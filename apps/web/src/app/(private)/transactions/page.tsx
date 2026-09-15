@@ -13,7 +13,7 @@ import { Loading } from '@/components/loading'
 import { MonthPicker } from '@/components/month-picker'
 import { ScreenHeader } from '@/components/screen-header'
 import { Sheet } from '@/components/sheet'
-import { ArrowInIcon, ArrowOutIcon, TrashIcon } from '@/data/icons'
+import { ArrowInIcon, ArrowOutIcon, PencilIcon, ReceiptIcon, TrashIcon } from '@/data/icons'
 import { TransactionForm } from './components/transaction-form'
 import { useTransactions } from './hooks/use-transactions'
 
@@ -35,10 +35,13 @@ export default function TransactionsPage() {
     transactions,
     loading,
     composing,
+    editing,
     openComposer,
+    openEditor,
     closeComposer,
     record,
-    recording,
+    update,
+    saving,
     pendingDeletion,
     askToDelete,
     cancelDeletion,
@@ -111,7 +114,18 @@ export default function TransactionsPage() {
                     </IconBadge>
 
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[13px]">{transaction.description}</p>
+                      <p className="flex items-center gap-1.5 truncate text-[13px]">
+                        {transaction.description}
+                        {/* A movement with proof attached says so here — it is
+                            the only way to tell without opening it. */}
+                        {transaction.attachmentUrl && (
+                          <ReceiptIcon
+                            size={13}
+                            className="flex-none text-neutral-600"
+                            aria-label="Tem comprovante"
+                          />
+                        )}
+                      </p>
                       <p className="mt-[3px] truncate text-[11px] text-neutral-600">
                         {captionFor(transaction)}
                       </p>
@@ -124,6 +138,14 @@ export default function TransactionsPage() {
                       className="flex-none text-[13.5px]"
                     />
 
+                    <button
+                      type="button"
+                      onClick={() => openEditor(transaction)}
+                      aria-label={`Editar ${transaction.description}`}
+                      className="flex-none text-neutral-700 transition-colors hover:text-ink-text"
+                    >
+                      <PencilIcon size={16} />
+                    </button>
                     <button
                       type="button"
                       onClick={() => askToDelete(transaction)}
@@ -142,8 +164,17 @@ export default function TransactionsPage() {
 
       <Fab onClick={openComposer} aria-label="Novo lançamento" />
 
-      <Sheet open={composing} title="Novo lançamento" onClose={closeComposer}>
-        <TransactionForm onSubmit={record} submitting={recording} />
+      <Sheet
+        open={composing}
+        title={editing ? 'Editar lançamento' : 'Novo lançamento'}
+        onClose={closeComposer}
+      >
+        <TransactionForm
+          onCreate={record}
+          onUpdate={update}
+          editing={editing}
+          submitting={saving}
+        />
       </Sheet>
 
       <ConfirmDialog

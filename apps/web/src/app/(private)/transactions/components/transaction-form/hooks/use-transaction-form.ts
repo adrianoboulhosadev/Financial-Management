@@ -1,10 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import type { RecordTransactionInput, TransactionType } from '@transaction/adapters'
-import { toCents } from 'ui'
-import { toDateInputValue } from 'ui'
+import type {
+  RecordTransactionInput,
+  TransactionDTO,
+  TransactionType,
+  UpdateTransactionInput,
+} from '@transaction/adapters'
+import { toCents, toDateInputValue, uploadReceipt } from 'ui'
+import { notify } from '@/lib/notify'
 
 interface TransactionFormFields {
   type: TransactionType
@@ -41,24 +46,115 @@ const emptyPayment = (): PaymentFormFields => ({
   installments: '1',
 })
 
-export function useTransactionForm(onSubmit: (input: RecordTransactionInput) => void) {
+/** In reais, as the money field shows it — the shape an amount has to be in to
+ * be edited rather than retyped. */
+const toReais = (cents: number) => (cents / 100).toFixed(2).replace('.', ',')
+
+interface Options {
+  onCreate: (input: RecordTransactionInput) => void
+  onUpdate: (input: UpdateTransactionInput & { id: string }) => void
+  /** The movement being corrected, or null to record a new one. */
+  editing: TransactionDTO | null
+}
+
+/**
+ * One form for both recording and correcting, because they ask the same
+ * questions. What differs is what the DOMAIN accepts: `UpdateTransaction` takes
+ * no `type` and no instalments (an expense does not become an income, and a 6x
+ * turning into a 3x is a different set of rows), so in edit mode those two are
+ * shown as fixed rather than offered and then refused.
+ */
+export function useTransactionForm({ onCreate, onUpdate, editing }: Options) {
   const form = useForm<TransactionFormFields>({ defaultValues: emptyForm() })
   const [categoryId, setCategoryId] = useState('')
   const [payment, setPayment] = useState<PaymentFormFields>(emptyPayment)
+  const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
   const type = form.watch('type')
+
+  /**
+   * Opening on a row fills the form with it; opening on nothing clears it. Both
+   * directions matter: without the reset, closing an edit and pressing + would
+   * hand the new movement the old one's values.
+   *
+   * It keys on the row's ID, not on the `editing` object and not on `form`.
+   * That is deliberate: re-running this while someone is typing would wipe what
+   * they wrote, so the trigger has to be "a DIFFERENT movement is being edited"
+   * and nothing else — not a new object identity from a refetch, and not
+   * whatever react-hook-form decides about its own reference stability.
+   */
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (editing) {
+      form.reset({
+        type: editing.type,
+        categoryId: editing.categoryId ?? '',
+        description: editing.description,
+        amount: toReais(editing.amount),
+        occurredOn: toDateInputValue(editing.occurredOn),
+      })
+      setCategoryId(editing.categoryId ?? '')
+      setPayment({
+        bankId: editing.bankId ?? '',
+        paymentMethod: editing.paymentMethod ?? '',
+        cardId: editing.cardId ?? '',
+        installments: String(editing.installments),
+      })
+      setAttachmentUrl(editing.attachmentUrl)
+      return
+    }
+
+    form.reset(emptyForm())
+    setCategoryId('')
+    setPayment(emptyPayment())
+    setAttachmentUrl(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing?.id ?? null])
 
   const patchPayment = (fields: Partial<PaymentFormFields>) =>
     setPayment((current) => ({ ...current, ...fields }))
 
+  /**
+   * The receipt goes up as soon as it is picked, and only its URL travels with
+   * the form. Waiting for submit would mean a 10 MB body on every save and no
+   * way to show what was attached before saving.
+   */
+  const attachReceipt = async (file: File) => {
+    setUploading(true)
+    try {
+      setAttachmentUrl(await uploadReceipt(receiptBody(file)))
+    } catch (error) {
+      notify.failure(error, 'Não foi possível enviar o comprovante.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
   const submit = form.handleSubmit((fields) => {
-    onSubmit({
+    if (editing) {
+      onUpdate({
+        id: editing.id,
+        // An income may legitimately have none; an expense without one is
+        // refused by the domain, and the field below marks it required.
+        categoryId: categoryId || null,
+        description: fields.description,
+        amount: toCents(fields.amount),
+        occurredOn: fields.occurredOn,
+        attachmentUrl,
+        bankId: payment.bankId || null,
+        cardId: payment.cardId || null,
+        paymentMethod: payment.paymentMethod || null,
+      })
+      return
+    }
+
+    onCreate({
       type: fields.type,
-      // An income may legitimately have none; an expense without one is
-      // refused by the domain, and the field below marks it required.
       categoryId: categoryId || null,
       description: fields.description,
       amount: toCents(fields.amount),
       occurredOn: fields.occurredOn,
+      attachmentUrl,
       // Empty means "not informed", which the domain stores as null — an empty
       // string would be an unknown payment method.
       bankId: payment.bankId || null,
@@ -66,15 +162,13 @@ export function useTransactionForm(onSubmit: (input: RecordTransactionInput) => 
       paymentMethod: payment.paymentMethod || null,
       installments: payment.paymentMethod === 'credit' ? Number(payment.installments) || 1 : 1,
     })
-    form.reset(emptyForm())
-    setCategoryId('')
-    setPayment(emptyPayment())
   })
 
   return {
     form,
     submit,
     type,
+    isEditing: editing !== null,
     categoryId,
     setCategoryId,
     payment,
@@ -82,7 +176,18 @@ export function useTransactionForm(onSubmit: (input: RecordTransactionInput) => 
     setPaymentMethod: (paymentMethod: string) => patchPayment({ paymentMethod }),
     setCardId: (cardId: string) => patchPayment({ cardId }),
     setInstallments: (installments: string) => patchPayment({ installments }),
+    attachmentUrl,
+    attachReceipt,
+    removeReceipt: () => setAttachmentUrl(null),
+    uploading,
     // Only an expense must land on a category — that is the tree's whole point.
     categoryRequired: type === 'expense',
   }
+}
+
+/** The browser's half of the multipart body — a real `File` from the input. */
+function receiptBody(file: File): FormData {
+  const body = new FormData()
+  body.append('file', file)
+  return body
 }

@@ -1,24 +1,38 @@
 'use client'
 
-import type { RecordTransactionInput } from '@transaction/adapters'
+import type {
+  RecordTransactionInput,
+  TransactionDTO,
+  UpdateTransactionInput,
+} from '@transaction/adapters'
+import { TRANSACTION_TYPES } from 'ui'
 import { Button } from '@/components/button'
+import { CategoryPicker } from '@/components/category-picker'
 import { Chip } from '@/components/chip'
 import { Field } from '@/components/field'
-import { CategoryPicker } from '@/components/category-picker'
 import { PaymentFields } from '@/components/payment-fields'
-import { TRANSACTION_TYPES } from 'ui'
+import { ReceiptField } from '../receipt-field'
 import { useTransactionForm } from './hooks/use-transaction-form'
 
 interface TransactionFormProps {
-  onSubmit: (input: RecordTransactionInput) => void
+  onCreate: (input: RecordTransactionInput) => void
+  onUpdate: (input: UpdateTransactionInput & { id: string }) => void
+  /** The movement being corrected, or null to record a new one. */
+  editing: TransactionDTO | null
   submitting: boolean
 }
 
-export function TransactionForm({ onSubmit, submitting }: TransactionFormProps) {
+export function TransactionForm({
+  onCreate,
+  onUpdate,
+  editing,
+  submitting,
+}: TransactionFormProps) {
   const {
     form,
     submit,
     type,
+    isEditing,
     categoryId,
     setCategoryId,
     categoryRequired,
@@ -27,15 +41,23 @@ export function TransactionForm({ onSubmit, submitting }: TransactionFormProps) 
     setPaymentMethod,
     setCardId,
     setInstallments,
-  } = useTransactionForm(onSubmit)
+    attachmentUrl,
+    attachReceipt,
+    removeReceipt,
+    uploading,
+  } = useTransactionForm({ onCreate, onUpdate, editing })
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
+      {/* The direction is fixed once recorded: `UpdateTransaction` takes no
+          `type`, so editing shows which one it is instead of offering a switch
+          the domain would refuse. */}
       <div className="flex gap-1.5">
         {TRANSACTION_TYPES.map((option) => (
           <Chip
             key={option.value}
             active={type === option.value}
+            disabled={isEditing}
             onClick={() => form.setValue('type', option.value)}
           >
             {option.label}
@@ -81,6 +103,13 @@ export function TransactionForm({ onSubmit, submitting }: TransactionFormProps) 
         }
       />
 
+      <ReceiptField
+        url={attachmentUrl}
+        onPick={attachReceipt}
+        onRemove={removeReceipt}
+        uploading={uploading}
+      />
+
       <PaymentFields
         bankId={payment.bankId}
         onBankChange={setBankId}
@@ -88,18 +117,27 @@ export function TransactionForm({ onSubmit, submitting }: TransactionFormProps) 
         onPaymentMethodChange={setPaymentMethod}
         cardId={payment.cardId}
         onCardChange={setCardId}
-        installments={payment.installments}
-        onInstallmentsChange={setInstallments}
+        // The split is fixed at creation — turning a 6x into a 3x is a different
+        // set of rows, not a different value on one of them.
+        installments={isEditing ? undefined : payment.installments}
+        onInstallmentsChange={isEditing ? undefined : setInstallments}
       />
+
+      {isEditing && Number(payment.installments) > 1 && (
+        <p className="text-[10.5px] leading-relaxed text-neutral-600">
+          Esta é a parcela {editing?.installmentNumber} de {payment.installments}. O parcelamento
+          não muda na edição — para refazê-lo, exclua e lance de novo.
+        </p>
+      )}
 
       <Button
         type="submit"
         className="w-full"
         // The category check is not part of react-hook-form (the picker owns its
         // own state), so the button enforces it too.
-        disabled={submitting || (categoryRequired && !categoryId)}
+        disabled={submitting || uploading || (categoryRequired && !categoryId)}
       >
-        {submitting ? 'Registrando…' : 'Registrar'}
+        {submitting ? 'Salvando…' : isEditing ? 'Salvar alterações' : 'Registrar'}
       </Button>
     </form>
   )

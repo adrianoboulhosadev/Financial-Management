@@ -25,6 +25,7 @@ export function useTransactions() {
   const [filter, setFilter] = useState<TransactionFilterValue>('all')
   const [pendingDeletion, setPendingDeletion] = useState<TransactionDTO | null>(null)
   const [composing, setComposing] = useState(false)
+  const [editing, setEditing] = useState<TransactionDTO | null>(null)
   const { pathOf } = useCategories()
   const { bankNameOf, cardLabelOf } = useBanks()
 
@@ -41,11 +42,23 @@ export function useTransactions() {
     period,
     setPeriod,
     days,
-    /** Whether the compose sheet is up. Screen state, so it stays here and out
-     * of the shared data hook. */
+    /** Whether the sheet is up, and on WHAT. One sheet serves both: recording a
+     * new movement is editing nothing, which is why `editing` is null rather
+     * than a second flag that could disagree with this one. */
     composing,
-    openComposer: () => setComposing(true),
-    closeComposer: () => setComposing(false),
+    editing,
+    openComposer: () => {
+      setEditing(null)
+      setComposing(true)
+    },
+    openEditor: (transaction: TransactionDTO) => {
+      setEditing(transaction)
+      setComposing(true)
+    },
+    closeComposer: () => {
+      setComposing(false)
+      setEditing(null)
+    },
     filter,
     setFilter,
     transactions: data.transactions,
@@ -54,7 +67,12 @@ export function useTransactions() {
       data.record(input)
       setComposing(false)
     },
-    recording: data.recording,
+    update: (input: Parameters<typeof data.update>[0]) => {
+      data.update(input)
+      setComposing(false)
+      setEditing(null)
+    },
+    saving: data.recording || data.updating,
     pendingDeletion,
     askToDelete: setPendingDeletion,
     cancelDeletion: () => setPendingDeletion(null),
