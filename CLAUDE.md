@@ -958,6 +958,21 @@ do web.
 - **Verificação**: `npm run build` do mobile é `expo export --platform android`, ou seja **bundla de
   verdade com o Metro**. É o que prova que os packages do monorepo entram no app; um erro de
   resolução aparece aí, não no `check-types`.
+  ⚠️ Isso **NÃO é um APK** — é só o bundle JS. Instalável de verdade sai do `eas.json` (abaixo).
+- **APK pra instalar no aparelho**: `eas build -p android --profile preview` (perfil `preview` é
+  `buildType: "apk"`; o `production` é `app-bundle`, que a Play Store aceita e um celular não
+  instala direto).
+  - ⚠️ **A URL da API é assada no build**, como o `NEXT_PUBLIC_API_URL` do web. Ela vive no `env` de
+    cada perfil do `eas.json` porque o build roda na NUVEM e `.env` é gitignored — não chega lá.
+    Sem isso o app cai no default `http://localhost:5000`, que no aparelho é o PRÓPRIO TELEFONE, e
+    nada funciona.
+  - Pra rodar local (`npx expo prebuild -p android && cd android && ./gradlew assembleRelease`)
+    quem manda é o `apps/mobile/.env`, que o Expo CLI lê sozinho. Precisa de JDK 17 + Android SDK.
+  - **`/android` e `/ios` são gitignored**: este é um projeto CNG, então as pastas nativas são
+    SAÍDA do `prebuild`, não fonte. Commitá-las congelaria o lado nativo contra o `app.json` e o
+    prebuild seguinte discordaria delas em silêncio.
+  - ⚠️ O `app.json` **não define `icon` nem `splash`**, então o APK sai com o ícone padrão do Expo —
+    o "F" gerado do PWA é rota do Next e não serve aqui. Precisa de PNG de verdade em `assets/`.
 
 ## Testes
 
