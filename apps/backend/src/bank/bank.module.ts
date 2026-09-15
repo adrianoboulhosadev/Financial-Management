@@ -8,6 +8,7 @@ import { BankController } from './bank.controller'
 import { PrismaBankRepository } from './prisma-bank-repository'
 import { PrismaCardRepository } from './prisma-card-repository'
 import { BankUsageResolver } from './bank-usage.resolver'
+import { CardChargeResolver } from './card-charge.resolver'
 import { PaymentSourceResolver } from './payment-source.resolver'
 
 /** Imports the two modules whose repositories answer "is this bank still in
@@ -24,6 +25,7 @@ import { PaymentSourceResolver } from './payment-source.resolver'
     PrismaBankRepository,
     PrismaCardRepository,
     BankUsageResolver,
+    CardChargeResolver,
     PaymentSourceResolver,
   ],
   exports: [PrismaBankRepository, PrismaCardRepository, PaymentSourceResolver],

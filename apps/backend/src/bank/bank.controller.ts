@@ -3,6 +3,7 @@ import {
   BankFacade,
   BankDTO,
   CardDTO,
+  CardInvoicesDTO,
   CreateBankInput,
   UpdateBankInput,
   CreateCardInput,
@@ -12,6 +13,7 @@ import { UserDTO } from '@auth/adapters'
 import { PrismaBankRepository } from './prisma-bank-repository'
 import { PrismaCardRepository } from './prisma-card-repository'
 import { BankUsageResolver } from './bank-usage.resolver'
+import { CardChargeResolver } from './card-charge.resolver'
 import { authenticatedUser } from '../shared/authenticated-user.decorator'
 import { requireFields } from '../shared/require-fields'
 
@@ -31,6 +33,7 @@ export class BankController {
     private readonly bankRepository: PrismaBankRepository,
     private readonly cardRepository: PrismaCardRepository,
     private readonly usage: BankUsageResolver,
+    private readonly charges: CardChargeResolver,
   ) {}
 
   private facade(): BankFacade {
@@ -40,6 +43,20 @@ export class BankController {
       this.cardRepository,
       this.cardRepository,
     )
+  }
+
+  /**
+   * The invoices of every credit card the caller owns. Declared BEFORE `/:id`
+   * for the same reason the card routes are: a literal segment loses to a
+   * parameter that was registered first.
+   *
+   * Composed here, in the app layer: the cards come from `bank` and the charges
+   * from `transaction`, and they meet as plain data rather than as an import
+   * between two contexts.
+   */
+  @Get('card/invoice')
+  async cardInvoices(@authenticatedUser() user: UserDTO): Promise<CardInvoicesDTO[]> {
+    return this.facade().listMyCardInvoices(user.id, await this.charges.listByOwner(user.id))
   }
 
   @Get('card')

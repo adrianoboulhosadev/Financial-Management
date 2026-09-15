@@ -16,6 +16,9 @@ interface CardRow {
   brand: string
   kind: string
   lastFourDigits: string
+  closingDay: number | null
+  dueDay: number | null
+  limitCents: number | null
 }
 
 @Injectable()
@@ -30,6 +33,9 @@ export class PrismaCardRepository implements CardRepository, CardQueryRepository
       brand: row.brand,
       kind: row.kind,
       lastFourDigits: row.lastFourDigits,
+      closingDay: row.closingDay,
+      dueDay: row.dueDay,
+      limitCents: row.limitCents,
     })
   }
 
@@ -47,6 +53,9 @@ export class PrismaCardRepository implements CardRepository, CardQueryRepository
         brand: card.brand,
         kind: card.kind,
         lastFourDigits: card.lastFourDigits,
+        closingDay: card.schedule?.closingDay ?? null,
+        dueDay: card.schedule?.dueDay ?? null,
+        limitCents: card.limit?.cents ?? null,
       },
     })
   }
@@ -54,7 +63,16 @@ export class PrismaCardRepository implements CardRepository, CardQueryRepository
   async update(card: Card): Promise<void> {
     await this.prisma.card.update({
       where: { id: card.id.value },
-      data: { brand: card.brand, kind: card.kind, lastFourDigits: card.lastFourDigits },
+      data: {
+        brand: card.brand,
+        kind: card.kind,
+        lastFourDigits: card.lastFourDigits,
+        // Read off the value objects, so a cleared calendar reaches the row as
+        // null instead of being silently left behind.
+        closingDay: card.schedule?.closingDay ?? null,
+        dueDay: card.schedule?.dueDay ?? null,
+        limitCents: card.limit?.cents ?? null,
+      },
     })
   }
 
