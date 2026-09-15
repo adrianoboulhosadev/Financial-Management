@@ -33,3 +33,39 @@ export function uploadReceipt(body: FormData): Promise<string> {
 export function uploadAvatar(body: FormData): Promise<string> {
   return upload('/upload/avatars', body)
 }
+
+/**
+ * Drops an upload the form never got round to saving.
+ *
+ * The file goes up BEFORE the record is submitted, so closing a sheet without
+ * saving — or swapping one receipt for another — used to leave the first file
+ * on disk forever, with no row naming it and no way to find it again.
+ *
+ * It NEVER throws. A cleanup that failed is a file left on disk, which is
+ * exactly where it already was; surfacing that to someone who is closing a
+ * sheet would report a problem they have no part in and cannot act on. The
+ * backend refuses anyway once a record points at the file, so a mistimed call
+ * cannot take a receipt out from under a movement.
+ */
+async function discard(theme: 'receipts' | 'avatars', url: string): Promise<void> {
+  // The stored URL is `/uploads/<theme>/<uuid.ext>`; the route is keyed on the
+  // file name alone.
+  const filename = url.split('/').pop()
+  if (!filename) return
+
+  try {
+    await api().delete(`/upload/${theme}/${filename}`)
+  } catch {
+    // Deliberately silent — see above.
+  }
+}
+
+/** Drops a receipt that was uploaded and then discarded before saving. */
+export function discardReceipt(url: string): Promise<void> {
+  return discard('receipts', url)
+}
+
+/** Drops a profile photo that was uploaded and then discarded before saving. */
+export function discardAvatar(url: string): Promise<void> {
+  return discard('avatars', url)
+}

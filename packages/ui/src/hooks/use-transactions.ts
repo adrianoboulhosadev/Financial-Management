@@ -37,6 +37,11 @@ export function useTransactions({ period, type }: Options) {
     queryClient.invalidateQueries({ queryKey: ['transactions'] })
     queryClient.invalidateQueries({ queryKey: ['report'] })
     queryClient.invalidateQueries({ queryKey: ['budgets'] })
+    // A purchase on credit is exactly what changes an invoice, so both card
+    // views have to be re-read — otherwise the bill on screen is the one from
+    // before the expense that just went on it.
+    queryClient.invalidateQueries({ queryKey: ['card-invoices'] })
+    queryClient.invalidateQueries({ queryKey: ['payable-invoices'] })
   }
 
   const record = useMutation({
