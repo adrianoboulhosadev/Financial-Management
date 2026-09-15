@@ -827,13 +827,20 @@ telefone renderiza via `react-native-svg`, e nenhum dos dois embarca um pacote d
   No telefone o comprovante é **câmera ou galeria** (`expo-image-picker`), sem seletor de documento:
   ali um comprovante é uma FOTO da nota em praticamente todo caso. PDF é caminho do **web**, que é
   onde o banco entrega PDF.
-  O arquivo enviado e depois descartado é **apagado pelo front** via `discardReceipt`/`discardAvatar`
-  do `ui`: o formulário guarda num **ref** a URL que ELE subiu e ainda não salvou, e joga fora ao
-  trocar de anexo, ao remover, ao fechar a sheet e ao trocar de lançamento. O ref é limpo **no
-  submit**, mesmo que a gravação falhe depois — quem vai tentar de novo é o dono, e apagar o
-  comprovante embaixo dele seria pior que deixar arquivo no disco. O avatar é o caso espelhado:
-  sobra exatamente um dos dois arquivos, o **antigo** quando o novo é salvo e o **novo** quando o
-  save falha, e é esse que cai.
+  **A limpeza do órfão tem dois lados, e a divisão é por quem SABE.**
+  - O **front** só apaga o que ELE subiu e nunca salvou (`discardReceipt`/`discardAvatar` do `ui`):
+    o formulário guarda a URL num **ref** e joga fora ao trocar de anexo, ao remover, ao fechar a
+    sheet e ao trocar de lançamento. O ref é limpo **no submit**, mesmo que a gravação falhe depois
+    — quem vai tentar de novo é o dono, e apagar o comprovante embaixo dele seria pior que deixar
+    arquivo no disco. No avatar o front cobre só o caso de **falha no save**.
+  - O **backend** apaga o que a LINHA soltou (`OrphanUploadResolver.removeByUrl`), porque o momento
+    em que um registro para de apontar pra um arquivo só existe lá: excluir um lançamento, trocar ou
+    limpar o comprovante dele, e trocar a foto de perfil. A URL antiga é lida **antes** da escrita
+    (depois a linha já não a nomeia) e a varredura roda **depois** — o resolver recusa arquivo que
+    alguém ainda aponta, então rodar antes não faria nada. É best-effort e engole erro: a escrita já
+    deu certo, e falhar a requisição por causa de um arquivo sobrando não desfaria nada.
+  ⚠️ **Ainda sobra o caso que ninguém consegue pegar**: subir o comprovante e a aba morrer antes do
+  descarte. Não há varredura periódica — se um dia incomodar, é aí que ela entra.
 - **`PaymentFields` é um bloco só, usado pelo formulário de lançamento E pelo de fixo**, porque os
   dois respondem exatamente a mesma pergunta (por onde o dinheiro passou e como). O que aparece
   **segue o método**: cartão só quando se está usando um, parcelas só no crédito, e os cartões
