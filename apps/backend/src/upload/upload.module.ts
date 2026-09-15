@@ -14,6 +14,9 @@ import { OrphanUploadResolver } from './orphan-upload.resolver'
   imports: [DbModule, AuthModule],
   controllers: [UploadReceiptController, UploadAvatarController],
   providers: [OrphanUploadResolver],
+  // Exported because the modules that WRITE the records are the ones that know
+  // when a row stops pointing at a file — see OrphanUploadResolver.removeByUrl.
+  exports: [OrphanUploadResolver],
 })
 export class UploadModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

@@ -11,9 +11,10 @@ import { PrismaRecurrencePaymentRepository } from './prisma-recurrence-payment-r
 import { BullMqRecurrenceQueue } from './bullmq-recurrence-queue'
 import { BullMqBudgetCheckQueue } from '../budget/bullmq-budget-check-queue'
 import { BankModule } from '../bank/bank.module'
+import { UploadModule } from '../upload/upload.module'
 
 @Module({
-  imports: [DbModule, AuthModule, CategoryModule, forwardRef(() => BankModule)],
+  imports: [DbModule, AuthModule, CategoryModule, forwardRef(() => BankModule), UploadModule],
   controllers: [TransactionController, RecurrenceController],
   providers: [
     PrismaTransactionRepository,

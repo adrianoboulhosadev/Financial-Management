@@ -13,6 +13,7 @@ import { PrismaCategoryRepository } from '../category/prisma-category-repository
 import { BullMqBudgetCheckQueue } from '../budget/bullmq-budget-check-queue'
 import { CategoryResolver } from './category-resolver'
 import { PaymentSourceResolver } from '../bank/payment-source.resolver'
+import { OrphanUploadResolver } from '../upload/orphan-upload.resolver'
 import { authenticatedUser } from '../shared/authenticated-user.decorator'
 import { requireFields } from '../shared/require-fields'
 
@@ -27,6 +28,11 @@ import { requireFields } from '../shared/require-fields'
  * - confirming the bank/card the money went through is this user's too;
  * - enqueueing the budget check after an expense, so the ceiling is re-evaluated
  *   without slowing down (or endangering) the write itself.
+ *
+ * It also sweeps up the RECEIPT a row stops pointing at. That has to happen
+ * here and not in the form: the client can throw away what it uploaded and
+ * never saved, but only the server knows the file the row was carrying before
+ * the write — and only after the write has landed.
  */
 @Controller('transaction')
 export class TransactionController {
@@ -35,6 +41,7 @@ export class TransactionController {
     private readonly categoryRepository: PrismaCategoryRepository,
     private readonly budgetCheckQueue: BullMqBudgetCheckQueue,
     private readonly paymentSources: PaymentSourceResolver,
+    private readonly orphans: OrphanUploadResolver,
   ) {}
 
   private facade(): TransactionFacade {
@@ -97,11 +104,21 @@ export class TransactionController {
   ) {
     await this.categories().ensureOwned(input.categoryId, user.id)
     await this.paymentSources.ensureOwned(user.id, input.bankId, input.cardId)
+
+    // Read BEFORE the write: afterwards the row no longer names the receipt it
+    // is about to release, and the file would be unreachable forever.
+    const previousAttachment = (await this.transactionRepository.findByIdQuery(id))?.attachmentUrl
     await this.facade().updateTransaction(id, input, user.id)
 
     // An edit moves money around just as much as a new entry does — a raised
     // amount can be exactly what breaks the ceiling.
     const updated = await this.transactionRepository.findByIdQuery(id)
+
+    // Swapped for another receipt, or cleared: the old file is nobody's now.
+    if (previousAttachment && previousAttachment !== updated?.attachmentUrl) {
+      await this.orphans.removeByUrl(previousAttachment)
+    }
+
     if (updated) {
       await this.checkBudget(
         user.id,
@@ -115,9 +132,17 @@ export class TransactionController {
   @Delete(':id')
   @HttpCode(204)
   async remove(@Param('id') id: string, @authenticatedUser() user: UserDTO) {
+    // Read BEFORE the delete: the row is the only thing that knows where its
+    // receipt lives, and in a moment it will be gone.
+    const attachmentUrl = (await this.transactionRepository.findByIdQuery(id))?.attachmentUrl
+
     // No budget check on the way out: deleting an expense only ever moves the
     // month further AWAY from its ceiling, and there is no good news to notify.
     await this.facade().deleteTransaction(id, user.id)
+
+    // Only after the row is gone — the resolver refuses a file anything still
+    // points at, so running it earlier would correctly do nothing.
+    await this.orphans.removeByUrl(attachmentUrl)
   }
 
   /** Only an expense filed on a category can cross a ceiling. */

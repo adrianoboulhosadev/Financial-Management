@@ -3,10 +3,11 @@ import { DbModule } from '../db/db.module'
 import { AuthModule } from '../auth/auth.module'
 import { AuthMiddleware } from '../auth/auth.middleware'
 import { NotificationStoreModule } from '../notification/notification-store.module'
+import { UploadModule } from '../upload/upload.module'
 import { UserController } from './user.controller'
 
 @Module({
-  imports: [DbModule, AuthModule, NotificationStoreModule],
+  imports: [DbModule, AuthModule, NotificationStoreModule, UploadModule],
   controllers: [UserController],
 })
 export class UserModule implements NestModule {

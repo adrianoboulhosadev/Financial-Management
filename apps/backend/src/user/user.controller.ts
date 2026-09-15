@@ -4,6 +4,7 @@ import { ChangePasswordInput, UpdateProfileInput, UserDTO, UserFacade } from '@a
 import { PrismaUserRepository } from '../auth/prisma-user-repository'
 import { PrismaAuthSessionRepository } from '../auth/prisma-auth-session-repository'
 import { BcryptHashProvider } from '../auth/bcrypt-hash-provider'
+import { OrphanUploadResolver } from '../upload/orphan-upload.resolver'
 import { authenticatedUser } from '../shared/authenticated-user.decorator'
 
 // Routes protected by the AuthMiddleware (see user.module). The userId ALWAYS
@@ -14,6 +15,7 @@ export class UserController {
     private readonly userRepository: PrismaUserRepository,
     private readonly sessionRepository: PrismaAuthSessionRepository,
     private readonly hashProvider: BcryptHashProvider,
+    private readonly orphans: OrphanUploadResolver,
   ) {}
 
   // Optional ports: each method uses only what it needs (change-password, logout, deactivate).
@@ -51,7 +53,17 @@ export class UserController {
   @Patch('me')
   @HttpCode(204)
   async updateProfile(@Body() input: UpdateProfileInput, @authenticatedUser() user: UserDTO) {
+    // The middleware already read the user fresh, so the photo being replaced
+    // is in hand without a second query.
+    const previousAvatar = user.avatarUrl
     await this.facade().updateProfile(input, user.id)
+
+    // Only the server knows the moment the profile releases a photo, so the
+    // old file is swept up HERE rather than by whoever happened to upload the
+    // new one. No-op when the avatar was not part of this edit.
+    if (input.avatarUrl !== undefined && previousAvatar && previousAvatar !== input.avatarUrl) {
+      await this.orphans.removeByUrl(previousAvatar)
+    }
   }
 
   @Patch('change-password')
