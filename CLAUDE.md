@@ -731,6 +731,27 @@ telefone renderiza via `react-native-svg`, e nenhum dos dois embarca um pacote d
 - **O `CategoryPicker` oferece a árvore INTEIRA**, cada nó rotulado pelo caminho completo
   ("casa / contas / luz"). Galho e folha valem igual — quão fundo arquivar é decisão do dono, e o
   backend aceita os dois.
+- **O formulário de lançamento serve CRIAR e EDITAR**, porque as perguntas são as mesmas. O que
+  muda é o que o DOMÍNIO aceita: `UpdateTransaction` não recebe `type` nem parcelamento (despesa não
+  vira receita, e 6x virando 3x é outro conjunto de linhas, não outro valor numa). Na edição esses
+  dois aparecem **fixos** em vez de serem oferecidos e depois recusados — o chip do tipo fica
+  desabilitado mas ainda pintado como a escolha atual, porque ali ele está **informando**, não
+  desabilitando uma opção.
+  ⚠️ O efeito que pré-preenche o formulário é chaveado no **ID** da linha, nunca no objeto `editing`
+  nem no `form`: rodar de novo no meio da digitação apagaria o que a pessoa escreveu, então o
+  gatilho tem que ser "é OUTRO lançamento" e nada mais.
+- **O comprovante sobe ANTES do submit** e só a URL viaja com o formulário — esperar o envio
+  significaria um corpo de 10 MB a cada salvamento e nenhuma forma de mostrar o que foi anexado
+  antes de salvar. O `uploadReceipt`/`uploadAvatar` do `ui` guardam a requisição (rota, auth, shape
+  da resposta); quem monta o `FormData` é cada app, porque o browser anexa um `File` de verdade e o
+  React Native anexa `{ uri, name, type }`, que não é File nenhum mas é o que o fetch dele entende.
+  **O Content-Type fica sem ser setado de propósito**: multipart só é parseável com o `boundary`
+  que só o runtime conhece, e escrever `'multipart/form-data'` na mão omite o boundary e o servidor
+  responde 400 numa requisição que parecia certa.
+  No telefone o comprovante é **câmera ou galeria** (`expo-image-picker`), sem seletor de documento:
+  ali um comprovante é uma FOTO da nota em praticamente todo caso. PDF é caminho do **web**, que é
+  onde o banco entrega PDF. ⚠️ O arquivo enviado e depois descartado (fechar a sheet sem salvar,
+  remover o anexo) **fica órfão no disco** — não há rota de exclusão de upload nem coleta.
 - **`PaymentFields` é um bloco só, usado pelo formulário de lançamento E pelo de fixo**, porque os
   dois respondem exatamente a mesma pergunta (por onde o dinheiro passou e como). O que aparece
   **segue o método**: cartão só quando se está usando um, parcelas só no crédito, e os cartões
@@ -775,9 +796,16 @@ a mesma decisão que o resto do front já toma:
 - **`components/pwa-register`** registra o service worker **só em produção** (em dev o Fast Refresh
   e um SW vivo brigam por quem serve a requisição) e engole o erro — não conseguir instalar não é
   problema que o usuário precise ver.
-- ⚠️ **Service worker exige HTTPS** (exceto em `localhost`). Enquanto o `deploy/nginx.conf` estiver
-  em `listen 80` sem TLS, o app **não instala** — mesma pendência de certbot que o cookie `secure`
-  do refresh já tem.
+- **Service worker exige HTTPS** (exceto em `localhost`), e **produção já tem**: o certbot foi
+  aplicado na VPS, então o app instala e o cookie `secure` do refresh (que é
+  `NODE_ENV === 'production'`, não depende do nginx) sai seguro de verdade.
+  ⚠️ O `deploy/nginx.conf` **versionado ainda é o de antes do TLS** (`listen 80` sozinho), e isso é
+  esperado: quem manda em produção é o arquivo que o `certbot --nginx` reescreveu em
+  `/etc/nginx/sites-available/`, com o bloco 443 e o 80 só redirecionando. O `cp` do cabeçalho
+  daquele arquivo **sobrescreve o trabalho do certbot** — depois de copiar, rode o certbot de novo
+  (escolhendo REINSTALAR o certificado, não renovar: renovar à toa gasta cota do Let's Encrypt).
+  E o bloco `listen 80` precisa continuar existindo mesmo com TLS: é por ele que a renovação
+  responde o desafio HTTP-01.
 
 ## apps/mobile (Expo + Expo Router + NativeWind)
 
