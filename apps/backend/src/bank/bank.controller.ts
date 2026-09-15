@@ -1,17 +1,20 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post } from '@nestjs/common'
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common'
 import {
   BankFacade,
   BankDTO,
   CardDTO,
   CardInvoicesDTO,
+  PayableInvoiceDTO,
   CreateBankInput,
   UpdateBankInput,
   CreateCardInput,
   UpdateCardInput,
 } from '@bank/adapters'
 import { UserDTO } from '@auth/adapters'
+import { MonthPeriod } from 'shared'
 import { PrismaBankRepository } from './prisma-bank-repository'
 import { PrismaCardRepository } from './prisma-card-repository'
+import { PrismaCardInvoicePaymentRepository } from './prisma-card-invoice-payment-repository'
 import { BankUsageResolver } from './bank-usage.resolver'
 import { CardChargeResolver } from './card-charge.resolver'
 import { authenticatedUser } from '../shared/authenticated-user.decorator'
@@ -34,6 +37,7 @@ export class BankController {
     private readonly cardRepository: PrismaCardRepository,
     private readonly usage: BankUsageResolver,
     private readonly charges: CardChargeResolver,
+    private readonly invoicePaymentRepository: PrismaCardInvoicePaymentRepository,
   ) {}
 
   private facade(): BankFacade {
@@ -42,6 +46,7 @@ export class BankController {
       this.bankRepository,
       this.cardRepository,
       this.cardRepository,
+      this.invoicePaymentRepository,
     )
   }
 
@@ -57,6 +62,41 @@ export class BankController {
   @Get('card/invoice')
   async cardInvoices(@authenticatedUser() user: UserDTO): Promise<CardInvoicesDTO[]> {
     return this.facade().listMyCardInvoices(user.id, await this.charges.listByOwner(user.id))
+  }
+
+  /**
+   * The invoices this month has to SETTLE — one line per credit card, for the
+   * "A pagar" screen.
+   *
+   * An invoice is never an expense: every charge on it was already recorded as
+   * a movement on the day it was made, so the screen keeps it in a section of
+   * its own and out of the month's totals. Counting it again would count the
+   * same money twice.
+   */
+  @Get('card/invoice/payable')
+  async payableInvoices(
+    @authenticatedUser() user: UserDTO,
+    @Query('period') period?: string,
+  ): Promise<PayableInvoiceDTO[]> {
+    const month = MonthPeriod.readableBy(period, user.createdAt)
+    return this.facade().listMyPayableInvoices(
+      user.id,
+      month.value,
+      await this.charges.listByOwnerForPeriod(user.id, month),
+    )
+  }
+
+  /** Ticks one invoice off the month's list, or un-ticks it. The period is the
+   * month the invoice CLOSES in — its identity. */
+  @Post('card/:id/invoice/paid')
+  @HttpCode(204)
+  async setInvoicePaid(
+    @Param('id') id: string,
+    @Body() input: { period?: string; paid?: boolean },
+    @authenticatedUser() user: UserDTO,
+  ) {
+    requireFields(input, ['period'])
+    await this.facade().setInvoicePaid(id, input.period as string, input.paid !== false, user.id)
   }
 
   @Get('card')

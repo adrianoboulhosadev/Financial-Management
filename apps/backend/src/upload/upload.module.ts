@@ -4,6 +4,7 @@ import { AuthModule } from '../auth/auth.module'
 import { AuthMiddleware } from '../auth/auth.middleware'
 import { UploadReceiptController } from './upload-receipt.controller'
 import { UploadAvatarController } from './upload-avatar.controller'
+import { OrphanUploadResolver } from './orphan-upload.resolver'
 
 /**
  * Both uploads here are SELF-SERVICE: the authenticated user sends their own
@@ -12,6 +13,7 @@ import { UploadAvatarController } from './upload-avatar.controller'
 @Module({
   imports: [DbModule, AuthModule],
   controllers: [UploadReceiptController, UploadAvatarController],
+  providers: [OrphanUploadResolver],
 })
 export class UploadModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

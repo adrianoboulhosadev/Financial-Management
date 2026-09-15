@@ -7,6 +7,7 @@ import { InvestmentModule } from '../investment/investment.module'
 import { BankController } from './bank.controller'
 import { PrismaBankRepository } from './prisma-bank-repository'
 import { PrismaCardRepository } from './prisma-card-repository'
+import { PrismaCardInvoicePaymentRepository } from './prisma-card-invoice-payment-repository'
 import { BankUsageResolver } from './bank-usage.resolver'
 import { CardChargeResolver } from './card-charge.resolver'
 import { PaymentSourceResolver } from './payment-source.resolver'
@@ -24,6 +25,7 @@ import { PaymentSourceResolver } from './payment-source.resolver'
   providers: [
     PrismaBankRepository,
     PrismaCardRepository,
+    PrismaCardInvoicePaymentRepository,
     BankUsageResolver,
     CardChargeResolver,
     PaymentSourceResolver,

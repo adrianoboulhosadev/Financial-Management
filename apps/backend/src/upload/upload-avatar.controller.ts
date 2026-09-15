@@ -1,6 +1,9 @@
 import {
   BadRequestException,
   Controller,
+  Delete,
+  HttpCode,
+  Param,
   Post,
   UploadedFile,
   UseInterceptors,
@@ -10,6 +13,7 @@ import { diskStorage } from 'multer'
 import { extname } from 'path'
 import { randomUUID } from 'crypto'
 import { AVATARS_UPLOAD_DIR } from './uploads.config'
+import { OrphanUploadResolver } from './orphan-upload.resolver'
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024 // 5 MB
 
@@ -18,6 +22,8 @@ const MAX_AVATAR_BYTES = 5 * 1024 * 1024 // 5 MB
 // upload. The public URL is saved on User.avatarUrl via PATCH /user/me.
 @Controller('upload')
 export class UploadAvatarController {
+  constructor(private readonly orphans: OrphanUploadResolver) {}
+
   @Post('avatars')
   @UseInterceptors(
     FileInterceptor('file', {
@@ -38,5 +44,14 @@ export class UploadAvatarController {
   uploadAvatar(@UploadedFile() file?: Express.Multer.File): { url: string } {
     if (!file) throw new BadRequestException('No avatar uploaded')
     return { url: `/uploads/avatars/${file.filename}` }
+  }
+
+  /** Drops a photo nothing points at — the one that went up and was then
+   * replaced or abandoned before PATCH /user/me saved it. One already on a
+   * profile answers as missing. */
+  @Delete('avatars/:filename')
+  @HttpCode(204)
+  async removeAvatar(@Param('filename') filename: string) {
+    await this.orphans.remove(AVATARS_UPLOAD_DIR, filename, `/uploads/avatars/${filename}`)
   }
 }

@@ -24,18 +24,34 @@ export class CardChargeResolver {
   constructor(private readonly transactionRepository: PrismaTransactionRepository) {}
 
   async listByOwner(ownerId: string): Promise<CardCharge[]> {
+    // From the start of last month: whatever day a card closes on, the invoice
+    // still taking charges cannot have opened earlier than that. The window has
+    // NO upper bound on purpose — an instalment due next March is already
+    // holding the limit down, and cutting it off at today would report a card
+    // as free when it is not.
+    return this.read(ownerId, { from: MonthPeriod.of().previous().start })
+  }
+
+  /**
+   * The charges an invoice DUE in `period` could contain.
+   *
+   * Two months back, because a card whose due day precedes its closing day pays
+   * the invoice that closed the month before, and that invoice started
+   * collecting the month before THAT. The top is the end of the period asked
+   * about: anything bought later is on an invoice this month does not pay.
+   */
+  async listByOwnerForPeriod(ownerId: string, period: MonthPeriod): Promise<CardCharge[]> {
+    return this.read(ownerId, {
+      from: period.previous().previous().start,
+      to: period.end,
+    })
+  }
+
+  private async read(ownerId: string, window: { from: Date; to?: Date }): Promise<CardCharge[]> {
     const movements = await new TransactionFacade(
       undefined,
       this.transactionRepository,
-    ).listMyTransactions(ownerId, {
-      // From the start of last month: whatever day a card closes on, the
-      // invoice still taking charges cannot have opened earlier than that. The
-      // window has NO upper bound on purpose — an instalment due next March is
-      // already holding the limit down, and cutting it off at today would
-      // report a card as free when it is not.
-      from: MonthPeriod.of().previous().start,
-      type: 'expense',
-    })
+    ).listMyTransactions(ownerId, { ...window, type: 'expense' })
 
     return movements
       .filter((movement) => movement.cardId !== null && movement.paymentMethod === 'credit')
