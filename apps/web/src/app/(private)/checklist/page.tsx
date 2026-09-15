@@ -141,10 +141,10 @@ export default function ChecklistPage() {
       <div className="px-5 pb-8 pt-4">
         {page.loading ? (
           <Loading compact />
-        ) : page.items.length === 0 ? (
+        ) : page.empty ? (
           <EmptyState
-            title="Nenhum fixo neste mês"
-            description="Cadastre o que se repete todo mês e ele aparece aqui para você marcar conforme paga."
+            title="Nada a pagar neste mês"
+            description="Cadastre o que se repete todo mês — e os cartões de crédito com dia de fechamento — e tudo aparece aqui para você marcar conforme paga."
             action={
               <Link href="/recurrences" className="text-[11.5px] text-accent-300 hover:underline">
                 Cadastrar fixo
@@ -153,9 +153,65 @@ export default function ChecklistPage() {
           />
         ) : (
           <>
+            {/* The invoices come FIRST: they are usually the biggest bill of
+                the month and the one with the hardest deadline. They are a
+                section of their own, and out of the totals above, because an
+                invoice is a bill to settle and not a cost — every charge on it
+                was already counted on the day it was made. */}
+            {page.invoices.length > 0 && (
+              <section>
+                <Kicker className="pb-1">Faturas</Kicker>
+                {page.invoices.map((invoice, index) => (
+                  <ListRow
+                    key={`${invoice.cardId}-${invoice.period}`}
+                    last={index === page.invoices.length - 1}
+                  >
+                    <Checkbox
+                      checked={invoice.paid}
+                      onChange={(event) =>
+                        page.setInvoicePaid(invoice.cardId, invoice.period, event.target.checked)
+                      }
+                      aria-label={`Marcar ${page.invoiceLabelOf(invoice.cardId)} como paga`}
+                      className="flex-none"
+                    />
+
+                    <div className="min-w-0 flex-1">
+                      <p
+                        className={`truncate text-[13px] ${
+                          invoice.paid ? 'text-neutral-400 line-through decoration-neutral-700' : ''
+                        }`}
+                      >
+                        {page.invoiceLabelOf(invoice.cardId)}
+                      </p>
+                      <p
+                        className={`mt-0.5 truncate text-[11px] ${
+                          invoice.closed ? 'text-neutral-600' : 'text-warning'
+                        }`}
+                      >
+                        {page.invoiceCaptionOf(invoice)}
+                      </p>
+                    </div>
+
+                    <Amount
+                      cents={invoice.amountCents}
+                      tone={invoice.paid ? 'muted' : 'neutral'}
+                      className={`flex-none text-[13px] ${invoice.paid ? '' : 'text-neutral-400'}`}
+                    />
+                  </ListRow>
+                ))}
+
+                <p className="pt-2 text-[10.5px] leading-[1.5] text-neutral-700">
+                  As compras destas faturas já entraram no gasto do mês em que foram feitas, então
+                  elas não somam no total dos fixos acima.
+                </p>
+              </section>
+            )}
+
             {page.open.length > 0 && (
               <section>
-                <Kicker className="pb-1">Em aberto</Kicker>
+                <Kicker className={`pb-1 ${page.invoices.length > 0 ? 'pt-[18px]' : ''}`}>
+                  Em aberto
+                </Kicker>
                 {page.open.map((item, index) => row(item, index === page.open.length - 1))}
               </section>
             )}

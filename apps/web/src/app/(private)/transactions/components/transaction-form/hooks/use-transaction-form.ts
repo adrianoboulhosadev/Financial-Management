@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import type {
   RecordTransactionInput,
@@ -8,7 +8,7 @@ import type {
   TransactionType,
   UpdateTransactionInput,
 } from '@transaction/adapters'
-import { toCents, toDateInputValue, uploadReceipt } from 'ui'
+import { discardReceipt, toCents, toDateInputValue, uploadReceipt } from 'ui'
 import { notify } from '@/lib/notify'
 
 interface TransactionFormFields {
@@ -73,6 +73,22 @@ export function useTransactionForm({ onCreate, onUpdate, editing }: Options) {
   const type = form.watch('type')
 
   /**
+   * A receipt uploaded in THIS session that no row points at yet. It is the
+   * only file this form is allowed to throw away — the one already stored on
+   * the movement being edited belongs to the record, not to the form.
+   *
+   * A ref and not state: nothing renders from it, and the cleanup below has to
+   * read the value at the moment it runs rather than the one captured when the
+   * effect was set up.
+   */
+  const pendingUpload = useRef<string | null>(null)
+
+  const discardPending = () => {
+    if (pendingUpload.current) void discardReceipt(pendingUpload.current)
+    pendingUpload.current = null
+  }
+
+  /**
    * Opening on a row fills the form with it; opening on nothing clears it. Both
    * directions matter: without the reset, closing an edit and pressing + would
    * hand the new movement the old one's values.
@@ -111,6 +127,15 @@ export function useTransactionForm({ onCreate, onUpdate, editing }: Options) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editing?.id ?? null])
 
+  /**
+   * Closing the sheet throws away whatever was uploaded and never saved. The
+   * sheet UNMOUNTS its children when it closes, so this cleanup is what runs —
+   * and it runs on switching to another movement too, which is the same
+   * abandoned file by another name.
+   */
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => discardPending, [])
+
   const patchPayment = (fields: Partial<PaymentFormFields>) =>
     setPayment((current) => ({ ...current, ...fields }))
 
@@ -122,7 +147,12 @@ export function useTransactionForm({ onCreate, onUpdate, editing }: Options) {
   const attachReceipt = async (file: File) => {
     setUploading(true)
     try {
-      setAttachmentUrl(await uploadReceipt(receiptBody(file)))
+      // Swapping one receipt for another orphans the first — it goes now,
+      // while its URL is still in hand.
+      discardPending()
+      const url = await uploadReceipt(receiptBody(file))
+      pendingUpload.current = url
+      setAttachmentUrl(url)
     } catch (error) {
       notify.failure(error, 'Não foi possível enviar o comprovante.')
     } finally {
@@ -131,6 +161,12 @@ export function useTransactionForm({ onCreate, onUpdate, editing }: Options) {
   }
 
   const submit = form.handleSubmit((fields) => {
+    // Saved from here on: the row points at the file, so it is no longer this
+    // form's to throw away. Cleared even if the save then fails — the owner is
+    // about to retry, and deleting the receipt under them would be worse than
+    // leaving a file behind.
+    pendingUpload.current = null
+
     if (editing) {
       onUpdate({
         id: editing.id,
@@ -178,7 +214,10 @@ export function useTransactionForm({ onCreate, onUpdate, editing }: Options) {
     setInstallments: (installments: string) => patchPayment({ installments }),
     attachmentUrl,
     attachReceipt,
-    removeReceipt: () => setAttachmentUrl(null),
+    removeReceipt: () => {
+      discardPending()
+      setAttachmentUrl(null)
+    },
     uploading,
     // Only an expense must land on a category — that is the tree's whole point.
     categoryRequired: type === 'expense',

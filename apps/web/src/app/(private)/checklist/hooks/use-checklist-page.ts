@@ -3,7 +3,15 @@
 import { useState } from 'react'
 import type { ChecklistItemDTO } from '@transaction/adapters'
 
-import { caption, formatShortDay, toCents, toPeriod, useCategories, useChecklist } from 'ui'
+import {
+  caption,
+  formatShortDay,
+  toCents,
+  toPeriod,
+  useCategories,
+  useChecklist,
+  usePayableInvoices,
+} from 'ui'
 
 /**
  * The screen's own state — which month, and which bill is having its amount
@@ -16,6 +24,7 @@ export function useChecklistPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draftAmount, setDraftAmount] = useState('')
   const data = useChecklist(period)
+  const invoices = usePayableInvoices(period)
   const { pathOf } = useCategories()
 
   const closeEditor = () => {
@@ -36,11 +45,27 @@ export function useChecklistPage() {
     items: data.items,
     open,
     settled,
+    /**
+     * The month's credit-card invoices, kept in a list of THEIR OWN and never
+     * folded into the fixed bills.
+     *
+     * An invoice is a bill to settle, not a cost: every charge on it was
+     * already recorded as a movement on the day it was made, so adding it to
+     * `totalCents` would count the same money twice and the screen would stop
+     * agreeing with the dashboard.
+     */
+    invoices: invoices.invoices,
+    invoicesPendingCents: invoices.pendingCents,
+    invoiceLabelOf: invoices.labelOf,
+    invoiceCaptionOf: invoices.captionOf,
+    setInvoicePaid: invoices.setPaid,
+    /** Nothing to show at all — neither a fixed bill nor an invoice. */
+    empty: data.items.length === 0 && invoices.invoices.length === 0,
     /** How much of the month is done, as a bar: settled money over the whole,
      * which is a fairer picture than counting lines of wildly different size. */
     settledPercentage:
       data.totalCents > 0 ? Math.round((data.paidCents / data.totalCents) * 100) : 0,
-    loading: data.loading,
+    loading: data.loading || invoices.loading,
     totalCents: data.totalCents,
     paidCents: data.paidCents,
     pendingCents: data.pendingCents,
