@@ -2,7 +2,10 @@
 // app's Prisma repositories reconstitute them via the constructor —
 // `new Bank({...})` — without importing @bank/core. Adapters is the context's
 // only public surface.
-export { Bank, Card } from '@bank/core'
+export { Bank, Card, InvoiceSchedule } from '@bank/core'
 // The kinds table is a VALUE too: the app and the fronts render the options
 // from it instead of re-declaring what the domain already decided.
 export { CARD_KINDS, CARD_BRANDS } from '@bank/core'
+// The invoice maths is a domain service — a VALUE, like every other calculator
+// the app runs without reaching into the core.
+export { InvoiceCalculator } from '@bank/core'

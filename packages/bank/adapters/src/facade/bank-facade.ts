@@ -5,6 +5,8 @@ import {
   CardQueryRepository,
   BankDTO,
   CardDTO,
+  CardCharge,
+  CardInvoicesDTO,
 } from '@bank/core'
 import {
   CreateBankController,
@@ -17,6 +19,7 @@ import {
   DeleteCardController,
   ListMyCardsController,
   FindMyCardController,
+  ListMyCardInvoicesController,
 } from '../controllers'
 import { CreateBankInput, UpdateBankInput, CreateCardInput, UpdateCardInput } from '../@types'
 
@@ -75,5 +78,11 @@ export default class BankFacade {
 
   async findMyCard(cardId: string, ownerId: string): Promise<CardDTO> {
     return new FindMyCardController(this.cardQueryRepository!).execute(cardId, ownerId)
+  }
+
+  /** The charges are handed in by the app, which is the only layer allowed to
+   * read them out of the `transaction` context. */
+  async listMyCardInvoices(ownerId: string, charges: CardCharge[]): Promise<CardInvoicesDTO[]> {
+    return new ListMyCardInvoicesController(this.cardQueryRepository!).execute(ownerId, charges)
   }
 }

@@ -8,6 +8,7 @@ import UpdateCardController from './update-card-controller'
 import DeleteCardController from './delete-card-controller'
 import ListMyCardsController from './list-my-cards-controller'
 import FindMyCardController from './find-my-card-controller'
+import ListMyCardInvoicesController from './list-my-card-invoices-controller'
 
 export {
   CreateBankController,
@@ -20,4 +21,5 @@ export {
   DeleteCardController,
   ListMyCardsController,
   FindMyCardController,
+  ListMyCardInvoicesController,
 }
