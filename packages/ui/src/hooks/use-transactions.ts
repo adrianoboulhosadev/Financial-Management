@@ -1,7 +1,12 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { RecordTransactionInput, TransactionDTO, TransactionType } from '@transaction/adapters'
+import type {
+  RecordTransactionInput,
+  TransactionDTO,
+  TransactionType,
+  UpdateTransactionInput,
+} from '@transaction/adapters'
 import { api } from '../http/api'
 import { errorMessage } from '../http/errors'
 import { clientConfig } from '../config'
@@ -46,6 +51,27 @@ export function useTransactions({ period, type }: Options) {
       notifier.error(errorMessage(error, 'Não foi possível registrar o lançamento.')),
   })
 
+  /**
+   * Fixing a movement already recorded — a wrong figure, the category it should
+   * have landed on, the receipt that only turned up later.
+   *
+   * The TYPE is not here, and neither is the split: the domain does not accept
+   * either (an expense does not become an income, and a 6x turning into a 3x is
+   * a different set of rows, not a different value on one of them). What the
+   * entity refuses, the form simply does not offer.
+   */
+  const update = useMutation({
+    mutationFn: async ({ id, ...input }: UpdateTransactionInput & { id: string }) => {
+      await api().patch(`/transaction/${id}`, input)
+    },
+    onSuccess: () => {
+      notifier.success('Lançamento atualizado.')
+      invalidate()
+    },
+    onError: (error) =>
+      notifier.error(errorMessage(error, 'Não foi possível atualizar o lançamento.')),
+  })
+
   const remove = useMutation({
     mutationFn: async (transactionId: string) => {
       await api().delete(`/transaction/${transactionId}`)
@@ -63,6 +89,8 @@ export function useTransactions({ period, type }: Options) {
     loading: query.isLoading,
     record: record.mutate,
     recording: record.isPending,
+    update: update.mutate,
+    updating: update.isPending,
     remove: remove.mutate,
   }
 }
