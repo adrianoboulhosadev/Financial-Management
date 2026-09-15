@@ -79,6 +79,8 @@ export const Errors = {
   // An invoice calendar and a limit only make sense on a card that settles on
   // credit — a debit card is paid the moment it is used.
   CARD_NOT_CREDIT: 'CARD_NOT_CREDIT',
+  // Ticking an invoice off asks a card that has no invoice to close.
+  CARD_HAS_NO_INVOICE: 'CARD_HAS_NO_INVOICE',
 
   // investment
   INVESTMENT_NOT_FOUND: 'INVESTMENT_NOT_FOUND',
