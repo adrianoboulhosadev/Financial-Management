@@ -322,6 +322,12 @@ model Card {
   brand          String
   kind           String
   lastFourDigits String   @map("last_four_digits")
+  // The invoice calendar and the limit. Nullable, like every column added to a
+  // table that already has rows: a debit card never has them, and the cards
+  // registered before invoices existed stay valid exactly as they are.
+  closingDay     Int?     @map("closing_day")
+  dueDay         Int?     @map("due_day")
+  limitCents     Int?     @map("limit_cents")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
   bank           Bank     @relation(fields: [bankId], references: [id], onDelete: Restrict)
