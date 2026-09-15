@@ -3,6 +3,15 @@ import type {
   BankQueryRepository,
   CardRepository,
   CardQueryRepository,
+  CardInvoicePaymentRepository,
+  CardInvoicePaymentQueryRepository,
 } from '@bank/core'
 
-export type { BankRepository, BankQueryRepository, CardRepository, CardQueryRepository }
+export type {
+  BankRepository,
+  BankQueryRepository,
+  CardRepository,
+  CardQueryRepository,
+  CardInvoicePaymentRepository,
+  CardInvoicePaymentQueryRepository,
+}

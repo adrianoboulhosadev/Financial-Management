@@ -7,6 +7,8 @@ import type {
   CardInvoicesDTO,
   CardLimitStatus,
   CardCharge,
+  PayableInvoiceDTO,
+  CardInvoicePaymentDTO,
 } from '@bank/core'
 
 export type {
@@ -18,4 +20,6 @@ export type {
   CardInvoicesDTO,
   CardLimitStatus,
   CardCharge,
+  PayableInvoiceDTO,
+  CardInvoicePaymentDTO,
 }

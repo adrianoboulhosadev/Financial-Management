@@ -7,6 +7,9 @@ import {
   CardDTO,
   CardCharge,
   CardInvoicesDTO,
+  CardInvoicePaymentRepository,
+  CardInvoicePaymentQueryRepository,
+  PayableInvoiceDTO,
 } from '@bank/core'
 import {
   CreateBankController,
@@ -20,6 +23,8 @@ import {
   ListMyCardsController,
   FindMyCardController,
   ListMyCardInvoicesController,
+  ListMyPayableInvoicesController,
+  SetInvoicePaidController,
 } from '../controllers'
 import { CreateBankInput, UpdateBankInput, CreateCardInput, UpdateCardInput } from '../@types'
 
@@ -35,6 +40,8 @@ export default class BankFacade {
     private readonly bankQueryRepository?: BankQueryRepository,
     private readonly cardRepository?: CardRepository,
     private readonly cardQueryRepository?: CardQueryRepository,
+    private readonly invoicePaymentRepository?: CardInvoicePaymentRepository &
+      CardInvoicePaymentQueryRepository,
   ) {}
 
   async createBank(input: CreateBankInput, ownerId: string): Promise<void> {
@@ -84,5 +91,31 @@ export default class BankFacade {
    * read them out of the `transaction` context. */
   async listMyCardInvoices(ownerId: string, charges: CardCharge[]): Promise<CardInvoicesDTO[]> {
     return new ListMyCardInvoicesController(this.cardQueryRepository!).execute(ownerId, charges)
+  }
+
+  /** The invoices the given month has to settle. */
+  async listMyPayableInvoices(
+    ownerId: string,
+    period: string,
+    charges: CardCharge[],
+  ): Promise<PayableInvoiceDTO[]> {
+    return new ListMyPayableInvoicesController(
+      this.cardQueryRepository!,
+      this.invoicePaymentRepository!,
+    ).execute(ownerId, period, charges)
+  }
+
+  async setInvoicePaid(
+    cardId: string,
+    period: string,
+    paid: boolean,
+    ownerId: string,
+  ): Promise<void> {
+    await new SetInvoicePaidController(this.cardRepository!, this.invoicePaymentRepository!).execute(
+      cardId,
+      period,
+      paid,
+      ownerId,
+    )
   }
 }

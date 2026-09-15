@@ -9,6 +9,8 @@ import DeleteCardController from './delete-card-controller'
 import ListMyCardsController from './list-my-cards-controller'
 import FindMyCardController from './find-my-card-controller'
 import ListMyCardInvoicesController from './list-my-card-invoices-controller'
+import ListMyPayableInvoicesController from './list-my-payable-invoices-controller'
+import SetInvoicePaidController from './set-invoice-paid-controller'
 
 export {
   CreateBankController,
@@ -22,4 +24,6 @@ export {
   ListMyCardsController,
   FindMyCardController,
   ListMyCardInvoicesController,
+  ListMyPayableInvoicesController,
+  SetInvoicePaidController,
 }
