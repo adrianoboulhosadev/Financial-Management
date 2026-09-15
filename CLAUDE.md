@@ -971,8 +971,35 @@ do web.
   - **`/android` e `/ios` são gitignored**: este é um projeto CNG, então as pastas nativas são
     SAÍDA do `prebuild`, não fonte. Commitá-las congelaria o lado nativo contra o `app.json` e o
     prebuild seguinte discordaria delas em silêncio.
-  - ⚠️ O `app.json` **não define `icon` nem `splash`**, então o APK sai com o ícone padrão do Expo —
-    o "F" gerado do PWA é rota do Next e não serve aqui. Precisa de PNG de verdade em `assets/`.
+  - **Assinatura**: o template do Expo assina o RELEASE com a keystore de **debug** e avisa isso num
+    comentário. O plugin `plugins/with-release-signing.js` troca isso por uma keystore de verdade
+    **quando a máquina tem uma** — ele lê `FINANCIAL_RELEASE_STORE_FILE` e as três senhas do
+    `~/.gradle/gradle.properties` do build, então nem o arquivo nem as senhas entram no repo. Sem
+    essas propriedades ele **cai no debug de propósito**: um APK que instala vale mais que um build
+    que se recusa a rodar antes de alguém ter gerado a chave.
+    - É **config plugin** e não edição no `android/app/build.gradle` porque aquela pasta é saída do
+      prebuild: uma edição lá sobrevive exatamente até o próximo.
+    - O plugin **casa âncoras exatas** do template e **lança** se não achar. É de propósito: se o
+      Expo mudar o template, isso falha alto em vez de silenciosamente entregar um APK ainda
+      assinado com a chave de debug.
+    - ⚠️ **Perdeu a keystore, perdeu o app**: o Android recusa atualizar por assinatura diferente, e
+      a saída seria desinstalar (levando junto a sessão guardada no SecureStore).
+  - ⚠️ `usesCleartextTraffic` só existe no manifest de **debug**. Um release apontado pra `http://`
+    (o IP da sua máquina, por exemplo) falha **calado** — em release a API tem que ser HTTPS.
+  - ⚠️ O `app.config.ts` **não define `icon` nem `splash`**, então o APK sai com o ícone padrão do
+    Expo — o "F" gerado do PWA é rota do Next e não serve aqui. Precisa de PNG de verdade em
+    `assets/`.
+- **`app.config.ts`, não `app.json`**: é onde as decisões acima cabem com o motivo escrito junto, o
+  que um JSON não permite.
+  - `backgroundColor` é honrado pelo **expo-system-ui**, que pinta a view raiz NATIVA. Sem ele a
+    janela embaixo do React é branca e o app pisca branco em todo cold start. Declarar
+    `userInterfaceStyle: 'dark'` sem o pacote instalado era no-op — o prebuild avisava e ninguém via.
+  - `edgeToEdgeEnabled` **saiu**: o Android 16 tornou edge-to-edge obrigatório e o Expo removeu o
+    interruptor, avisando a cada prebuild enquanto ele estivesse declarado.
+  - ⚠️ O hex do `backgroundColor` é **a única cor escrita à mão no repo**, e não dá pra importar:
+    `ui` é SOURCE-ONLY e o loader que avalia esse arquivo transpila só ele, não um `.ts` de
+    dependência. O preset do Tailwind escapa porque o loader DELE transpila a cadeia inteira. Se
+    mudar `COLORS.ink.bg`, mude aqui junto.
 
 ## Testes
 
