@@ -14,6 +14,9 @@ interface CardRow {
   brand: CardBrand
   kind: CardKind
   lastFourDigits: string
+  closingDay: number | null
+  dueDay: number | null
+  limitCents: number | null
 }
 
 export default class CardRepositoryInMemory implements CardRepository, CardQueryRepository {
@@ -68,6 +71,9 @@ export default class CardRepositoryInMemory implements CardRepository, CardQuery
       brand: card.brand,
       kind: card.kind,
       lastFourDigits: card.lastFourDigits,
+      closingDay: card.schedule?.closingDay ?? null,
+      dueDay: card.schedule?.dueDay ?? null,
+      limitCents: card.limit?.cents ?? null,
     }
   }
 }

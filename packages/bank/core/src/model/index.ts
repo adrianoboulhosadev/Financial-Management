@@ -1,5 +1,6 @@
 export * from './card-kind'
 export * from './card-brand'
 export * from './bank'
+export * from './invoice-schedule'
 export * from './card'
 export * from './bank-dto'
