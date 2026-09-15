@@ -1,6 +1,6 @@
 'use client'
 
-import type { CreateCardInput } from '@bank/adapters'
+import type { CardDTO, CreateCardInput, UpdateCardInput } from '@bank/adapters'
 import { CARD_BRAND_OPTIONS, CARD_KIND_OPTIONS } from 'ui'
 import { Button } from '@/components/button'
 import { Field } from '@/components/field'
@@ -9,18 +9,25 @@ import { useCardForm } from './hooks/use-card-form'
 
 interface CardFormProps {
   bankId: string
-  onSubmit: (input: CreateCardInput) => void
+  onCreate: (input: CreateCardInput) => void
+  onUpdate: (input: UpdateCardInput & { id: string }) => void
+  /** The card being edited, or null to register a new one. */
+  editing: CardDTO | null
   onCancel: () => void
   submitting: boolean
 }
 
 /**
- * Registering a card under one bank. Brand, kind and four digits — no nickname:
- * "Visa ····1234" is how the card reads on a statement, and asking someone to
- * invent a name for their own card is a field with no answer.
+ * Registering or editing a card under one bank. Brand, kind and four digits —
+ * no nickname: "Visa ····1234" is how the card reads on a statement, and asking
+ * someone to invent a name for their own card is a field with no answer.
+ *
+ * The invoice block only appears on a card that settles on CREDIT, which is the
+ * same rule the entity applies: a debit card has nothing to close and no limit
+ * to spend against, so offering the fields would only get them refused.
  */
-export function CardForm({ bankId, onSubmit, onCancel, submitting }: CardFormProps) {
-  const form = useCardForm(bankId, onSubmit)
+export function CardForm({ bankId, onCreate, onUpdate, editing, onCancel, submitting }: CardFormProps) {
+  const form = useCardForm({ bankId, onCreate, onUpdate, editing })
 
   return (
     <form
@@ -60,11 +67,43 @@ export function CardForm({ bankId, onSubmit, onCancel, submitting }: CardFormPro
           value={form.lastFourDigits}
           onChange={(event) => form.setLastFourDigits(event.target.value)}
         />
+
+        {form.onCredit && (
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <Field
+                label="Fecha dia"
+                inputMode="numeric"
+                placeholder="11"
+                value={form.closingDay}
+                onChange={(event) => form.setClosingDay(event.target.value)}
+              />
+              <Field
+                label="Vence dia"
+                inputMode="numeric"
+                placeholder="18"
+                value={form.dueDay}
+                onChange={(event) => form.setDueDay(event.target.value)}
+              />
+            </div>
+            <Field
+              label="Limite (opcional)"
+              money
+              placeholder="0,00"
+              value={form.limit}
+              onChange={(event) => form.setLimit(event.target.value)}
+            />
+            <p className="-mt-1 text-[11px] leading-[1.5] text-neutral-600">
+              Com os dois dias preenchidos, a fatura do cartão aparece aqui na lista. O limite é
+              opcional — sem ele a fatura continua sendo mostrada, só não vira barra.
+            </p>
+          </>
+        )}
       </div>
 
       <div className="flex gap-2">
         <Button type="submit" disabled={submitting || !form.canSubmit}>
-          {submitting ? 'Salvando…' : 'Salvar cartão'}
+          {submitting ? 'Salvando…' : form.editing ? 'Salvar alterações' : 'Salvar cartão'}
         </Button>
         <Button variant="ghost" onClick={onCancel}>
           Cancelar

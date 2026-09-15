@@ -1,9 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import type { BankDTO, CardDTO, CreateBankInput, CreateCardInput } from '@bank/adapters'
+import type {
+  BankDTO,
+  CardDTO,
+  CreateBankInput,
+  CreateCardInput,
+  UpdateCardInput,
+} from '@bank/adapters'
 
-import { caption, useBanks } from 'ui'
+import { caption, useBanks, useCardInvoices } from 'ui'
 
 /** What the screen is currently about to delete. A bank and a card ask
  * different questions when they go, so the dialog needs to know which one it is
@@ -20,8 +26,12 @@ type PendingDeletion =
  */
 export function useBanksPage() {
   const data = useBanks()
+  const invoices = useCardInvoices()
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [addingCardTo, setAddingCardTo] = useState<string | null>(null)
+  // Which card the open form is EDITING — null while it is registering a new
+  // one. The form itself is the same either way; only this says which.
+  const [editingCard, setEditingCard] = useState<CardDTO | null>(null)
   const [pendingDeletion, setPendingDeletion] = useState<PendingDeletion>(null)
   const [composing, setComposing] = useState(false)
 
@@ -35,11 +45,23 @@ export function useBanksPage() {
     toggleExpanded: (bankId: string) =>
       setExpandedId((current) => (current === bankId ? null : bankId)),
     addingCardTo,
+    editingCard,
     openCardForm: (bankId: string) => {
       setExpandedId(bankId)
+      setEditingCard(null)
       setAddingCardTo(bankId)
     },
-    closeCardForm: () => setAddingCardTo(null),
+    /** Editing an existing card. It is the only way a card registered before
+     * invoices existed ever gets its calendar. */
+    openCardEditor: (card: CardDTO) => {
+      setExpandedId(card.bankId)
+      setEditingCard(card)
+      setAddingCardTo(card.bankId)
+    },
+    closeCardForm: () => {
+      setAddingCardTo(null)
+      setEditingCard(null)
+    },
     composing,
     openComposer: () => setComposing(true),
     closeComposer: () => setComposing(false),
@@ -52,7 +74,12 @@ export function useBanksPage() {
       data.createCard(input)
       setAddingCardTo(null)
     },
-    creatingCard: data.creatingCard,
+    updateCard: (input: UpdateCardInput & { id: string }) => {
+      data.updateCard(input)
+      setAddingCardTo(null)
+      setEditingCard(null)
+    },
+    savingCard: data.creatingCard || data.updatingCard,
     pendingDeletion,
     askToDeleteBank: (bank: BankDTO) => setPendingDeletion({ kind: 'bank', bank }),
     askToDeleteCard: (card: CardDTO) => setPendingDeletion({ kind: 'card', card }),
@@ -73,5 +100,11 @@ export function useBanksPage() {
         bank.accountNumber && `conta ${bank.accountNumber}`,
         bank.cardCount === 1 ? '1 cartão' : `${bank.cardCount} cartões`,
       ),
+    // The invoice side of a card, straight from the shared hook — a card with
+    // no calendar simply has none of these, and the screen renders nothing.
+    invoicesOf: invoices.invoicesOf,
+    openInvoiceOf: invoices.openInvoiceOf,
+    upcomingOf: invoices.upcomingOf,
+    invoiceCaptionOf: invoices.captionOf,
   }
 }

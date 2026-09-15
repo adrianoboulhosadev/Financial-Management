@@ -11,9 +11,10 @@ import { Loading } from '@/components/loading'
 import { Pane } from '@/components/pane'
 import { ScreenHeader } from '@/components/screen-header'
 import { Sheet } from '@/components/sheet'
-import { BanksIcon, CardIcon, PlusIcon, TrashIcon } from '@/data/icons'
+import { BanksIcon, CardIcon, PencilIcon, PlusIcon, TrashIcon } from '@/data/icons'
 import { BankForm } from './components/bank-form'
 import { CardForm } from './components/card-form'
+import { CardInvoice } from './components/card-invoice'
 import { useBanksPage } from './hooks/use-banks-page'
 
 /**
@@ -102,40 +103,71 @@ export default function BanksPage() {
                         Nenhum cartão neste banco ainda.
                       </p>
                     ) : (
-                      cards.map((card, index) => (
-                        <ListRow key={card.id} last={index === cards.length - 1}>
-                          <IconBadge tone="muted">
-                            <CardIcon size={17} />
-                          </IconBadge>
-                          <span className="min-w-0 flex-1 truncate text-[13px]">
-                            {CARD_BRAND_LABELS[card.brand]}{' '}
-                            <span className="tabular-nums text-neutral-500">
-                              ····{card.lastFourDigits}
-                            </span>
-                          </span>
-                          <span className="flex-none text-[11px] text-neutral-600">
-                            {CARD_KIND_LABELS[card.kind]}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => page.askToDeleteCard(card)}
-                            aria-label={`Excluir cartão final ${card.lastFourDigits}`}
-                            className="flex-none text-neutral-700 transition-colors hover:text-negative"
-                          >
-                            <TrashIcon size={16} />
-                          </button>
-                        </ListRow>
-                      ))
+                      cards.map((card, index) => {
+                        const invoices = page.invoicesOf(card.id)
+
+                        return (
+                          <ListRow key={card.id} last={index === cards.length - 1}>
+                            <div className="flex min-w-0 flex-1 flex-col">
+                              <div className="flex items-center gap-3">
+                                <IconBadge tone="muted">
+                                  <CardIcon size={17} />
+                                </IconBadge>
+                                <span className="min-w-0 flex-1 truncate text-[13px]">
+                                  {CARD_BRAND_LABELS[card.brand]}{' '}
+                                  <span className="tabular-nums text-neutral-500">
+                                    ····{card.lastFourDigits}
+                                  </span>
+                                </span>
+                                <span className="flex-none text-[11px] text-neutral-600">
+                                  {CARD_KIND_LABELS[card.kind]}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => page.openCardEditor(card)}
+                                  aria-label={`Editar cartão final ${card.lastFourDigits}`}
+                                  className="flex-none text-neutral-700 transition-colors hover:text-accent-300"
+                                >
+                                  <PencilIcon size={16} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => page.askToDeleteCard(card)}
+                                  aria-label={`Excluir cartão final ${card.lastFourDigits}`}
+                                  className="flex-none text-neutral-700 transition-colors hover:text-negative"
+                                >
+                                  <TrashIcon size={16} />
+                                </button>
+                              </div>
+
+                              {/* Only a card that knows when it closes has an
+                                  invoice to show. The rest are just cards. */}
+                              {invoices && (
+                                <CardInvoice
+                                  invoices={invoices}
+                                  open={page.openInvoiceOf(card.id)}
+                                  upcoming={page.upcomingOf(card.id)}
+                                  captionOf={page.invoiceCaptionOf}
+                                />
+                              )}
+                            </div>
+                          </ListRow>
+                        )
+                      })
                     )}
 
                     {page.addingCardTo === bank.id ? (
                       <div className="pt-3.5">
-                        <Kicker className="pb-3">Novo cartão</Kicker>
+                        <Kicker className="pb-3">
+                          {page.editingCard ? 'Editar cartão' : 'Novo cartão'}
+                        </Kicker>
                         <CardForm
                           bankId={bank.id}
-                          onSubmit={page.createCard}
+                          onCreate={page.createCard}
+                          onUpdate={page.updateCard}
+                          editing={page.editingCard}
                           onCancel={page.closeCardForm}
-                          submitting={page.creatingCard}
+                          submitting={page.savingCard}
                         />
                       </div>
                     ) : (
