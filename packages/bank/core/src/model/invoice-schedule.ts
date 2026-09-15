@@ -78,6 +78,18 @@ export class InvoiceSchedule {
     return month.dayAt(this.dueDay)
   }
 
+  /**
+   * Which invoice a given month has to PAY — the mirror of `dueOn`, and exactly
+   * one per card: the invoice closing THIS month when the due day comes after
+   * the closing day, and last month's otherwise.
+   *
+   * It is what lets the month's checklist ask "what is due in October" without
+   * walking every invoice the card ever had.
+   */
+  closingPeriodDueIn(period: MonthPeriod): MonthPeriod {
+    return this.dueDay > this.closingDay ? period : period.previous()
+  }
+
   equals(other?: InvoiceSchedule | null): boolean {
     return !!other && this.closingDay === other.closingDay && this.dueDay === other.dueDay
   }

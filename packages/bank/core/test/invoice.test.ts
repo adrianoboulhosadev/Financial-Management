@@ -9,8 +9,10 @@ import {
   CreateCard,
   UpdateCard,
   ListMyCardInvoicesQuery,
+  ListMyPayableInvoicesQuery,
+  SetInvoicePaid,
 } from '../src'
-import { BankRepositoryInMemory } from './in-memory'
+import { BankRepositoryInMemory, CardInvoicePaymentRepositoryInMemory } from './in-memory'
 
 const owner = 'user-1'
 const creditCard = { ownerId: owner, bankId: 'b1', brand: 'visa', kind: 'credit' as const, lastFourDigits: '1234' }
@@ -288,4 +290,225 @@ test('a card can be given its calendar after the fact', async () => {
   await new UpdateCard(cards).execute({ ownerId: owner, cardId, closingDay: 11, dueDay: 18 })
   expect(cards.cards[0].closingDay).toBe(11)
   expect(cards.cards[0].dueDay).toBe(18)
+})
+
+test('the month pays the invoice that falls due in it, not the one that closes in it', () => {
+  const october = new MonthPeriod('2026-10')
+
+  // Closes on the 11th, due on the 18th: October pays October's own invoice.
+  expect(new InvoiceSchedule({ closingDay: 11, dueDay: 18 }).closingPeriodDueIn(october).value).toBe(
+    '2026-10',
+  )
+  // Closes on the 25th, due on the 5th: October pays SEPTEMBER's invoice.
+  expect(new InvoiceSchedule({ closingDay: 25, dueDay: 5 }).closingPeriodDueIn(october).value).toBe(
+    '2026-09',
+  )
+})
+
+test('the month lists the invoice it owes, with the real due date', () => {
+  const payable = InvoiceCalculator.payableIn(
+    cardOf(),
+    new MonthPeriod('2026-10'),
+    [
+      // Inside the invoice that closes 11/10 (bought after 11/09).
+      { occurredOn: day('2026-09-20'), amountCents: 12000 },
+      { occurredOn: day('2026-10-03'), amountCents: 30000 },
+      // Already on the NEXT invoice — bought after this one closed.
+      { occurredOn: day('2026-10-15'), amountCents: 5000 },
+      // Belongs to the invoice October already paid in September.
+      { occurredOn: day('2026-09-02'), amountCents: 9900 },
+    ],
+    [],
+    day('2026-10-14'),
+  )!
+
+  expect(payable.period).toBe('2026-10')
+  expect(payable.amountCents).toBe(42000)
+  expect(payable.dueOn).toEqual(day('2026-10-18'))
+  expect(payable.closesOn).toEqual(day('2026-10-11'))
+  // Today is the 14th, so it has closed: the figure is final, not provisional.
+  expect(payable.closed).toBe(true)
+  expect(payable.paid).toBe(false)
+})
+
+test('an invoice due this month is listed before it closes, and says so', () => {
+  const payable = InvoiceCalculator.payableIn(
+    cardOf(),
+    new MonthPeriod('2026-10'),
+    [{ occurredOn: day('2026-10-03'), amountCents: 30000 }],
+    [],
+    // The 5th: due on the 18th, but it only closes on the 11th.
+    day('2026-10-05'),
+  )!
+
+  expect(payable.closed).toBe(false)
+  expect(payable.amountCents).toBe(30000)
+})
+
+test('a card nobody used has no bill to tick off', () => {
+  // Zero is not a line: asking the owner to tick off nothing is worse than
+  // saying nothing at all.
+  expect(
+    InvoiceCalculator.payableIn(cardOf(), new MonthPeriod('2026-10'), [], [], day('2026-10-14')),
+  ).toBeNull()
+  // Neither does a card with no calendar.
+  expect(
+    InvoiceCalculator.payableIn(
+      cardOf({ closingDay: null, dueDay: null }),
+      new MonthPeriod('2026-10'),
+      [{ occurredOn: day('2026-10-03'), amountCents: 30000 }],
+      [],
+      day('2026-10-14'),
+    ),
+  ).toBeNull()
+})
+
+test('a ticked invoice reads as paid', () => {
+  const paidAt = day('2026-10-16')
+  const payable = InvoiceCalculator.payableIn(
+    cardOf(),
+    new MonthPeriod('2026-10'),
+    [{ occurredOn: day('2026-10-03'), amountCents: 30000 }],
+    [{ cardId: 'c1', period: '2026-10', paidAt }],
+    day('2026-10-20'),
+  )!
+
+  expect(payable.paid).toBe(true)
+  expect(payable.paidAt).toEqual(paidAt)
+})
+
+test('ticking an invoice writes only the deviation, and un-ticking drops it', async () => {
+  const banks = new BankRepositoryInMemory()
+  const cards = banks.cardRepository
+  const payments = new CardInvoicePaymentRepositoryInMemory()
+  await new CreateBank(banks).execute({ ownerId: owner, name: 'Itaú' })
+  await new CreateCard(cards, banks).execute({
+    ...creditCard,
+    bankId: banks.banks[0].id,
+    closingDay: 11,
+    dueDay: 18,
+  })
+  const cardId = cards.cards[0].id
+  const setPaid = new SetInvoicePaid(cards, payments)
+
+  // Nothing is written until somebody says something: an untouched invoice
+  // costs no row at all.
+  expect(payments.payments).toHaveLength(0)
+
+  await setPaid.execute({ ownerId: owner, cardId, period: '2026-10', paid: true })
+  expect(payments.payments).toHaveLength(1)
+  const { paidAt } = payments.payments[0]
+  expect(paidAt).not.toBeNull()
+
+  // Idempotente: ticking twice must not move the date it was paid on.
+  await setPaid.execute({ ownerId: owner, cardId, period: '2026-10', paid: true })
+  expect(payments.payments).toHaveLength(1)
+  expect(payments.payments[0].paidAt).toEqual(paidAt)
+
+  // Un-ticking leaves nothing to remember, so the row goes rather than
+  // lingering as a record of nothing.
+  await setPaid.execute({ ownerId: owner, cardId, period: '2026-10', paid: false })
+  expect(payments.payments).toHaveLength(0)
+})
+
+test('ticking off somebody else’s invoice answers as missing', async () => {
+  const banks = new BankRepositoryInMemory()
+  const cards = banks.cardRepository
+  const payments = new CardInvoicePaymentRepositoryInMemory()
+  await new CreateBank(banks).execute({ ownerId: owner, name: 'Itaú' })
+  await new CreateCard(cards, banks).execute({
+    ...creditCard,
+    bankId: banks.banks[0].id,
+    closingDay: 11,
+    dueDay: 18,
+  })
+  const cardId = cards.cards[0].id
+
+  await expect(
+    new SetInvoicePaid(cards, payments).execute({
+      ownerId: 'user-2',
+      cardId,
+      period: '2026-10',
+      paid: true,
+    }),
+  ).rejects.toMatchObject({ code: Errors.CARD_NOT_FOUND })
+  expect(payments.payments).toHaveLength(0)
+})
+
+test('a card with no calendar has no invoice to tick', async () => {
+  const banks = new BankRepositoryInMemory()
+  const cards = banks.cardRepository
+  const payments = new CardInvoicePaymentRepositoryInMemory()
+  await new CreateBank(banks).execute({ ownerId: owner, name: 'Itaú' })
+  await new CreateCard(cards, banks).execute({ ...creditCard, bankId: banks.banks[0].id })
+
+  await expect(
+    new SetInvoicePaid(cards, payments).execute({
+      ownerId: owner,
+      cardId: cards.cards[0].id,
+      period: '2026-10',
+      paid: true,
+    }),
+  ).rejects.toMatchObject({ code: Errors.CARD_HAS_NO_INVOICE })
+})
+
+test('the payable list is ordered by due date and skips what is not owed', async () => {
+  const banks = new BankRepositoryInMemory()
+  const cards = banks.cardRepository
+  const payments = new CardInvoicePaymentRepositoryInMemory()
+  await new CreateBank(banks).execute({ ownerId: owner, name: 'Itaú' })
+  const bankId = banks.banks[0].id
+
+  // Due on the 18th.
+  await new CreateCard(cards, banks).execute({
+    ...creditCard,
+    bankId,
+    closingDay: 11,
+    dueDay: 18,
+  })
+  // Due on the 5th — of the month AFTER it closes, so October pays the one that
+  // closed in September.
+  await new CreateCard(cards, banks).execute({
+    ownerId: owner,
+    bankId,
+    brand: 'elo',
+    kind: 'credit',
+    lastFourDigits: '5678',
+    closingDay: 25,
+    dueDay: 5,
+  })
+  // No calendar at all: never on the list.
+  await new CreateCard(cards, banks).execute({
+    ownerId: owner,
+    bankId,
+    brand: 'mastercard',
+    kind: 'credit',
+    lastFourDigits: '9012',
+  })
+  const [first, second] = cards.cards
+
+  const payable = await new ListMyPayableInvoicesQuery(cards, payments).execute({
+    ownerId: owner,
+    period: '2026-10',
+    charges: [
+      { cardId: first.id, occurredOn: day('2026-10-03'), amountCents: 30000 },
+      { cardId: second.id, occurredOn: day('2026-09-10'), amountCents: 20000 },
+    ],
+    reference: day('2026-10-14'),
+  })
+
+  // Ordered by when they fall due — the order they get paid in.
+  expect(payable.map((invoice) => invoice.dueOn)).toEqual([day('2026-10-05'), day('2026-10-18')])
+  expect(payable[0].cardId).toBe(second.id)
+  expect(payable[0].period).toBe('2026-09')
+  expect(payable[1].period).toBe('2026-10')
+
+  // Another owner sees nothing of it.
+  expect(
+    await new ListMyPayableInvoicesQuery(cards, payments).execute({
+      ownerId: 'user-2',
+      period: '2026-10',
+      charges: [{ cardId: first.id, occurredOn: day('2026-10-03'), amountCents: 30000 }],
+    }),
+  ).toEqual([])
 })

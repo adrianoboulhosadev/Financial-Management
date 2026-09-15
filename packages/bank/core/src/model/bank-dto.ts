@@ -40,6 +40,30 @@ export interface CardInvoiceDTO {
   open: boolean
 }
 
+/**
+ * An invoice the month has to PAY: what it came to, when it is due, and whether
+ * the owner has ticked it off.
+ *
+ * It carries no `categoryId` and never joins the month's checklist totals, and
+ * that is the whole point — every charge on it was ALREADY recorded as a
+ * movement on the day it was made, so counting the invoice as an expense again
+ * would count the same money twice. It is a BILL TO SETTLE, not a new cost.
+ */
+export interface PayableInvoiceDTO {
+  cardId: string
+  // YYYY-MM, the CLOSING month — the invoice's identity.
+  period: string
+  closesOn: Date
+  dueOn: Date
+  amountCents: number
+  // Whether it has closed yet. An invoice due on the 18th that closes on the
+  // 11th is already listed on the 5th, still taking charges — saying so is what
+  // keeps a provisional figure from reading as final.
+  closed: boolean
+  paid: boolean
+  paidAt: Date | null
+}
+
 /** How full a card's limit is. The same three words a budget ceiling uses —
  * the state is the same question — but the threshold is the `bank` context's
  * own call, so moving one never moves the other. */
